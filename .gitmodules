@@ -7,3 +7,6 @@
 [submodule "ideas/supermariobros"]
 	path = ideas/supermariobros
 	url = https://github.com/MitchellSternke/SuperMarioBros-C.git
+[submodule "ideas/amp_it_up"]
+	path = ideas/amp_it_up
+	url = https://github.com/heesangh/amp_it_up.git
