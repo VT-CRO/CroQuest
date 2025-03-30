@@ -1,2 +1,3 @@
-# Crocade
-Crocade
+# CroQuest
+
+Welcome to CroQuest!
