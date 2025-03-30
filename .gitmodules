@@ -1,0 +1,12 @@
+[submodule "pong"]
+	path = pong
+	url = https://github.com/flightcrank/pong.git
+[submodule "ideas/snake"]
+	path = ideas/snake
+	url = https://github.com/alexdantas/nSnake.git
+[submodule "ideas/supermariobros"]
+	path = ideas/supermariobros
+	url = https://github.com/MitchellSternke/SuperMarioBros-C.git
+[submodule "ideas/amp_it_up"]
+	path = ideas/amp_it_up
+	url = https://github.com/heesangh/amp_it_up.git
