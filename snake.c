@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <conio.h>
+//#include <conio.h>
 #include <unistd.h>
 
 // Creating the board width and height
@@ -41,4 +41,11 @@ void init_snake()
     snake[0].x = BOARD_HEIGHT / 2;
     food.x = rand() % BOARD_WIDTH;
     food.y = rand() % BOARD_HEIGHT;
+}
+
+int main()
+{
+    init_snake();
+
+    return 0;
 }
