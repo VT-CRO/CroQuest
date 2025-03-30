@@ -43,6 +43,25 @@ void init_snake()
     food.y = rand() % BOARD_HEIGHT;
 }
 
+// Setting up the grid
+void set_grid()
+{
+    // Clear any issue
+    system("clear");
+
+    // Setting the board to be the described height and width
+    // Will properly adjust if the variables are changed
+    for (int y = 0; y < BOARD_HEIGHT; y++)
+    {
+        for (int x = 0; x < BOARD_WIDTH; x++)
+        {
+            int check = 0;
+            
+        }
+    }
+}
+
+// Main method for the game to be run with
 int main()
 {
     init_snake();
