@@ -149,8 +149,7 @@ class Snake(tk.Canvas):
         self.delete(tk.ALL)
         self.create_text(self.winfo_width()/2, self.winfo_height()/2, text=f"Game over! You scored {self.score}!", fill = "#fff", font=("TkDefaultFont", 24))
 
-    # ----------------------------------------------------------------------------------------------------------
-    
+
 root = tk.Tk()
 root.title("CroQuest Snake")
 root.resizable(True, True)
