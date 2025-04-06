@@ -7,7 +7,14 @@ MOVE_INCREMENT = 20
 MOVES_PER_SECOND = 15
 GAME_SPEED = 1000 // MOVES_PER_SECOND
 
-# Checking if resolved
+# Grid constants
+GRID_WIDTH = 20
+GRID_HEIGHT = 15
+TILE_SIZE = 20
+
+# Window Sizes (400, 300)
+WINDOW_WIDTH = GRID_WIDTH * TILE_SIZE
+WINDOW_HEIGHT = GRID_HEIGHT * TILE_SIZE
 
 # Creating the Snake + Canvas
 class Snake(tk.Canvas):
