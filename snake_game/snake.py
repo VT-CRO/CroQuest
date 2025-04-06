@@ -3,16 +3,16 @@ import tkinter as tk
 import os
 from PIL import Image, ImageTk
 
-MOVE_INCREMENT = 20
-MOVES_PER_SECOND = 15
+MOVE_INCREMENT = 16
+MOVES_PER_SECOND = 10
 GAME_SPEED = 1000 // MOVES_PER_SECOND
 
 # Grid constants
 GRID_WIDTH = 20
 GRID_HEIGHT = 15
-TILE_SIZE = 20
+TILE_SIZE = 16
 
-# Window Sizes (400, 300)
+# Window Sizes (320, 240)
 WINDOW_WIDTH = GRID_WIDTH * TILE_SIZE
 WINDOW_HEIGHT = GRID_HEIGHT * TILE_SIZE
 
@@ -22,7 +22,7 @@ class Snake(tk.Canvas):
         super().__init__(width = WINDOW_WIDTH, height = WINDOW_HEIGHT, background="black", highlightthickness=0)
 
         # Setting the snake starting position
-        self.snake_positions = [(5 * TILE_SIZE, 3 * TILE_SIZE), (4 * TILE_SIZE, 3 * TILE_SIZE), (3 * TILE_SIZE, 3 * TILE_SIZE)]
+        self.snake_positions = [(5 * TILE_SIZE, 5 * TILE_SIZE), (4 * TILE_SIZE, 5 * TILE_SIZE), (3 * TILE_SIZE, 5 * TILE_SIZE)]
         self.food_position = self.set_new_food_position()
         self.score = 0
 
@@ -35,7 +35,7 @@ class Snake(tk.Canvas):
         self.load_assets()
         self.create_objects()
 
-        self.after(3000, self.perform_actions)
+        self.after(5000000, self.perform_actions)
 
     # ----------------------------------------------------------------------------------------------------------
 
@@ -51,7 +51,7 @@ class Snake(tk.Canvas):
             self.food_image_png = Image.open("./assets/Apple.png").resize((TILE_SIZE, TILE_SIZE), Image.NEAREST)
             self.food = ImageTk.PhotoImage(self.food_image_png)
 
-            self.background_image_png = Image.open("./assets/bg.png").resize((WINDOW_WIDTH, WINDOW_HEIGHT - TILE_SIZE), Image.NEAREST)
+            self.background_image_png = Image.open("./assets/bg.png").resize((WINDOW_WIDTH, WINDOW_HEIGHT), Image.NEAREST)
             self.background_image = ImageTk.PhotoImage(self.background_image_png)
 
         except IOError as error:
@@ -59,29 +59,42 @@ class Snake(tk.Canvas):
             root.destroy()
 
     # ----------------------------------------------------------------------------------------------------------
-
-    # Offsetting the position if needed
-    def offset_position(self, position):
-        x, y = position
-        return (x, y + TILE_SIZE)
     
     # Creating the snake images
     def create_objects(self):
-        self.create_image(0, TILE_SIZE, image=self.background_image, anchor="nw", tag="background")
+        # No more background png
+        #self.create_image(0, 0, image=self.background_image, anchor="nw", tag="background")
         self.create_text(45, 12, text=f"Score {self.score}", tag="score", fill="#fff", font=("TkDefaultFont", 14))
+        self.draw_debug_grid()
 
         # Setting the position
         for x_position, y_position in self.snake_positions:
-            self.create_image (x_position, y_position + TILE_SIZE, image=self.snake_body, tag="snake")
+            self.create_image (x_position, y_position, image=self.snake_body, tag="snake", anchor="nw")
 
         # Creating the food location
-        self.create_image(*self.offset_position(self.food_position), image=self.food, tag="food")
+        self.create_image(*self.food_position, image=self.food, tag="food", anchor="nw")
 
         # Creating the border
-        self.create_rectangle(0, TILE_SIZE, WINDOW_WIDTH, WINDOW_HEIGHT, outline="#525d69")
+        self.create_rectangle(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, outline="black", width=4)
 
     # ----------------------------------------------------------------------------------------------------------
-    
+
+    # Debug offset
+    def draw_debug_grid(self):
+        for x in range(0, GRID_WIDTH):
+            for y in range(0, GRID_HEIGHT):
+                color = "#42B032" if (x + y) % 2 == 0 else "#6FBD63"
+                self.create_rectangle(x * TILE_SIZE, y * TILE_SIZE, (x + 1) * TILE_SIZE, (y + 1) * TILE_SIZE, fill=color, outline=color, tags="debug_grid")
+
+        # Drawing grid lines
+        #for x in range(0, WINDOW_WIDTH, TILE_SIZE):
+            #self.create_line(x, 0, x, WINDOW_HEIGHT, fill="black", tags="debug_grid")
+
+        #for y in range(0, WINDOW_HEIGHT, TILE_SIZE):
+            #self.create_line(0, y, WINDOW_WIDTH, y, fill="black", tags="debug_grid")   
+
+    # ----------------------------------------------------------------------------------------------------------
+
     # Method to move the snake
     def move_snake(self):
         head_x_position, head_y_position = self.snake_positions[0]
@@ -120,7 +133,15 @@ class Snake(tk.Canvas):
         # Making sure the snake doesn't collide with itself
         head_x_position, head_y_position = self.snake_positions[0]
 
-        return (head_x_position < 0 or head_x_position >= WINDOW_WIDTH or head_y_position < TILE_SIZE or head_y_position >= WINDOW_HEIGHT or (head_x_position, head_y_position) in self.snake_positions[1:])
+        if (head_x_position < 0 or head_x_position >= WINDOW_WIDTH or
+            head_y_position < TILE_SIZE or head_y_position >= WINDOW_HEIGHT):
+            return True
+
+        # Check if the snake hits itself
+        if (head_x_position, head_y_position) in self.snake_positions[1:]:
+            return True
+
+        return False
 
         # Old logic
         #return(head_x_position in (0, 600) or head_y_position in (20, 620) or (head_x_position, head_y_position) in self.snake_positions[1:])
@@ -144,33 +165,24 @@ class Snake(tk.Canvas):
             self.score += 1
             self.snake_positions.append(self.snake_positions[-1])
 
-            # New Logic
-            x, y = self.snake_positions[-1]
-            self.create_image(x, y + TILE_SIZE, image=self.snake_body, tag="snake")
+            self.create_image(*self.snake_positions[-1], image=self.snake_body, tag="snake", anchor="nw")
 
             self.food_position = self.set_new_food_position()
-            self.coords(self.find_withtag("food"), *self.offset_position(self.food_position))
+            self.coords(self.find_withtag("food"), self.food_position)
 
             score = self.find_withtag("score")
             self.itemconfigure(score, text=f"Score: {self.score}", tag="score")
 
-            #Old logic
-            #self.create_image(*self.snake_positions[-1], image=self.snake_body, tag="snake")
-
-            #self.food_position = self.set_new_food_position()
-            #self.coords(self.find_withtag("food"), self.food_position)
-
-
-            #score = self.find_withtag("score")
-            #self.itemconfigure(score, text=f"Score: {self.score}", tag="score")
-
     # ----------------------------------------------------------------------------------------------------------
     
-    # Setting a new position for the foof
+    # Setting a new position for the food
     def set_new_food_position(self):
         while True:
-            x_position = randint(0, GRID_WIDTH - 1) * TILE_SIZE
-            y_position = randint(3, GRID_HEIGHT - 1) * TILE_SIZE
+            x_tile = randint(0, GRID_WIDTH - 1)
+            y_tile = randint(1, GRID_HEIGHT - 1)
+
+            x_position = x_tile * TILE_SIZE
+            y_position = y_tile * TILE_SIZE
 
             food_position = (x_position, y_position)
 
