@@ -5,20 +5,22 @@
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_main.h>
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>
 #include <unistd.h>
 #include <limits.h>
+#include <time.h>
+
+#include "utils.h"
 
 // Screen dimensions subject to change
-#define SCREEN_HEIGHT 800
-#define SCREEN_WIDTH 500
+#define SCREEN_HEIGHT 250
+#define SCREEN_WIDTH 200
 
 //PADDLE dimensions
-#define PADDLE_HEIGHT 80
-#define PADDLE_WIDTH 50
+#define PADDLE_HEIGHT 50
+#define PADDLE_WIDTH 10
 #define PADDING 50
 
 //BALL dimensions
@@ -43,9 +45,9 @@ typedef struct
 //Pong ball
 typedef struct
 {
-    int x, y;   /* (x, y) location of ball */
+    double x, y;   /* (x, y) location of ball */
     int w, h;   /* width and height of ball */
-    int dx, dy; /* x and y speed */
+    double dx, dy; /* x and y speed */
 }Ball;
 
 enum paddle_walls {
@@ -54,45 +56,32 @@ enum paddle_walls {
     INSIDE,
 };
 
+//The game difficulty level
+static int level;
+
 //Ball and Paddles initialized
 static Ball ball = {SCREEN_HEIGHT / 2, SCREEN_WIDTH / 2, BALL_HEIGHT, 
             Ball_WIDTH, 1, -1};
 
-static Paddle paddles[2] = {{PADDING, (SCREEN_WIDTH / 2) - (PADDLE_HEIGHT / 2),
+static Paddle paddles[2] = {{0, (SCREEN_WIDTH / 2) - (PADDLE_HEIGHT / 2),
                     PADDLE_WIDTH, PADDLE_HEIGHT},
 
-                     {SCREEN_HEIGHT - PADDLE_WIDTH - PADDING,
+                     {SCREEN_HEIGHT - PADDLE_WIDTH,
                      (SCREEN_WIDTH / 2) - (PADDLE_HEIGHT / 2), 
                      PADDLE_WIDTH, PADDLE_HEIGHT}};
 
 static void initialize_game()
 {
+    level = 1;
+
     ball = (Ball) {SCREEN_HEIGHT / 2, SCREEN_WIDTH / 2, BALL_HEIGHT, 
         Ball_WIDTH, 1, 1};
     
-    paddles[0] = (Paddle){PADDING, (SCREEN_WIDTH / 2) - (PADDLE_HEIGHT / 2),
+    paddles[0] = (Paddle){0, (SCREEN_WIDTH / 2) - (PADDLE_HEIGHT / 2),
         PADDLE_WIDTH, PADDLE_HEIGHT};
-    paddles[1] = (Paddle){SCREEN_HEIGHT - PADDLE_WIDTH - PADDING,
+    paddles[1] = (Paddle){SCREEN_HEIGHT - PADDLE_WIDTH,
          (SCREEN_WIDTH / 2) - (PADDLE_HEIGHT / 2), 
          PADDLE_WIDTH, PADDLE_HEIGHT};
-}
-
-//// UTILS ///////
-
-/*
-Check max value 
-*/
-static int max(int value1, int value2)
-{
-    return value1 >= value2 ? value1 : value2;
-}
-
-/*
-Check min value 
-*/
-static int min(int value1, int value2)
-{
-    return value1 >= value2 ? value2 : value1;
 }
 
 ////// DRAWING ASSETS /////////
@@ -106,7 +95,7 @@ static void draw_paddles(SDL_Renderer * renderer)
     for(int i = 0; i < 2; i++)
     {
         SDL_Rect rect = {paddles[i].x, paddles[i].y, paddles[i].w, paddles[i].h};
-        if(SDL_RenderDrawRect(renderer, &rect) < 0){
+        if(SDL_RenderFillRect(renderer, &rect) < 0){
             fprintf(stderr, "Ball drawing failed");
         }
     }
@@ -118,7 +107,7 @@ Draw the ball
 */
 static void draw_ball(SDL_Renderer * renderer)
 {
-    SDL_SetRenderDrawColor(renderer, 3, 182, 252, 255);
+    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
     SDL_Rect rect = {ball.x, ball.y, ball.w, ball.h};
     if(SDL_RenderFillRect(renderer, &rect) < 0){
         fprintf(stderr, "Ball drawing failed");
@@ -201,7 +190,7 @@ static void check_paddle_collision()
             ball.dy = -ball.dy;
         } else {
             ball.x = paddles[0].x + PADDLE_WIDTH;
-            ball.dx = -ball.dx;
+            ball.dx = -ball.dx * 1.2;
         }
     }
     // Check collision with right paddle
@@ -223,8 +212,9 @@ static void check_paddle_collision()
             ball.dy = -ball.dy;
         } else {
             ball.x = paddles[1].x - ball.w;
-            ball.dx = -ball.dx;
+            ball.dx = -ball.dx * 1.2;
         }
+        level++;
     }
 }
 
@@ -282,19 +272,29 @@ static void updatePaddle(bool up, Paddle * paddle)
 /*
 AI paddle for single player
 */
-static void ai_paddle(Paddle * paddle)
+static void ai_paddle(Paddle * paddle, int level_index)
 {
-    int paddle_center = paddle->y + PADDLE_HEIGHT / 2;
+    if(ball.dx > 0)
+        return; 
+    double intersection_time = ((paddle->x + PADDLE_WIDTH) - ball.x) / ball.dx;
+    double y_intersect = ball.y + (ball.dy * intersection_time);
 
-    //TODO Need to find out where the ball will hit the paddle / side 
+    y_intersect = y_intersect >= SCREEN_WIDTH ? SCREEN_WIDTH - PADDLE_HEIGHT : y_intersect;
+    y_intersect = y_intersect < 0 ? 0 : y_intersect;
 
+    double target_y = y_intersect + calculate_offset(level_index, PADDLE_HEIGHT);
 
-    if(ball.y < paddle_center - DEADZONE)
+    target_y = target_y >= SCREEN_WIDTH ? SCREEN_WIDTH - PADDLE_HEIGHT : target_y;
+    target_y = target_y < 0 ? 0 : target_y;
+
+    double paddle_center = paddle->y + PADDLE_HEIGHT / 2;
+
+    if(target_y < paddle_center - DEADZONE && intersection_time < level*(target_y + paddle_center) / PADDLE_SPEED)
     {
         updatePaddle(true, paddle);
     }
-
-    else if(ball.y > paddle_center + DEADZONE)
+    
+    if(target_y > paddle_center + DEADZONE && intersection_time < level*(target_y - paddle_center) / PADDLE_SPEED)
     {
         updatePaddle(false, paddle);
     }
@@ -305,6 +305,9 @@ Main logic/game loop
 */
 int main()
 {
+    //initializes srand using time
+    srand((unsigned int)time(NULL));
+
     if(SDL_Init(SDL_INIT_VIDEO) < 0){
         fprintf(stderr, "Failed to initialize SDL\n");
         exit(1);
@@ -378,7 +381,7 @@ int main()
 
         //Updates everything
 
-        ai_paddle(&paddles[0]);
+        ai_paddle(&paddles[0], level);
         updateBall();
         draw_ball(renderer);
         draw_paddles(renderer);
