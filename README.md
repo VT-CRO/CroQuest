@@ -9,7 +9,7 @@ I have added a directory called "references", in which you will be able to find 
 
 Each game will have it's own directory.  
 
-To make the tree structure appear correctly in your README file, you need to format it using Markdown. In Markdown, the tree structure can be displayed properly by wrapping the tree in triple backticks (\`\`\`). This will treat the content as code and preserve the indentation. Here's how you can fix it:
+Tree Structure of Repository.
 
 ```
 CroQuest
