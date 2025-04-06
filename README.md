@@ -2,8 +2,16 @@
 
 Welcome to CroQuest!
 
+===========================
+
+PULL BEFORE DOING ANYTHING
+
+===========================
 
 I have added a directory called "references", in which you will be able to find a version of each game just for reference.
+
+I am working on documentation in Notion:
+[click here](https://www.notion.so/CroQuest-1cdceb89e60e8008a8b2ff5f561b246e?pvs=4)
 
 ---------------------------------------------------------------------------------------------
 
