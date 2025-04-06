@@ -1,0 +1,3 @@
+[submodule "amp_it_up"]
+	path = amp_it_up
+	url = git@github.com:heesangh/amp_it_up.git
