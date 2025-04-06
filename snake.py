@@ -22,6 +22,7 @@ class Snake(tk.Canvas):
 
         self.bind_all("<Key>", self.on_key_press)
 
+        # Loading all the assets
         self.load_assets()
         self.create_objects()
 
@@ -35,8 +36,6 @@ class Snake(tk.Canvas):
 
             self.food_image_png = Image.open("./assets/Apple.png")
             self.food = ImageTk.PhotoImage(self.food_image_png)
-
-
         except IOError as error:
             print(error)
             root.destroy()
@@ -45,9 +44,11 @@ class Snake(tk.Canvas):
     def create_objects(self):
         self.create_text(45, 12, text=f"Score {self.score}", tag="score", fill="#fff", font=("TkDefaultFont", 14))
 
+        # Setting the position
         for x_position, y_position in self.snake_positions:
             self.create_image (x_position, y_position, image=self.snake_body, tag="snake")
 
+        # Creating the border
         self.create_image(*self.food_position, image=self.food, tag="food")
         self.create_rectangle(7, 27, 593, 613, outline="#525d69")
 
@@ -55,6 +56,7 @@ class Snake(tk.Canvas):
     def move_snake(self):
         head_x_position, head_y_position = self.snake_positions[0]
 
+        # Defining direction with each keystroke
         if self.direction == "Left":
             new_head_position = (head_x_position - MOVE_INCREMENT, head_y_position)
         if self.direction == "Right":
@@ -69,20 +71,24 @@ class Snake(tk.Canvas):
         for segment, position in zip(self.find_withtag("snake"), self.snake_positions):
             self.coords(segment, position)
 
+    # Actions that happen during the game
     def perform_actions(self):
         if self.check_collisions():
             self.end_game()
             return
         
+        # Checking for collision and moving the snake
         self.check_food_collision()
         self.move_snake()
         self.after(GAME_SPEED, self.perform_actions)
 
     def check_collisions(self):
+        # Making sure the snake doesn't collide with itself
         head_x_position, head_y_position = self.snake_positions[0]
 
         return(head_x_position in (0, 600) or head_y_position in (20, 620) or (head_x_position, head_y_position) in self.snake_positions[1:])
 
+    # No weird directional turns
     def on_key_press(self, e):
         new_direction = e.keysym
         all_directions = ("Up", "Down", "Left", "Right")
@@ -91,6 +97,7 @@ class Snake(tk.Canvas):
         if new_direction in all_directions and {new_direction, self.direction} not in opposites:
             self.direction = new_direction
 
+    # Checking for the food collisions
     def check_food_collision(self):
         if self.snake_positions[0] == self.food_position:
             self.score += 1
@@ -105,6 +112,7 @@ class Snake(tk.Canvas):
             score = self.find_withtag("score")
             self.itemconfigure(score, text=f"Score: {self.score}", tag="score")
 
+    # Setting a new position for the foof
     def set_new_food_position(self):
         while True:
             x_position = randint(1, 29) * MOVE_INCREMENT
@@ -115,6 +123,7 @@ class Snake(tk.Canvas):
             if food_position not in self.snake_positions:
                 return food_position
             
+    # Ending the game
     def end_game(self):
         self.delete(tk.ALL)
         self.create_text(self.winfo_width()/2, self.winfo_height()/2, text=f"Game over! You scored {self.score}!", fill = "#fff", font=("TkDefaultFont", 24))
