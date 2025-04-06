@@ -41,6 +41,10 @@ class Snake(tk.Canvas):
 
             self.food_image_png = Image.open("./assets/Apple.png")
             self.food = ImageTk.PhotoImage(self.food_image_png)
+
+            self.background_image_png = Image.open("./assets/bg.png")
+            self.background_image = ImageTk.PhotoImage(self.background_image_png)
+
         except IOError as error:
             print(error)
             root.destroy()
@@ -49,6 +53,7 @@ class Snake(tk.Canvas):
     
     # Creating the snake images
     def create_objects(self):
+        #self.create_image(0, 0, image=self.background_image, anchor="nw", tag="background")
         self.create_text(45, 12, text=f"Score {self.score}", tag="score", fill="#fff", font=("TkDefaultFont", 14))
 
         # Setting the position
