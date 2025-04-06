@@ -53,7 +53,7 @@ class Snake(tk.Canvas):
     
     # Creating the snake images
     def create_objects(self):
-        #self.create_image(0, 0, image=self.background_image, anchor="nw", tag="background")
+        self.create_image(0, 0, image=self.background_image, anchor="nw", tag="background")
         self.create_text(45, 12, text=f"Score {self.score}", tag="score", fill="#fff", font=("TkDefaultFont", 14))
 
         # Setting the position
