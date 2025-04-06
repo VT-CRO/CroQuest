@@ -26,11 +26,16 @@ class Snake(tk.Canvas):
         self.load_assets()
         self.create_objects()
 
-        self.after(GAME_SPEED, self.perform_actions)
-    
+        self.after(3000, self.perform_actions)
+
+    # ----------------------------------------------------------------------------------------------------------
+
     # Loading in the assets for the snake game
     def load_assets(self):
         try:
+            self.snake_head_png = Image.open("./assets/closed.png")
+            self.snake_head = ImageTk.PhotoImage(self.snake_head_png)
+
             self.snake_body_png = Image.open("./assets/body_segment.png")
             self.snake_body = ImageTk.PhotoImage(self.snake_body_png)
 
@@ -40,6 +45,8 @@ class Snake(tk.Canvas):
             print(error)
             root.destroy()
 
+    # ----------------------------------------------------------------------------------------------------------
+    
     # Creating the snake images
     def create_objects(self):
         self.create_text(45, 12, text=f"Score {self.score}", tag="score", fill="#fff", font=("TkDefaultFont", 14))
@@ -52,6 +59,8 @@ class Snake(tk.Canvas):
         self.create_image(*self.food_position, image=self.food, tag="food")
         self.create_rectangle(7, 27, 593, 613, outline="#525d69")
 
+    # ----------------------------------------------------------------------------------------------------------
+    
     # Method to move the snake
     def move_snake(self):
         head_x_position, head_y_position = self.snake_positions[0]
@@ -71,6 +80,8 @@ class Snake(tk.Canvas):
         for segment, position in zip(self.find_withtag("snake"), self.snake_positions):
             self.coords(segment, position)
 
+    # ----------------------------------------------------------------------------------------------------------
+    
     # Actions that happen during the game
     def perform_actions(self):
         if self.check_collisions():
@@ -82,12 +93,16 @@ class Snake(tk.Canvas):
         self.move_snake()
         self.after(GAME_SPEED, self.perform_actions)
 
+    # ----------------------------------------------------------------------------------------------------------
+    
     def check_collisions(self):
         # Making sure the snake doesn't collide with itself
         head_x_position, head_y_position = self.snake_positions[0]
 
         return(head_x_position in (0, 600) or head_y_position in (20, 620) or (head_x_position, head_y_position) in self.snake_positions[1:])
 
+    # ----------------------------------------------------------------------------------------------------------
+    
     # No weird directional turns
     def on_key_press(self, e):
         new_direction = e.keysym
@@ -97,6 +112,8 @@ class Snake(tk.Canvas):
         if new_direction in all_directions and {new_direction, self.direction} not in opposites:
             self.direction = new_direction
 
+    # ----------------------------------------------------------------------------------------------------------
+    
     # Checking for the food collisions
     def check_food_collision(self):
         if self.snake_positions[0] == self.food_position:
@@ -112,6 +129,8 @@ class Snake(tk.Canvas):
             score = self.find_withtag("score")
             self.itemconfigure(score, text=f"Score: {self.score}", tag="score")
 
+    # ----------------------------------------------------------------------------------------------------------
+    
     # Setting a new position for the foof
     def set_new_food_position(self):
         while True:
@@ -123,15 +142,18 @@ class Snake(tk.Canvas):
             if food_position not in self.snake_positions:
                 return food_position
             
+    # ----------------------------------------------------------------------------------------------------------
+
     # Ending the game
     def end_game(self):
         self.delete(tk.ALL)
         self.create_text(self.winfo_width()/2, self.winfo_height()/2, text=f"Game over! You scored {self.score}!", fill = "#fff", font=("TkDefaultFont", 24))
 
-
+    # ----------------------------------------------------------------------------------------------------------
+    
 root = tk.Tk()
 root.title("CroQuest Snake")
-root.resizable(False, False)
+root.resizable(True, True)
 
 board = Snake(root)
 board.pack()
