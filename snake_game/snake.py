@@ -7,6 +7,8 @@ MOVE_INCREMENT = 20
 MOVES_PER_SECOND = 15
 GAME_SPEED = 1000 // MOVES_PER_SECOND
 
+# Checking if resolved
+
 # Creating the Snake + Canvas
 class Snake(tk.Canvas):
     def __init__(self, parent):
