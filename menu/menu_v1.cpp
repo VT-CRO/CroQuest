@@ -108,8 +108,8 @@ void drawDecoratedGrid() {
 }
 
 void redrawChangedSquares() {
-  drawSingleSquare(prevRow, prevCol, false);          // Unselect previous
-  drawSingleSquare(selectedRow, selectedCol, true);   // Select new
+  drawSingleSquare(prevRow, prevCol);    // Redraw unselected square
+  drawSingleSquare(selectedRow, selectedCol); // Redraw selected square
 }
 
 
@@ -123,35 +123,22 @@ void updateSelection() {
   prevRow = selectedRow;
   prevCol = selectedCol;
 
-
   if (leftPressed && !leftLast) {
-    if (selectedRow == 0 && selectedCol == 0) {
-      // If we're at col1, row1, go to col3, row3
-      selectedRow = gridRows - 1;
-      selectedCol = gridCols - 1;
-    } else if (selectedCol > 0) {
-      // Move left within the current row
+    if (selectedCol > 0) {
       selectedCol--;
-    } else {
-      // Wrap to the last column of the previous row
-      selectedCol = gridCols - 1;
+    } else if (selectedRow > 0) {
       selectedRow--;
+      selectedCol = gridCols - 1;
     }
     redrawChangedSquares();
   }
 
   if (rightPressed && !rightLast) {
-    if (selectedRow == gridRows - 1 && selectedCol == gridCols - 1) {
-      // If we're at col3, row3, go to col1, row1
-      selectedRow = 0;
-      selectedCol = 0;
-    } else if (selectedCol < gridCols - 1) {
-      // Move right within the current row
+    if (selectedCol < gridCols - 1) {
       selectedCol++;
-    } else {
-      // Wrap to the first column of the next row
-      selectedCol = 0;
+    } else if (selectedRow < gridRows - 1) {
       selectedRow++;
+      selectedCol = 0;
     }
     redrawChangedSquares();
   }
@@ -161,7 +148,7 @@ void updateSelection() {
 }
 
 
-void drawSingleSquare(int row, int col, bool isSelected) {
+void drawSingleSquare(int row, int col) {
   int offsetX = (screenWidth - (cellWidth * gridCols)) / 2;
   int offsetY = (screenHeight - (cellHeight * gridRows)) / 2;
 
@@ -170,22 +157,24 @@ void drawSingleSquare(int row, int col, bool isSelected) {
   int squareWidth = cellWidth - 2 * padding;
   int squareHeight = cellHeight - 2 * padding;
 
-  // First, "erase" the previous border (draw over it with square's fill color)
-  for (int i = 0; i < 3; i++) {
-    tft.drawRoundRect(x + padding - i, y + padding - i,
-                      squareWidth + 2 * i, squareHeight + 2 * i, cornerRadius + i, ILI9341_BLUE);
-  }
+  // Clear a slightly larger area to remove leftover thick border
+  int clearMargin = 4;
+  tft.fillRect(x + padding - clearMargin, y + padding - clearMargin,
+               squareWidth + 2 * clearMargin, squareHeight + 2 * clearMargin, ILI9341_BLACK);
 
-  // Then, draw the current border in the correct color
-  uint16_t borderColor = isSelected ? ILI9341_RED : ILI9341_WHITE;
-  int borderThickness = isSelected ? 3 : 1;
+  // Re-fill the square itself
+  tft.fillRoundRect(x + padding, y + padding, squareWidth, squareHeight, cornerRadius, ILI9341_BLUE);
 
-  for (int i = 0; i < borderThickness; i++) {
-    tft.drawRoundRect(x + padding - i, y + padding - i,
-                      squareWidth + 2 * i, squareHeight + 2 * i, cornerRadius + i, borderColor);
+  // Draw border (thick if selected)
+  if (row == selectedRow && col == selectedCol) {
+    for (int i = 0; i < 3; i++) {
+      tft.drawRoundRect(x + padding - i, y + padding - i,
+                        squareWidth + 2 * i, squareHeight + 2 * i, cornerRadius + i, ILI9341_RED);
+    }
+  } else {
+    tft.drawRoundRect(x + padding, y + padding, squareWidth, squareHeight, cornerRadius, ILI9341_WHITE);
   }
 }
-
 
 
 

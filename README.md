@@ -22,6 +22,8 @@ Tree Structure of Repository.
 ```
 CroQuest
 ├── assets
+├── embedded_code
+├── menu
 ├── pong_game
 ├── references
 │   ├── amp_it_up
@@ -65,8 +67,9 @@ CroQuest
 │           ├── SMB
 │           └── Util
 ├── snake_game
+│   └── assets
 └── supermariobros_game
 
-46 directories
+49 directories
 
 ```

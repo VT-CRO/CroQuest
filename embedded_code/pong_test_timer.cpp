@@ -2,6 +2,7 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_ILI9341.h>
 
+// Screen
 #define TFT_MISO 12
 #define TFT_LED  21
 #define TFT_SCK  14
@@ -9,6 +10,11 @@
 #define TFT_DC   2
 #define TFT_RESET 4
 #define TFT_CS   15
+
+// Buttons
+#define BUTTON_UP    35
+#define BUTTON_DOWN  36
+
 
 Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_MOSI, TFT_SCK, TFT_RESET, TFT_MISO);
 
@@ -50,6 +56,10 @@ void setup() {
   drawPaddle(rightX, rightY, ILI9341_GREEN);
   drawScores();  // Initial drawing of the scores
   
+  pinMode(BUTTON_UP, INPUT_PULLUP);     // Button move up
+  pinMode(BUTTON_DOWN, INPUT_PULLUP);   // Button move down 
+
+
   startTime = millis();  // Start the timer
 }
 
@@ -97,10 +107,25 @@ void loop() {
   }
 
   // Move paddles
-  leftY += leftDY;
   rightY += rightDY;
-  if (leftY <= 0 || leftY + paddleH >= HEIGHT) leftDY *= -1;
   if (rightY <= 0 || rightY + paddleH >= HEIGHT) rightDY *= -1;
+
+  // leftY += leftDY;   // Automatic Movement
+  // if (leftY <= 0 || leftY + paddleH >= HEIGHT) leftDY *= -1;   // Automatic Movement
+  
+
+  // Read button states (LOW means pressed due to INPUT_PULLUP)
+  bool upPressed = digitalRead(BUTTON_UP) == LOW;
+  bool downPressed = digitalRead(BUTTON_DOWN) == LOW;
+
+  // Move left paddle manually with buttons
+  if (upPressed && leftY > 0) {
+    leftY -= 3;
+  }
+  if (downPressed && leftY + paddleH < HEIGHT) {
+    leftY += 3;
+  }
+
 
   // Clear only old positions
   drawBall(oldBallX, oldBallY, ILI9341_BLACK);
@@ -122,7 +147,7 @@ void loop() {
     elapsedTime = (currentMillis - startTime) / 1000;
 
     // Only update the timer text, no need to redraw everything
-    updateTimer();
+    // updateTimer();
   }
 }
 
@@ -145,20 +170,21 @@ void drawScores() {
   tft.print(rightScore);
 }
 
-void updateTimer() {
-  // Clear only the area where the timer is displayed (no full screen redraw)
-  tft.fillRect(WIDTH / 2 - 50, 10, 100, 30, ILI9341_BLACK);
+// void updateTimer() {
+//   // Clear only the area where the timer is displayed (no full screen redraw)
+//   tft.fillRect(WIDTH / 2 - 50, 10, 100, 30, ILI9341_BLACK);
 
-  // Draw updated timer
-  tft.setCursor(WIDTH / 2 - 40, 10);
-  tft.print("Time: ");
-  tft.print(elapsedTime);
-  tft.print("s");
-}
+//   // Draw updated timer
+//   tft.setCursor(WIDTH / 2 - 40, 10);
+//   tft.print("Time: ");
+//   tft.print(elapsedTime);
+//   tft.print("s");
+// }
 
 void resetBall() {
   ballX = WIDTH / 2;
   ballY = HEIGHT / 2;
   ballDX *= -1;
 }
+
 
