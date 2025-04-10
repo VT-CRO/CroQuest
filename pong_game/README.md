@@ -1,5 +1,3 @@
-[comment]: <> CroQuest/pong_game/README.md
-
 # Ping Pong 
 
 This will be the documentation for pong_game. 
