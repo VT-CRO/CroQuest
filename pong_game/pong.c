@@ -4,6 +4,7 @@
 */
 
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
 #include <SDL2/SDL_main.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -15,20 +16,22 @@
 #include "utils.h"
 
 // Screen dimensions subject to change
+// 250 200
 #define SCREEN_HEIGHT 250
 #define SCREEN_WIDTH 200
 
 //PADDLE dimensions
+// 50, 10
 #define PADDLE_HEIGHT 50
 #define PADDLE_WIDTH 10
-#define PADDING 50
 
 //BALL dimensions
 #define BALL_HEIGHT 5
 #define Ball_WIDTH 5
+#define MAX_BALL_SPEED_Y 3.0
 
 #define PADDLE_SPEED 5
-#define DEADZONE 5
+#define DEADZONE 10
 
 // Subject to change - Pins to
 // read up and down button presses
@@ -56,26 +59,50 @@ enum paddle_walls {
     INSIDE,
 };
 
+typedef enum {
+    STATE_HOME,
+    STATE_PLAYING,
+} GameState;
+
 //The game difficulty level
 static int level;
 
 //Ball and Paddles initialized
-static Ball ball = {SCREEN_HEIGHT / 2, SCREEN_WIDTH / 2, BALL_HEIGHT, 
-            Ball_WIDTH, 1, -1};
 
-static Paddle paddles[2] = {{0, (SCREEN_WIDTH / 2) - (PADDLE_HEIGHT / 2),
-                    PADDLE_WIDTH, PADDLE_HEIGHT},
 
-                     {SCREEN_HEIGHT - PADDLE_WIDTH,
-                     (SCREEN_WIDTH / 2) - (PADDLE_HEIGHT / 2), 
-                     PADDLE_WIDTH, PADDLE_HEIGHT}};
+static Ball ball;
+
+static Paddle paddles[2];
 
 static void initialize_game()
 {
+    double dx;
+    double dy;
+    // Simple direction picker
+    if(rand() % 2 == 0)
+    {
+        // Right direction
+        dx = 1;
+        if(rand() % 2 == 0){
+            dy = 1;
+        }else{
+            dy = -1;
+        }
+    }else{
+        // Left direction
+        dx = -1;
+        if(rand() % 2 == 0)
+        {
+            dy = 1;
+        }else{
+            dx = -1;
+        }
+    }
+
     level = 1;
 
     ball = (Ball) {SCREEN_HEIGHT / 2, SCREEN_WIDTH / 2, BALL_HEIGHT, 
-        Ball_WIDTH, 1, 1};
+        Ball_WIDTH, dx, dy};
     
     paddles[0] = (Paddle){0, (SCREEN_WIDTH / 2) - (PADDLE_HEIGHT / 2),
         PADDLE_WIDTH, PADDLE_HEIGHT};
@@ -112,6 +139,16 @@ static void draw_ball(SDL_Renderer * renderer)
     if(SDL_RenderFillRect(renderer, &rect) < 0){
         fprintf(stderr, "Ball drawing failed");
     }
+}
+
+/*
+Draw homescreen
+*/
+void draw_home_screen(SDL_Renderer* renderer, SDL_Texture* homeScreenTexture) {
+    SDL_RenderClear(renderer);
+    SDL_Rect dst = {0, 0, SCREEN_HEIGHT, SCREEN_WIDTH};
+    SDL_RenderCopy(renderer, homeScreenTexture, NULL, &dst);
+    SDL_RenderPresent(renderer);
 }
 
 /*
@@ -162,6 +199,17 @@ static enum paddle_walls closest_wall(Paddle paddle, int inside_dist, int top_di
 
 /////// GAME LOGIC ////////////
 
+float getRandomVariance(float min, float max) {
+    // Ensure random is seeded (do this once in program initialization)
+    static int seeded = 0;
+    if (!seeded) {
+        srand(time(NULL));
+        seeded = 1;
+    }
+    
+    float range = max - min;
+    return min + ((float)rand() / RAND_MAX) * range;
+}
 /*
 Checks if the ball has collided with either
 paddle
@@ -180,6 +228,15 @@ static void check_paddle_collision()
         int inside_dist = abs((ball.x) - (paddles[0].x + PADDLE_WIDTH));
         int top_dist = abs((ball.y + ball.h) - paddles[0].y);
         int bottom_dist = abs(ball.y - (paddles[0].y + PADDLE_HEIGHT));
+
+        double paddle_center = paddles[0].y + PADDLE_HEIGHT / 2;
+        int offset = ball.y - paddle_center;
+        float normalized_offset = (float)offset / (PADDLE_HEIGHT / 2);
+        ball.dy = normalized_offset * MAX_BALL_SPEED_Y;
+        
+        if (fabs(ball.dy) < 1.0f) {
+            ball.dy = (ball.dy < 0 ? -1.0f : 1.0f);
+        }
 
         enum paddle_walls minimum = closest_wall(paddles[0], inside_dist, top_dist, bottom_dist);
         if(minimum == TOP) {
@@ -202,6 +259,15 @@ static void check_paddle_collision()
         int inside_dist = abs(ball.x + ball.w - paddles[1].x);
         int top_dist = abs((ball.y + ball.h) - paddles[1].y);
         int bottom_dist = abs(ball.y - (paddles[1].y + PADDLE_HEIGHT));
+
+        double paddle_center = paddles[1].y + PADDLE_HEIGHT / 2;
+        int offset = ball.y - paddle_center;
+        float normalized_offset = (float)offset / (PADDLE_HEIGHT / 2);
+        ball.dy = normalized_offset * MAX_BALL_SPEED_Y;
+
+        if (fabs(ball.dy) < 1.0f) {
+            ball.dy = (ball.dy < 0 ? -1.0f : 1.0f);
+        }
 
         enum paddle_walls minimum = closest_wall(paddles[1], inside_dist, top_dist, bottom_dist);
         if(minimum == TOP) {
@@ -289,15 +355,17 @@ static void ai_paddle(Paddle * paddle, int level_index)
 
     double paddle_center = paddle->y + PADDLE_HEIGHT / 2;
 
-    if(target_y < paddle_center - DEADZONE && intersection_time < level*(target_y + paddle_center) / PADDLE_SPEED)
-    {
-        updatePaddle(true, paddle);
-    }
-    
-    if(target_y > paddle_center + DEADZONE && intersection_time < level*(target_y - paddle_center) / PADDLE_SPEED)
-    {
-        updatePaddle(false, paddle);
-    }
+    if(target_y < paddle_center - DEADZONE && intersection_time > 0 && 
+        intersection_time < abs(target_y - paddle_center) / PADDLE_SPEED)
+     {
+         updatePaddle(true, paddle);
+     }
+     
+     if(target_y > paddle_center + DEADZONE && intersection_time > 0 &&
+        intersection_time < abs(target_y - paddle_center) / PADDLE_SPEED)
+     {
+         updatePaddle(false, paddle);
+     }
 }
 
 /*
@@ -333,9 +401,39 @@ int main()
         SDL_DestroyRenderer(renderer);
     }
 
+    SDL_Texture* backgroundTexture = NULL;
+    SDL_Surface* tempSurface = IMG_Load("./assets/background.png");
+    if (!tempSurface) {
+        fprintf(stderr, "Failed to load background: %s\n", IMG_GetError());
+        SDL_Quit();
+        return 1;
+    }
+
+    backgroundTexture = SDL_CreateTextureFromSurface(renderer, tempSurface);
+    SDL_FreeSurface(tempSurface);
+    if (!backgroundTexture) {
+        fprintf(stderr, "Failed to create background texture: %s\n", SDL_GetError());
+        SDL_Quit();
+        return 1;
+    }
+    SDL_Texture* homeScreenTexture = NULL;
+    SDL_Surface* homeSurface = IMG_Load("./assets/home_screen.png");
+    if (!homeSurface) {
+        fprintf(stderr, "Failed to load home screen image: %s\n", IMG_GetError());
+        exit(1);
+    }
+    homeScreenTexture = SDL_CreateTextureFromSurface(renderer, homeSurface);
+    SDL_FreeSurface(homeSurface);
+    if (!homeScreenTexture) {
+        fprintf(stderr, "Failed to create home screen texture: %s\n", SDL_GetError());
+        SDL_Quit();
+        return 1;
+    }
+
     //main loop
     bool running = true;
     SDL_Event event;
+    GameState current_state = STATE_HOME;
     while(running)
     {
         while (SDL_PollEvent(&event)) {
@@ -355,43 +453,58 @@ int main()
                 else if(event.key.keysym.sym == SDLK_ESCAPE){
                     running = false;
                 }
+                else if(event.key.keysym.sym == SDLK_b){
+                    current_state = STATE_PLAYING;
+                }
             }
         }
 
-        // current keyboard state
-        const Uint8 *keystate = SDL_GetKeyboardState(NULL);
-		
-        //Up arrow key pressed
-		if (keystate[UP]) {
-			updatePaddle(true, &paddles[1]);
-            // updateBall();
-		}
-
-        //Down arrow key pressed
-		if (keystate[DOWN]) {
-			updatePaddle(false, &paddles[1]);
-            // updateBall();
-		}
-        if(keystate[SDL_SCANCODE_RIGHT]){
-            paddles[1].x--;
+        if (current_state == STATE_HOME) {
+            draw_home_screen(renderer, homeScreenTexture);
         }
-        if(keystate[SDL_SCANCODE_LEFT]){
-            paddles[1].x++;
+        else if(current_state == STATE_PLAYING)
+        {
+            // current keyboard state
+            const Uint8 *keystate = SDL_GetKeyboardState(NULL);
+            
+            //Up arrow key pressed
+            if (keystate[UP]) {
+                updatePaddle(true, &paddles[1]);
+                // updateBall();
+            }
+    
+            //Down arrow key pressed
+            if (keystate[DOWN]) {
+                updatePaddle(false, &paddles[1]);
+                // updateBall();
+            }
+            if(keystate[SDL_SCANCODE_RIGHT]){
+                paddles[1].x--;
+            }
+            if(keystate[SDL_SCANCODE_LEFT]){
+                paddles[1].x++;
+            }
+    
+            //Updates everything
+    
+            ai_paddle(&paddles[0], level);
+            updateBall();
+            draw_ball(renderer);
+            draw_paddles(renderer);
+            SDL_RenderPresent(renderer);
+    
+            SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+            SDL_RenderClear(renderer);
+            SDL_Rect dst = {0, 0, SCREEN_HEIGHT, SCREEN_WIDTH};
+            SDL_RenderCopy(renderer, backgroundTexture, NULL, &dst);
+    
+            //hard codes a delay
+            SDL_Delay(10);
         }
 
-        //Updates everything
-
-        ai_paddle(&paddles[0], level);
-        updateBall();
-        draw_ball(renderer);
-        draw_paddles(renderer);
-        SDL_RenderPresent(renderer);
-        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-        SDL_RenderClear(renderer);
-
-        //hard codes a delay
-        SDL_Delay(10);
     }
+    SDL_DestroyTexture(backgroundTexture);
+    SDL_DestroyTexture(homeScreenTexture);
     SDL_DestroyWindow(window);
     SDL_Quit();
 }
