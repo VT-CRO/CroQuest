@@ -16,7 +16,7 @@ public:
   LGFX(void) {
     {
       auto cfg = _bus.config();
-      cfg.spi_host = _HOST;
+      cfg.spi_host = SPI3_HOST;
       cfg.spi_mode = 0;
       cfg.freq_write = 40000000;
       cfg.freq_read  = 16000000;
