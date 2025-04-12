@@ -73,13 +73,15 @@ double chance_should_lose(int level_index) {
     if (level_index < 3) {
         return 0.0;
     } else if (level_index < 5) {
+        return 0.05;
+    } 
+    else if (level_index < 10) {
         return 0.1;
-    } else if (level_index < 10) {
+    } 
+    else if (level_index < 15) {
         return 0.2;
-    } else if (level_index < 15) {
-        return 0.3;
     } else {
-        return 0.4;
+        return 0.3;
     }
 }
 
