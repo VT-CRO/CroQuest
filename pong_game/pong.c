@@ -26,12 +26,15 @@
 #define PADDLE_WIDTH 10
 
 //BALL dimensions
-#define BALL_HEIGHT 5
-#define Ball_WIDTH 5
+#define BALL_HEIGHT 11
+#define Ball_WIDTH 11
 #define MAX_BALL_SPEED_Y 3.0
 
 #define PADDLE_SPEED 5
 #define DEADZONE 10
+
+#define NUM_WIDTH 80
+#define GAME_WON 3
 
 // Subject to change - Pins to
 // read up and down button presses
@@ -62,10 +65,17 @@ enum paddle_walls {
 typedef enum {
     STATE_HOME,
     STATE_PLAYING,
+    STATE_GAMEOVER,
+    STATE_BLUETOOTH_HOST,
 } GameState;
 
 //The game difficulty level
 static int level;
+
+// State
+static GameState current_state = STATE_HOME;
+
+static int score[2] = {0, 0};
 
 //Ball and Paddles initialized
 
@@ -76,8 +86,8 @@ static Paddle paddles[2];
 
 static void initialize_game()
 {
-    double dx;
-    double dy;
+    double dx = -1;
+    double dy = -1;
     // Simple direction picker
     if(rand() % 2 == 0)
     {
@@ -101,7 +111,7 @@ static void initialize_game()
 
     level = 1;
 
-    ball = (Ball) {SCREEN_HEIGHT / 2, SCREEN_WIDTH / 2, BALL_HEIGHT, 
+    ball = (Ball) {SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, BALL_HEIGHT, 
         Ball_WIDTH, dx, dy};
     
     paddles[0] = (Paddle){0, (SCREEN_WIDTH / 2) - (PADDLE_HEIGHT / 2),
@@ -132,13 +142,11 @@ static void draw_paddles(SDL_Renderer * renderer)
 Draw the ball 
 
 */
-static void draw_ball(SDL_Renderer * renderer)
+static void draw_ball(SDL_Renderer * renderer, SDL_Texture* ballTexture)
 {
-    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
     SDL_Rect rect = {ball.x, ball.y, ball.w, ball.h};
-    if(SDL_RenderFillRect(renderer, &rect) < 0){
-        fprintf(stderr, "Ball drawing failed");
-    }
+    SDL_RenderCopy(renderer, ballTexture, NULL, &rect);
+    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
 }
 
 /*
@@ -150,31 +158,43 @@ void draw_home_screen(SDL_Renderer* renderer, SDL_Texture* homeScreenTexture) {
     SDL_RenderCopy(renderer, homeScreenTexture, NULL, &dst);
     SDL_RenderPresent(renderer);
 }
+/*
+Draw hostcode screen
+*/
+void hostcode_screen(SDL_Renderer* renderer, SDL_Texture* homeScreenTexture){
+    SDL_RenderClear(renderer);
+    SDL_Rect dst = {0, 0, SCREEN_HEIGHT, SCREEN_WIDTH};
+    SDL_RenderCopy(renderer, homeScreenTexture, NULL, &dst);
+    SDL_RenderPresent(renderer);
+}
 
 /*
 Draw the 2 players score
 
 */
-static void draw_scores()
+static void draw_scores(SDL_Renderer* renderer, SDL_Surface* numbers, SDL_Texture* numTexture)
 {
+    int pos[2] = {((SCREEN_HEIGHT) / 2) + (NUM_WIDTH / 3), ((SCREEN_HEIGHT) / 2) - (2*(NUM_WIDTH / 3))};
+    SDL_Rect sourceRect = {0, 0, NUM_WIDTH, numbers->h};
+    SDL_Rect destRect = {0, 0, sourceRect.w / 3, sourceRect.h / 3};
+    
+    for(int i = 0; i < 2; i++){
+        if(score[i] / 10 == 0){
+            sourceRect.x = score[i] * NUM_WIDTH;
+            destRect.x = pos[i];
+            SDL_RenderCopy(renderer, numTexture, &sourceRect, &destRect);
+        }
+        else{
+            sourceRect.x = (score[i] / 10) * NUM_WIDTH;
+            destRect.x = i == 1  ? pos[i] - sourceRect.w / 3 : pos[i];
+            SDL_RenderCopy(renderer, numTexture, &sourceRect, &destRect);
 
-}       
+            sourceRect.x = (score[i] % 10) * NUM_WIDTH;
+            destRect.x = i == 1 ? pos[i] : pos[i] + (sourceRect.w / 3);
+            SDL_RenderCopy(renderer, numTexture, &sourceRect, &destRect);
+        }
+    }
 
-/*
-Draw the net/line separating both sides
-
-*/
-static void draw_net()
-{
-
-}
-
-/*
-Draw the board
-
-*/
-static void draw_board()
-{
 
 }
 
@@ -289,8 +309,22 @@ Deals with ball collision
 */
 static void ball_collision()
 {
+    //Check paddle collision
+    check_paddle_collision();
+
     //Check if a point was scored
     if(ball.x <= 0 || ball.x + ball.w >= SCREEN_HEIGHT){
+        if(ball.x <= 0){
+            score[0]++;
+        }else{
+            score[1]++;
+        }
+
+        if(score[0] >= GAME_WON || score[1] >= GAME_WON)
+        {
+            current_state = STATE_GAMEOVER;
+        }
+
         initialize_game();
         return;
     }
@@ -304,8 +338,6 @@ static void ball_collision()
         ball.dy = -ball.dy;
     }
     
-    //Check paddle collision
-    check_paddle_collision();
 }
 
 /*
@@ -348,10 +380,11 @@ static void ai_paddle(Paddle * paddle, int level_index)
     y_intersect = y_intersect >= SCREEN_WIDTH ? SCREEN_WIDTH - PADDLE_HEIGHT : y_intersect;
     y_intersect = y_intersect < 0 ? 0 : y_intersect;
 
-    double target_y = y_intersect + calculate_offset(level_index, PADDLE_HEIGHT);
-
+    double target_y = ball.dy > 0 ? y_intersect - calculate_offset(level_index, PADDLE_HEIGHT) : y_intersect + calculate_offset(level_index, PADDLE_HEIGHT);
+    
     target_y = target_y >= SCREEN_WIDTH ? SCREEN_WIDTH - PADDLE_HEIGHT : target_y;
     target_y = target_y < 0 ? 0 : target_y;
+    
 
     double paddle_center = paddle->y + PADDLE_HEIGHT / 2;
 
@@ -389,7 +422,7 @@ int main()
         SDL_WINDOW_SHOWN)) == NULL){
             fprintf(stderr,"Failed to create window\n");
             SDL_Quit();
-            exit(1);
+            return 1;
         }
     
     //Initializes renderer
@@ -399,6 +432,7 @@ int main()
         SDL_Quit();
         SDL_DestroyWindow(window);
         SDL_DestroyRenderer(renderer);
+        return 1;
     }
 
     SDL_Texture* backgroundTexture = NULL;
@@ -420,7 +454,7 @@ int main()
     SDL_Surface* homeSurface = IMG_Load("./assets/home_screen.png");
     if (!homeSurface) {
         fprintf(stderr, "Failed to load home screen image: %s\n", IMG_GetError());
-        exit(1);
+        return 1;
     }
     homeScreenTexture = SDL_CreateTextureFromSurface(renderer, homeSurface);
     SDL_FreeSurface(homeSurface);
@@ -430,10 +464,53 @@ int main()
         return 1;
     }
 
+    SDL_Texture* hostcodeTexture = NULL;
+    SDL_Surface* hostcodeSurface = IMG_Load("./assets/host_code.png");
+    if (!hostcodeSurface) {
+        fprintf(stderr, "Failed to load hostcode screen image: %s\n", IMG_GetError());
+        return 1;
+    }
+
+    hostcodeTexture = SDL_CreateTextureFromSurface(renderer, hostcodeSurface);
+    SDL_FreeSurface(hostcodeSurface);
+    if (!hostcodeTexture) {
+        fprintf(stderr, "Failed to create hostcode screen texture: %s\n", SDL_GetError());
+        SDL_Quit();
+        return 1;
+    }
+
+    SDL_Texture* ballTexture = NULL;
+    SDL_Surface* ballSurface = IMG_Load("./assets/Ball.png");
+    if (!ballSurface) {
+        fprintf(stderr, "Failed to load ball image: %s\n", IMG_GetError());
+        return 1;
+    }
+    ballTexture = SDL_CreateTextureFromSurface(renderer, ballSurface);
+    SDL_FreeSurface(ballSurface);
+    if (!ballTexture) {
+        fprintf(stderr, "Failed to create ball texture: %s\n", SDL_GetError());
+        SDL_Quit();
+        return 1;
+    }
+
+    SDL_Surface* numbers = SDL_LoadBMP("./assets/numbers.bmp");
+    if (numbers == NULL) {
+        printf("Unable to load bitmap. Error: %s\n", SDL_GetError());
+        SDL_Quit();
+        return 1;
+    }
+
+    SDL_Texture* numTexture = SDL_CreateTextureFromSurface(renderer, numbers);
+    if (numTexture == NULL) {
+        printf("Unable to create texture from surface! SDL_Error: %s\n", SDL_GetError());
+        SDL_Quit();
+        return 1;
+    }
+
     //main loop
     bool running = true;
     SDL_Event event;
-    GameState current_state = STATE_HOME;
+    static bool game_initialized = false;
     while(running)
     {
         while (SDL_PollEvent(&event)) {
@@ -454,7 +531,21 @@ int main()
                     running = false;
                 }
                 else if(event.key.keysym.sym == SDLK_b){
-                    current_state = STATE_PLAYING;
+                    if(current_state == STATE_HOME || current_state == STATE_BLUETOOTH_HOST){
+                        current_state = STATE_PLAYING;
+                    }
+                }
+                else if(event.key.keysym.sym == SDLK_a){
+                    if(current_state == STATE_HOME){
+                        current_state = STATE_BLUETOOTH_HOST;
+                    }
+                }
+                else if(event.key.keysym.sym == SDLK_SPACE){
+                    if(current_state == STATE_GAMEOVER){
+                        current_state = STATE_PLAYING;
+                        score[0] = 0;
+                        score[1] = 0;
+                    }
                 }
             }
         }
@@ -462,8 +553,15 @@ int main()
         if (current_state == STATE_HOME) {
             draw_home_screen(renderer, homeScreenTexture);
         }
+        else if(current_state == STATE_BLUETOOTH_HOST){
+            hostcode_screen(renderer, hostcodeTexture);
+        }
         else if(current_state == STATE_PLAYING)
         {
+            if (!game_initialized) {
+                initialize_game();
+                game_initialized = true;
+            }
             // current keyboard state
             const Uint8 *keystate = SDL_GetKeyboardState(NULL);
             
@@ -489,18 +587,27 @@ int main()
     
             ai_paddle(&paddles[0], level);
             updateBall();
-            draw_ball(renderer);
-            draw_paddles(renderer);
-            SDL_RenderPresent(renderer);
-    
+
             SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
             SDL_RenderClear(renderer);
+
             SDL_Rect dst = {0, 0, SCREEN_HEIGHT, SCREEN_WIDTH};
             SDL_RenderCopy(renderer, backgroundTexture, NULL, &dst);
-    
+            draw_scores(renderer, numbers, numTexture);
+            draw_ball(renderer, ballTexture);
+            draw_paddles(renderer);
+            
+            SDL_RenderPresent(renderer);
+            
             //hard codes a delay
             SDL_Delay(10);
         }
+        else if(current_state == STATE_GAMEOVER){
+            SDL_RenderClear(renderer);
+            SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+            SDL_RenderPresent(renderer);
+        }
+
 
     }
     SDL_DestroyTexture(backgroundTexture);
