@@ -35,15 +35,34 @@ class Snake(tk.Canvas):
         self.load_assets()
         self.create_objects()
 
-        self.after(5000000, self.perform_actions)
+        self.after(5000, self.perform_actions)
 
     # ----------------------------------------------------------------------------------------------------------
 
     # Loading in the assets for the snake game
     def load_assets(self):
         try:
-            self.snake_head_png = Image.open("./assets/closed.png")
-            self.snake_head = ImageTk.PhotoImage(self.snake_head_png)
+
+            base_head = Image.open("./assets/closed.png").resize((TILE_SIZE, TILE_SIZE), Image.NEAREST)
+            #self.snake_head_png = Image.open("./assets/closed.png").resize((TILE_SIZE, TILE_SIZE), Image.NEAREST)
+            #self.snake_head = ImageTk.PhotoImage(self.snake_head_png)
+
+            # Create rotated versions
+            self.snake_head_images = {
+                "Right": ImageTk.PhotoImage(base_head),
+                "Left": ImageTk.PhotoImage(base_head.transpose(Image.FLIP_LEFT_RIGHT)),
+                "Up": ImageTk.PhotoImage(base_head.rotate(90, expand=True)),
+                "Down": ImageTk.PhotoImage(base_head.rotate(-90, expand=True)),
+            }
+
+            base_head_open = Image.open("./assets/open.png").resize((TILE_SIZE, TILE_SIZE), Image.NEAREST)
+
+            self.snake_head_open_images = {
+                "Right": ImageTk.PhotoImage(base_head_open),
+                "Left": ImageTk.PhotoImage(base_head_open.transpose(Image.FLIP_LEFT_RIGHT)),
+                "Up": ImageTk.PhotoImage(base_head_open.rotate(90, expand=True)),
+                "Down": ImageTk.PhotoImage(base_head_open.rotate(-90, expand=True)),
+            }
 
             self.snake_body_png = Image.open("./assets/body_segment.png").resize((TILE_SIZE, TILE_SIZE), Image.NEAREST)
             self.snake_body = ImageTk.PhotoImage(self.snake_body_png)
@@ -68,8 +87,12 @@ class Snake(tk.Canvas):
         self.draw_debug_grid()
 
         # Setting the position
-        for x_position, y_position in self.snake_positions:
-            self.create_image (x_position, y_position, image=self.snake_body, tag="snake", anchor="nw")
+        for i, (x_position, y_position) in enumerate(self.snake_positions):
+            if i == 0:
+                self.create_image(x_position, y_position, image=self.snake_head_images[self.direction], tag="snake", anchor="nw")
+            else:
+                self.create_image(x_position, y_position, image=self.snake_body, tag="snake", anchor="nw")
+
 
         # Creating the food location
         self.create_image(*self.food_position, image=self.food, tag="food", anchor="nw")
@@ -109,10 +132,35 @@ class Snake(tk.Canvas):
         if self.direction == "Up":
             new_head_position = (head_x_position, head_y_position - MOVE_INCREMENT)
 
+        dx, dy = 0, 0
+        if self.direction == "Left":
+            dx = -MOVE_INCREMENT
+        elif self.direction == "Right":
+            dx = MOVE_INCREMENT
+        elif self.direction == "Up":
+            dy = -MOVE_INCREMENT
+        elif self.direction == "Down":
+            dy = MOVE_INCREMENT
+
+        about_to_eat = False
+        for i in range(1, 6):
+            lookahead_x = head_x_position + dx * i
+            lookahead_y = head_y_position + dy * i
+            if self.food_position == (lookahead_x, lookahead_y):
+                about_to_eat = True
+                break
+
         self.snake_positions = [new_head_position] + self.snake_positions[:-1]
 
-        for segment, position in zip(self.find_withtag("snake"), self.snake_positions):
+        snake_segments = self.find_withtag("snake")
+
+        for index, (segment, position) in enumerate(zip(snake_segments, self.snake_positions)):
             self.coords(segment, position)
+            if index == 0:
+                if about_to_eat:
+                    self.itemconfigure(segment, image=self.snake_head_open_images[self.direction])
+                else:
+                    self.itemconfigure(segment, image=self.snake_head_images[self.direction])
 
     # ----------------------------------------------------------------------------------------------------------
     
