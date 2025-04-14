@@ -3,8 +3,8 @@ CC = gcc
 LDFLAGS = -lSDL2 -lSDL2_image -lm
 
 # Source files
-SRC = pong.c utils.c
-OBJ = pong.o utils.o
+SRC = pong.c utils.c draw.c
+OBJ = pong.o utils.o draw.o
 
 EXEC = pong_game
 

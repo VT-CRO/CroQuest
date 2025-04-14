@@ -14,26 +14,23 @@
 #include <time.h>
 
 #include "utils.h"
-
-// Screen dimensions subject to change
-// 250 200
-#define SCREEN_HEIGHT 250
-#define SCREEN_WIDTH 200
+#include "pong.h"
+#include "draw.h"
 
 //PADDLE dimensions
 // 50, 10
-#define PADDLE_HEIGHT 50
+#define PADDLE_HEIGHT 60
 #define PADDLE_WIDTH 10
 
 //BALL dimensions
 #define BALL_HEIGHT 11
 #define Ball_WIDTH 11
 #define MAX_BALL_SPEED_Y 3.0
+#define MAX_BALL_SPEED_X 15
 
 #define PADDLE_SPEED 5
 #define DEADZONE 10
 
-#define NUM_WIDTH 80
 #define GAME_WON 3
 
 // Subject to change - Pins to
@@ -41,33 +38,13 @@
 #define UP SDL_SCANCODE_UP
 #define DOWN SDL_SCANCODE_DOWN
 
-//Pong paddles
-typedef struct
-{
-    int x, y;  /* (x, y) position of paddle  */
-    int w, h;  /* width and height of ball */
-}Paddle;
-
-//Pong ball
-typedef struct
-{
-    double x, y;   /* (x, y) location of ball */
-    int w, h;   /* width and height of ball */
-    double dx, dy; /* x and y speed */
-}Ball;
-
+// The three paddle walls used in
+// collision detection
 enum paddle_walls {
     TOP, 
     BOTTOM, 
     INSIDE,
 };
-
-typedef enum {
-    STATE_HOME,
-    STATE_PLAYING,
-    STATE_GAMEOVER,
-    STATE_BLUETOOTH_HOST,
-} GameState;
 
 //The game difficulty level
 static int level;
@@ -75,13 +52,11 @@ static int level;
 // State
 static GameState current_state = STATE_HOME;
 
+// Player scores
 static int score[2] = {0, 0};
 
-//Ball and Paddles initialized
-
-
+//Ball and Paddles
 static Ball ball;
-
 static Paddle paddles[2];
 
 static void initialize_game()
@@ -121,83 +96,8 @@ static void initialize_game()
          PADDLE_WIDTH, PADDLE_HEIGHT};
 }
 
-////// DRAWING ASSETS /////////
 
-/*
-Draw the paddles 
-
-*/
-static void draw_paddles(SDL_Renderer * renderer)
-{
-    for(int i = 0; i < 2; i++)
-    {
-        SDL_Rect rect = {paddles[i].x, paddles[i].y, paddles[i].w, paddles[i].h};
-        if(SDL_RenderFillRect(renderer, &rect) < 0){
-            fprintf(stderr, "Ball drawing failed");
-        }
-    }
-}
-
-/*
-Draw the ball 
-
-*/
-static void draw_ball(SDL_Renderer * renderer, SDL_Texture* ballTexture)
-{
-    SDL_Rect rect = {ball.x, ball.y, ball.w, ball.h};
-    SDL_RenderCopy(renderer, ballTexture, NULL, &rect);
-    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-}
-
-/*
-Draw homescreen
-*/
-void draw_home_screen(SDL_Renderer* renderer, SDL_Texture* homeScreenTexture) {
-    SDL_RenderClear(renderer);
-    SDL_Rect dst = {0, 0, SCREEN_HEIGHT, SCREEN_WIDTH};
-    SDL_RenderCopy(renderer, homeScreenTexture, NULL, &dst);
-    SDL_RenderPresent(renderer);
-}
-/*
-Draw hostcode screen
-*/
-void hostcode_screen(SDL_Renderer* renderer, SDL_Texture* homeScreenTexture){
-    SDL_RenderClear(renderer);
-    SDL_Rect dst = {0, 0, SCREEN_HEIGHT, SCREEN_WIDTH};
-    SDL_RenderCopy(renderer, homeScreenTexture, NULL, &dst);
-    SDL_RenderPresent(renderer);
-}
-
-/*
-Draw the 2 players score
-
-*/
-static void draw_scores(SDL_Renderer* renderer, SDL_Surface* numbers, SDL_Texture* numTexture)
-{
-    int pos[2] = {((SCREEN_HEIGHT) / 2) + (NUM_WIDTH / 3), ((SCREEN_HEIGHT) / 2) - (2*(NUM_WIDTH / 3))};
-    SDL_Rect sourceRect = {0, 0, NUM_WIDTH, numbers->h};
-    SDL_Rect destRect = {0, 0, sourceRect.w / 3, sourceRect.h / 3};
-    
-    for(int i = 0; i < 2; i++){
-        if(score[i] / 10 == 0){
-            sourceRect.x = score[i] * NUM_WIDTH;
-            destRect.x = pos[i];
-            SDL_RenderCopy(renderer, numTexture, &sourceRect, &destRect);
-        }
-        else{
-            sourceRect.x = (score[i] / 10) * NUM_WIDTH;
-            destRect.x = i == 1  ? pos[i] - sourceRect.w / 3 : pos[i];
-            SDL_RenderCopy(renderer, numTexture, &sourceRect, &destRect);
-
-            sourceRect.x = (score[i] % 10) * NUM_WIDTH;
-            destRect.x = i == 1 ? pos[i] : pos[i] + (sourceRect.w / 3);
-            SDL_RenderCopy(renderer, numTexture, &sourceRect, &destRect);
-        }
-    }
-
-
-}
-
+/////// GAME LOGIC ////////////
 /* 
 Checks which paddle wall the ball is closest to 
 */
@@ -216,8 +116,6 @@ static enum paddle_walls closest_wall(Paddle paddle, int inside_dist, int top_di
     
     return minimum;
 }
-
-/////// GAME LOGIC ////////////
 
 float getRandomVariance(float min, float max) {
     // Ensure random is seeded (do this once in program initialization)
@@ -302,6 +200,11 @@ static void check_paddle_collision()
         }
         level++;
     }
+
+    if (fabs(ball.dx) > MAX_BALL_SPEED_X) {
+        ball.dx = (ball.dx > 0 ? MAX_BALL_SPEED_X : -MAX_BALL_SPEED_X);
+    }
+
 }
 
 /*
@@ -309,9 +212,7 @@ Deals with ball collision
 */
 static void ball_collision()
 {
-    //Check paddle collision
-    check_paddle_collision();
-
+    
     //Check if a point was scored
     if(ball.x <= 0 || ball.x + ball.w >= SCREEN_HEIGHT){
         if(ball.x <= 0){
@@ -338,6 +239,8 @@ static void ball_collision()
         ball.dy = -ball.dy;
     }
     
+    //Check paddle collision
+    check_paddle_collision();
 }
 
 /*
@@ -381,7 +284,6 @@ static void ai_paddle(Paddle * paddle, int level_index)
     y_intersect = y_intersect < 0 ? 0 : y_intersect;
 
     double target_y = ball.dy > 0 ? y_intersect - calculate_offset(level_index, PADDLE_HEIGHT) : y_intersect + calculate_offset(level_index, PADDLE_HEIGHT);
-    
     target_y = target_y >= SCREEN_WIDTH ? SCREEN_WIDTH - PADDLE_HEIGHT : target_y;
     target_y = target_y < 0 ? 0 : target_y;
     
@@ -409,103 +311,7 @@ int main()
     //initializes srand using time
     srand((unsigned int)time(NULL));
 
-    if(SDL_Init(SDL_INIT_VIDEO) < 0){
-        fprintf(stderr, "Failed to initialize SDL\n");
-        exit(1);
-    }
-
-    SDL_Window* window;
-    if((window = SDL_CreateWindow("PONG",
-        SDL_WINDOWPOS_CENTERED,
-        SDL_WINDOWPOS_CENTERED,
-        SCREEN_HEIGHT, SCREEN_WIDTH,
-        SDL_WINDOW_SHOWN)) == NULL){
-            fprintf(stderr,"Failed to create window\n");
-            SDL_Quit();
-            return 1;
-        }
-    
-    //Initializes renderer
-    SDL_Renderer* renderer;
-    if((renderer = SDL_CreateRenderer(window, -1, 0)) == NULL){
-        fprintf(stderr, "Failed to create renderer\n");
-        SDL_Quit();
-        SDL_DestroyWindow(window);
-        SDL_DestroyRenderer(renderer);
-        return 1;
-    }
-
-    SDL_Texture* backgroundTexture = NULL;
-    SDL_Surface* tempSurface = IMG_Load("./assets/background.png");
-    if (!tempSurface) {
-        fprintf(stderr, "Failed to load background: %s\n", IMG_GetError());
-        SDL_Quit();
-        return 1;
-    }
-
-    backgroundTexture = SDL_CreateTextureFromSurface(renderer, tempSurface);
-    SDL_FreeSurface(tempSurface);
-    if (!backgroundTexture) {
-        fprintf(stderr, "Failed to create background texture: %s\n", SDL_GetError());
-        SDL_Quit();
-        return 1;
-    }
-    SDL_Texture* homeScreenTexture = NULL;
-    SDL_Surface* homeSurface = IMG_Load("./assets/home_screen.png");
-    if (!homeSurface) {
-        fprintf(stderr, "Failed to load home screen image: %s\n", IMG_GetError());
-        return 1;
-    }
-    homeScreenTexture = SDL_CreateTextureFromSurface(renderer, homeSurface);
-    SDL_FreeSurface(homeSurface);
-    if (!homeScreenTexture) {
-        fprintf(stderr, "Failed to create home screen texture: %s\n", SDL_GetError());
-        SDL_Quit();
-        return 1;
-    }
-
-    SDL_Texture* hostcodeTexture = NULL;
-    SDL_Surface* hostcodeSurface = IMG_Load("./assets/host_code.png");
-    if (!hostcodeSurface) {
-        fprintf(stderr, "Failed to load hostcode screen image: %s\n", IMG_GetError());
-        return 1;
-    }
-
-    hostcodeTexture = SDL_CreateTextureFromSurface(renderer, hostcodeSurface);
-    SDL_FreeSurface(hostcodeSurface);
-    if (!hostcodeTexture) {
-        fprintf(stderr, "Failed to create hostcode screen texture: %s\n", SDL_GetError());
-        SDL_Quit();
-        return 1;
-    }
-
-    SDL_Texture* ballTexture = NULL;
-    SDL_Surface* ballSurface = IMG_Load("./assets/Ball.png");
-    if (!ballSurface) {
-        fprintf(stderr, "Failed to load ball image: %s\n", IMG_GetError());
-        return 1;
-    }
-    ballTexture = SDL_CreateTextureFromSurface(renderer, ballSurface);
-    SDL_FreeSurface(ballSurface);
-    if (!ballTexture) {
-        fprintf(stderr, "Failed to create ball texture: %s\n", SDL_GetError());
-        SDL_Quit();
-        return 1;
-    }
-
-    SDL_Surface* numbers = SDL_LoadBMP("./assets/numbers.bmp");
-    if (numbers == NULL) {
-        printf("Unable to load bitmap. Error: %s\n", SDL_GetError());
-        SDL_Quit();
-        return 1;
-    }
-
-    SDL_Texture* numTexture = SDL_CreateTextureFromSurface(renderer, numbers);
-    if (numTexture == NULL) {
-        printf("Unable to create texture from surface! SDL_Error: %s\n", SDL_GetError());
-        SDL_Quit();
-        return 1;
-    }
+    init_drawing();
 
     //main loop
     bool running = true;
@@ -551,10 +357,10 @@ int main()
         }
 
         if (current_state == STATE_HOME) {
-            draw_home_screen(renderer, homeScreenTexture);
+            draw_homescreen();
         }
         else if(current_state == STATE_BLUETOOTH_HOST){
-            hostcode_screen(renderer, hostcodeTexture);
+            draw_hostcode();
         }
         else if(current_state == STATE_PLAYING)
         {
@@ -568,50 +374,24 @@ int main()
             //Up arrow key pressed
             if (keystate[UP]) {
                 updatePaddle(true, &paddles[1]);
-                // updateBall();
             }
     
             //Down arrow key pressed
             if (keystate[DOWN]) {
                 updatePaddle(false, &paddles[1]);
-                // updateBall();
             }
-            if(keystate[SDL_SCANCODE_RIGHT]){
-                paddles[1].x--;
-            }
-            if(keystate[SDL_SCANCODE_LEFT]){
-                paddles[1].x++;
-            }
-    
+            
             //Updates everything
-    
+            
             ai_paddle(&paddles[0], level);
             updateBall();
-
-            SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-            SDL_RenderClear(renderer);
-
-            SDL_Rect dst = {0, 0, SCREEN_HEIGHT, SCREEN_WIDTH};
-            SDL_RenderCopy(renderer, backgroundTexture, NULL, &dst);
-            draw_scores(renderer, numbers, numTexture);
-            draw_ball(renderer, ballTexture);
-            draw_paddles(renderer);
-            
-            SDL_RenderPresent(renderer);
-            
-            //hard codes a delay
-            SDL_Delay(10);
+            draw_playing(paddles, ball, score);
         }
         else if(current_state == STATE_GAMEOVER){
-            SDL_RenderClear(renderer);
-            SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-            SDL_RenderPresent(renderer);
+            draw_endgame();
         }
 
 
     }
-    SDL_DestroyTexture(backgroundTexture);
-    SDL_DestroyTexture(homeScreenTexture);
-    SDL_DestroyWindow(window);
-    SDL_Quit();
+    destroy();
 }
