@@ -1,12 +1,12 @@
 #include <LovyanGFX.hpp>
 
-#define TFT_MISO 12
-#define TFT_LED  21
-#define TFT_SCK  14
-#define TFT_MOSI 13
-#define TFT_DC   2
+#define TFT_MISO 13 // 12
+#define TFT_LED 21
+#define TFT_SCK 12 // 14
+#define TFT_MOSI 11 // 13
 #define TFT_RESET 4
-#define TFT_CS   15
+#define TFT_CS 15
+#define TFT_DC 2
 
 class LGFX : public lgfx::LGFX_Device {
   lgfx::Panel_ILI9341 _panel;
@@ -95,7 +95,7 @@ void setup() {
   digitalWrite(TFT_LED, HIGH);
 
   tft.init();
-  tft.setRotation(1);
+  tft.setRotation(3);
   tft.fillScreen(TFT_BLACK);
   tft.setTextSize(2);
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
@@ -167,4 +167,5 @@ void showFinalResults() {
     tft.print(" squares)");
   }
 }
+
 
