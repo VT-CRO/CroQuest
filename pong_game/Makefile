@@ -1,6 +1,6 @@
 # Compiler and linker
 CC = gcc
-LDFLAGS = -lSDL2 -lSDL2_image -lm
+LDFLAGS = -lSDL2 -lSDL2_image -lm -lSDL2_ttf
 
 # Source files
 SRC = pong.c utils.c draw.c

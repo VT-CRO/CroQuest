@@ -37,6 +37,14 @@
 // read up and down button presses
 #define UP SDL_SCANCODE_UP
 #define DOWN SDL_SCANCODE_DOWN
+#define LEFT SDL_SCANCODE_LEFT
+#define RIGHT SDL_SCANCODE_RIGHT
+#define A SDL_SCANCODE_A
+#define B SDL_SCANCODE_B
+#define HOST_CODE_SIZE 6
+
+#define NUM_PAD_LENGTH 4
+#define NUM_PAD_WIDTH 3
 
 // The three paddle walls used in
 // collision detection
@@ -313,10 +321,18 @@ int main()
 
     init_drawing();
 
+    //Pad/host typing
+    int pos_x = 0, pos_y = 0;
+    int code_size = 0;
+    int host_code[HOST_CODE_SIZE];
+    Button pad[NUM_PAD_WIDTH][NUM_PAD_LENGTH];
+
+
     //main loop
     bool running = true;
     SDL_Event event;
     static bool game_initialized = false;
+    bool pad_pressed = false;
     while(running)
     {
         while (SDL_PollEvent(&event)) {
@@ -344,6 +360,27 @@ int main()
                 else if(event.key.keysym.sym == SDLK_a){
                     if(current_state == STATE_HOME){
                         current_state = STATE_BLUETOOTH_HOST;
+                        init_buttons();
+                    }else if(current_state == STATE_BLUETOOTH_HOST){
+                        int button_pressed = get_button_pressed(pos_x, pos_y);
+                        pad_pressed = true;
+                        // Delete button
+                        if(button_pressed == -2 && code_size > 0){
+                            code_size--; 
+                        }
+                        // Enter button pressed
+                        else if(button_pressed == -1){
+                            if(code_size == 6){
+                                //try to connect to host
+                            }
+                        }
+                        //Number pressed
+                        else{
+                            if(code_size < HOST_CODE_SIZE){
+                                host_code[code_size] = button_pressed;
+                                code_size++;
+                            }
+                        }
                     }
                 }
                 else if(event.key.keysym.sym == SDLK_SPACE){
@@ -355,12 +392,32 @@ int main()
                 }
             }
         }
-
+        // current keyboard state
+        const Uint8 *keystate = SDL_GetKeyboardState(NULL);
         if (current_state == STATE_HOME) {
             draw_homescreen();
         }
         else if(current_state == STATE_BLUETOOTH_HOST){
+            if(keystate[UP]){
+                pos_y = pos_y > 0 ? pos_y - 1 : NUM_PAD_LENGTH - 1;
+            }
+            else if(keystate[DOWN]){
+                pos_y = pos_y < NUM_PAD_LENGTH - 1 ? pos_y + 1 : 0; 
+            }
+            else if(keystate[LEFT]){
+                pos_x = pos_x > 0 ? pos_x - 1 : NUM_PAD_WIDTH - 1;
+            }
+            else if(keystate[RIGHT]){
+                pos_x = pos_x < NUM_PAD_WIDTH - 1 ? pos_x + 1 : 0;
+            }
             draw_hostcode();
+            draw_button_hover(pos_x, pos_y);
+            if(pad_pressed){
+                draw_button_pressed(pos_x, pos_y);
+                pad_pressed = false;
+            }
+            draw_numbers(host_code, code_size);
+            SDL_Delay(60);
         }
         else if(current_state == STATE_PLAYING)
         {
@@ -368,8 +425,6 @@ int main()
                 initialize_game();
                 game_initialized = true;
             }
-            // current keyboard state
-            const Uint8 *keystate = SDL_GetKeyboardState(NULL);
             
             //Up arrow key pressed
             if (keystate[UP]) {
@@ -377,7 +432,7 @@ int main()
             }
     
             //Down arrow key pressed
-            if (keystate[DOWN]) {
+            else if (keystate[DOWN]) {
                 updatePaddle(false, &paddles[1]);
             }
             
