@@ -94,14 +94,10 @@ static void initialize_game()
 
     level = 1;
 
-    ball = (Ball) {SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, BALL_HEIGHT, 
-        Ball_WIDTH, dx, dy};
-    
-    paddles[0] = (Paddle){0, (SCREEN_WIDTH / 2) - (PADDLE_HEIGHT / 2),
-        PADDLE_WIDTH, PADDLE_HEIGHT};
-    paddles[1] = (Paddle){SCREEN_HEIGHT - PADDLE_WIDTH,
-         (SCREEN_WIDTH / 2) - (PADDLE_HEIGHT / 2), 
-         PADDLE_WIDTH, PADDLE_HEIGHT};
+    ball = (Ball) {SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, BALL_HEIGHT, Ball_WIDTH, dx, dy};
+
+    paddles[0] = (Paddle){0, (SCREEN_HEIGHT / 2) - (PADDLE_HEIGHT / 2), PADDLE_WIDTH, PADDLE_HEIGHT};
+    paddles[1] = (Paddle){SCREEN_WIDTH - PADDLE_WIDTH, (SCREEN_HEIGHT / 2) - (PADDLE_HEIGHT / 2), PADDLE_WIDTH, PADDLE_HEIGHT};
 }
 
 
@@ -222,7 +218,7 @@ static void ball_collision()
 {
     
     //Check if a point was scored
-    if(ball.x <= 0 || ball.x + ball.w >= SCREEN_HEIGHT){
+    if(ball.x <= 0 || ball.x + ball.w >= SCREEN_WIDTH){
         if(ball.x <= 0){
             score[0]++;
         }else{
@@ -242,8 +238,8 @@ static void ball_collision()
     if(ball.y <= 0){
         ball.y = 0;
         ball.dy = -ball.dy;
-    }else if(ball.y + ball.h >= SCREEN_WIDTH){
-        ball.y = SCREEN_WIDTH - ball.h;
+    }else if(ball.y + ball.h >= SCREEN_HEIGHT){
+        ball.y = SCREEN_HEIGHT - ball.h;
         ball.dy = -ball.dy;
     }
     
@@ -273,7 +269,7 @@ static void updatePaddle(bool up, Paddle * paddle)
     }
     //Moves the paddle down
     else{
-        paddle->y = min(paddle->y + PADDLE_SPEED, SCREEN_WIDTH - PADDLE_HEIGHT);
+        paddle->y = min(paddle->y + PADDLE_SPEED, SCREEN_HEIGHT - PADDLE_HEIGHT);
     }
 }
 
@@ -288,11 +284,11 @@ static void ai_paddle(Paddle * paddle, int level_index)
     double intersection_time = ((paddle->x + PADDLE_WIDTH) - ball.x) / ball.dx;
     double y_intersect = ball.y + (ball.dy * intersection_time);
 
-    y_intersect = y_intersect >= SCREEN_WIDTH ? SCREEN_WIDTH - PADDLE_HEIGHT : y_intersect;
+    y_intersect = y_intersect >= SCREEN_HEIGHT ? SCREEN_HEIGHT - PADDLE_HEIGHT : y_intersect;
     y_intersect = y_intersect < 0 ? 0 : y_intersect;
 
     double target_y = ball.dy > 0 ? y_intersect - calculate_offset(level_index, PADDLE_HEIGHT) : y_intersect + calculate_offset(level_index, PADDLE_HEIGHT);
-    target_y = target_y >= SCREEN_WIDTH ? SCREEN_WIDTH - PADDLE_HEIGHT : target_y;
+    target_y = target_y >= SCREEN_HEIGHT ? SCREEN_HEIGHT - PADDLE_HEIGHT : target_y;
     target_y = target_y < 0 ? 0 : target_y;
     
 

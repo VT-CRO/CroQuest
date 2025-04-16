@@ -1,7 +1,7 @@
 // Screen dimensions subject to change
 // 250 200
-#define SCREEN_HEIGHT 350
-#define SCREEN_WIDTH 230
+#define SCREEN_HEIGHT 230
+#define SCREEN_WIDTH 350
 
 typedef enum {
     STATE_HOME,

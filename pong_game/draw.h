@@ -18,7 +18,7 @@ typedef struct {
     int x, y;
     int w, h;
     int button;
-    SDL_Texture* hover;
-    SDL_Texture* pressed;
-    SDL_Texture* default_texture;
+    SDL_Texture * hover;
+    SDL_Texture * pressed;
+    SDL_Texture * default_texture;
 } Button;

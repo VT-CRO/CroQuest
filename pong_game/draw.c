@@ -7,13 +7,13 @@
 #define NUM_PAD_WIDTH 3
 #define NUM_PAD_LENGTH 4
 
-#define BUTTON_WIDTH SCREEN_HEIGHT/7
-#define BUTTON_HEIGHT SCREEN_WIDTH/7
+#define BUTTON_WIDTH SCREEN_WIDTH/7
+#define BUTTON_HEIGHT SCREEN_HEIGHT/7
 #define BUTTON_SPACING 0
 
-#define BUTTON_START_X ((SCREEN_HEIGHT - (NUM_PAD_WIDTH * BUTTON_WIDTH + (NUM_PAD_WIDTH - 1) * BUTTON_SPACING)) / 2)
+#define BUTTON_START_X ((SCREEN_WIDTH - (NUM_PAD_WIDTH * BUTTON_WIDTH + (NUM_PAD_WIDTH - 1) * BUTTON_SPACING)) / 2)
 
-#define BUTTON_START_Y (SCREEN_WIDTH * 0.7 - (NUM_PAD_LENGTH * BUTTON_HEIGHT + (NUM_PAD_LENGTH - 1) * BUTTON_SPACING) / 2)
+#define BUTTON_START_Y (SCREEN_HEIGHT * 0.7 - (NUM_PAD_LENGTH * BUTTON_HEIGHT + (NUM_PAD_LENGTH - 1) * BUTTON_SPACING) / 2)
 
 
 static SDL_Window * window;
@@ -37,7 +37,7 @@ Draw the 2 players score
 */
 static void draw_scores(SDL_Renderer* renderer, SDL_Texture* numTexture, int * score)
 {
-    int pos[2] = {((SCREEN_HEIGHT) / 2) + (NUM_WIDTH / 3), ((SCREEN_HEIGHT) / 2) - (2*(NUM_WIDTH / 3))};
+    int pos[2] = {((SCREEN_WIDTH) / 2) + (NUM_WIDTH / 3), ((SCREEN_WIDTH) / 2) - (2*(NUM_WIDTH / 3))};
     SDL_Rect sourceRect = {0, 0, NUM_WIDTH, numbers->h};
     SDL_Rect destRect = {0, 0, sourceRect.w / 3, sourceRect.h / 3};
     
@@ -90,7 +90,7 @@ Draw homescreen
 */
 static void draw_home_screen(SDL_Renderer* renderer, SDL_Texture* homeScreenTexture) {
     SDL_RenderClear(renderer);
-    SDL_Rect dst = {0, 0, SCREEN_HEIGHT, SCREEN_WIDTH};
+    SDL_Rect dst = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
     SDL_RenderCopy(renderer, homeScreenTexture, NULL, &dst);
     SDL_RenderPresent(renderer);
 }
@@ -183,14 +183,14 @@ void draw_button_pressed(int x, int y) {
 }
 
 void draw_numbers(int* code, int code_size) {
-    float scale_factor = SCREEN_HEIGHT / 400.0f;
+    float scale_factor = SCREEN_WIDTH / 400.0f;
     
     SDL_Rect sourceRect = {0, 0, NUM_WIDTH, numbers->h};
     SDL_Rect destRect = {0, BUTTON_START_Y * 0.8 - ((numbers->h / 3) * scale_factor), (NUM_WIDTH / 3) * scale_factor, (numbers->h / 3) * scale_factor};
     
     for(int i = 0; i < code_size; i++) {
         sourceRect.x = code[i] * NUM_WIDTH;
-        destRect.x = ((SCREEN_HEIGHT / 2) - (3*(NUM_WIDTH/3)*scale_factor)) + i * (NUM_WIDTH / 3)* scale_factor;
+        destRect.x = ((SCREEN_WIDTH / 2) - (3*(NUM_WIDTH/3)*scale_factor)) + i * (NUM_WIDTH / 3)* scale_factor;
         SDL_RenderCopy(renderer, numTexture, &sourceRect, &destRect);
     }
 
@@ -205,7 +205,7 @@ void draw_numbers(int* code, int code_size) {
         if (textTexture) {
             // Calculate position for text (centered horizontally, above the digits)
             SDL_Rect textRect = {0, 0, textSurface->w, textSurface->h};
-            textRect.x = (SCREEN_HEIGHT - textSurface->h) / 2 - 2*textSurface->h;
+            textRect.x = (SCREEN_WIDTH - textSurface->h) / 2 - 2*textSurface->h;
             textRect.y = BUTTON_START_Y * 0.8 - ((numbers->h / 3) * scale_factor) - textSurface->h - 10; // 10 pixels above the digits
             
             // Render the text
@@ -236,7 +236,7 @@ bool init_drawing()
     if((window = SDL_CreateWindow("PONG",
         SDL_WINDOWPOS_CENTERED,
         SDL_WINDOWPOS_CENTERED,
-        SCREEN_HEIGHT, SCREEN_WIDTH,
+        SCREEN_WIDTH, SCREEN_HEIGHT,
         SDL_WINDOW_SHOWN)) == NULL){
             fprintf(stderr,"Failed to create window\n");
             SDL_Quit();
@@ -338,7 +338,7 @@ void draw_playing(Paddle * paddles, Ball ball, int * score){
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
 
-    SDL_Rect dst = {0, 0, SCREEN_HEIGHT, SCREEN_WIDTH};
+    SDL_Rect dst = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
     SDL_RenderCopy(renderer, backgroundTexture, NULL, &dst);
     draw_scores(renderer, numTexture, score);
     draw_ball(renderer, ballTexture, ball);
