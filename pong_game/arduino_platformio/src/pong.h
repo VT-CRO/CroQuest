@@ -16,7 +16,9 @@ typedef enum {
     STATE_HOME,
     STATE_PLAYING,
     STATE_GAMEOVER,
-    STATE_BLUETOOTH_HOST,
+    STATE_MULTIPLAYER,
+    STATE_BLUETOOTH_CLIENT,
+    STATE_BLUETOOTH_START,
 } GameState;
 
 // Pong paddles

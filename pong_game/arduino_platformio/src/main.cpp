@@ -1,3 +1,8 @@
+#include <BLEDevice.h>
+#include <BLEServer.h>
+#include <BLEUtils.h>
+#include <BLE2902.h>
+
 #include "pong.h"
 #include "main.hpp"
 #include "draw.hpp"
@@ -18,6 +23,8 @@ static bool first_home_draw = true;
 static int level = 1;
 static int score0 = 0;
 static int score1 = 0;
+static int pos_x = 0, pos_y = 0;
+static int prev_pos_x = 0, prev_pos_y = 0;
 
 // Frame rate control variables
 static unsigned long previousMillis = 0;
@@ -26,10 +33,52 @@ static const unsigned long frameTime = 1000 / targetFPS;  // Time per frame in m
 static unsigned long currentFPS = 0;
 static unsigned long fpsUpdateTime = 0;
 static unsigned int frameCount = 0;
+static const unsigned long debounceDelay = 150;
+static unsigned long lastButtonPressTime = 0;
 
+static bool buttonAPressed = false;
+static bool buttonBPressed = false;
+static String code;
+
+
+// Bluetooth definitions
+#define SERVICE_UUID        "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
+#define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
+
+static bool isHost = true; // Starts as a host
+static String hostCode = "quest-"; //start of host code
+BLEAdvertisedDevice* myDevice;
+BLECharacteristic* pCharacteristic;
+BLEAdvertising *pAdvertising;
+
+void setupHost(){
+  //Create random host code
+  hostCode += String(random(100000, 999999));
+
+  BLEDevice::init(hostCode.c_str());
+  BLEServer *pServer = BLEDevice::createServer();
+  BLEService* pService = pServer->createService(SERVICE_UUID);
+  pCharacteristic = pService->createCharacteristic(
+                    CHARACTERISTIC_UUID,
+                    BLECharacteristic::PROPERTY_READ |
+                    BLECharacteristic::PROPERTY_WRITE |
+                    BLECharacteristic::PROPERTY_NOTIFY
+                  );
+  pCharacteristic->addDescriptor(new BLE2902());
+  pService->start();
+  pAdvertising = BLEDevice::getAdvertising();
+  pAdvertising->start();
+}
 
 void setup() {
   Serial.begin(115200);
+
+  //Initialize rnadom number generator
+  randomSeed(analogRead(0));
+
+  //Each device initially setup as a host
+  setupHost();
+
   pinMode(TFT_LED, OUTPUT);
   digitalWrite(TFT_LED, HIGH);
 
@@ -56,7 +105,7 @@ void setup() {
   SD.end();
   delay(2000);
   // Attempt to initialize the SD card
-  if (!SD.begin(SD_CS, SPI, 10000000)) {
+  if (!SD.begin(SD_CS, SPI, 100000000)) {
     Serial.println("SD card initialization failed!");
     return;
   }
@@ -89,26 +138,64 @@ void loop() {
     // - Starts single-player pong
     // - Resets to homescreen when game has ended
     if (digitalRead(B) == LOW) {
-      //Starts pong game
-      if (current_state == STATE_HOME || current_state == STATE_BLUETOOTH_HOST) {
-          current_state = STATE_PLAYING;
-          first_home_draw = true;
+      if(!buttonBPressed){
+        //Starts pong game
+        if (current_state == STATE_HOME) {
+            current_state = STATE_PLAYING;
+            first_home_draw = true;
+        }
+        //Resets to homescreen after game has ended
+        else if(current_state == STATE_GAMEOVER){
+          current_state = STATE_HOME;
+          first_home_draw = true;  
+          score0 = score1 = 0;
+          game_initialized = false;
+        }
+        else if(current_state == STATE_MULTIPLAYER){
+          current_state = STATE_BLUETOOTH_CLIENT;
+          tft.fillScreen(TFT_BLACK);
+          init_buttons();
+          draw_all_buttons(tft);
+        }
       }
-      //Resets to homescreen after game has ended
-      else if(current_state == STATE_GAMEOVER){
-        current_state = STATE_HOME;
-        first_home_draw = true;  
-      }
+      buttonBPressed = true;
+    }else{
+      buttonBPressed = false;
     }
     //Button A 
     // - Resets game after game has ended
     if (digitalRead(A) == LOW) {
-      if (current_state == STATE_GAMEOVER) {
-          current_state = STATE_PLAYING;
-          score0 = score1 = 0;
-          game_initialized = false;
+      // If button A was not previously pressed, transition to the next state
+      if (!buttonAPressed) {
+        if (current_state == STATE_HOME) {
+          current_state = STATE_MULTIPLAYER;
+          draw_multiplayer_screen(tft);
+        }
+        else if (current_state == STATE_MULTIPLAYER) {
+          current_state = STATE_BLUETOOTH_START;
+          tft.fillScreen(TFT_BLUE); // Set the blue screen only if transitioning to Bluetooth start
+        }
+        else if (current_state == STATE_BLUETOOTH_CLIENT){
+          int button = draw_button_pressed(tft, pos_x, pos_y);
+          if(button == -2){
+            code.remove(code.length() - 1);
+          }else if(button == -1){
+            // do something with the enter
+          }
+          else{
+            if(code.length() < 6){
+              code += String(button);
+            }
+          }
+        }
       }
+      // Set buttonAPressed flag to true to indicate button is pressed
+      buttonAPressed = true;
+    } else {
+      // Reset buttonAPressed when button A is released
+      buttonAPressed = false;
     }
+
 
     if (current_state == STATE_HOME) {
       draw_homescreen(tft, &first_home_draw);
@@ -180,6 +267,31 @@ void loop() {
     //Draws the endscreen/gameover screen
     else if (current_state == STATE_GAMEOVER) {
       draw_endscreen(tft, score0, score1);
+    }
+    else if (current_state == STATE_BLUETOOTH_CLIENT){
+      
+      if (currentMillis - lastButtonPressTime > debounceDelay) {
+        if (digitalRead(UP) == LOW) {
+          pos_y = pos_y > 0 ? pos_y - 1 : NUM_PAD_LENGTH - 1;
+          lastButtonPressTime = currentMillis;
+        } else if (digitalRead(DOWN) == LOW) {
+          pos_y = pos_y < NUM_PAD_LENGTH - 1 ? pos_y + 1 : 0;
+          lastButtonPressTime = currentMillis;
+        } else if (digitalRead(LEFT) == LOW) {
+          pos_x = pos_x > 0 ? pos_x - 1 : NUM_PAD_WIDTH - 1;
+          lastButtonPressTime = currentMillis;
+        } else if (digitalRead(RIGHT) == LOW) {
+          pos_x = pos_x < NUM_PAD_WIDTH - 1 ? pos_x + 1 : 0;
+          lastButtonPressTime = currentMillis;
+        }
+      }
+      draw_button_hover(tft, pos_x, pos_y);
+      if(prev_pos_x != pos_x || prev_pos_y != pos_y){
+        draw_button_default(tft, prev_pos_x, prev_pos_y);
+      }
+      prev_pos_x = pos_x;
+      prev_pos_y = pos_y;
+      draw_numbers(tft, code);
     }
   }
 }
