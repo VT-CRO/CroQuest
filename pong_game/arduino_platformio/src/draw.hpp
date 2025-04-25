@@ -4,9 +4,10 @@
 #define NUM_PAD_WIDTH 3
 #define NUM_PAD_LENGTH 4
 
-void drawPaddle(LGFX& tft, Paddle paddle, Prev_Paddle* prev_paddle);
-void drawBall(LGFX& tft, Ball* ball, Ball* prev_ball);
-void drawScore(LGFX& tft, int score0, int score1);
+void drawPaddle(LGFX_Sprite& tft, Paddle paddle);
+void drawBall(LGFX_Sprite& tft, Ball* ball);
+void drawScore(LGFX_Sprite& tft, int score0, int score1);
+
 void draw_homescreen(LGFX& tft, bool *first_home_draw);
 void draw_endscreen(LGFX& tft, int score0, int score1);
 void draw_multiplayer_screen(LGFX& tft);

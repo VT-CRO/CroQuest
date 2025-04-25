@@ -21,7 +21,7 @@
 #define BALL_HEIGHT 11
 #define BALL_WIDTH 11
 #define MAX_BALL_SPEED_Y 3.0
-#define MAX_BALL_SPEED_X 8
+#define MAX_BALL_SPEED_X 10
 
 #define NUM_PAD_LENGTH 4
 #define NUM_PAD_WIDTH 3
@@ -38,26 +38,26 @@ enum paddle_walls {
 
 void initialize_game(Ball * ball, Paddle * paddles, int * level)
 {
-    double dx = -3;
-    double dy = -3;
+    double dx = -4;
+    double dy = -4;
     // Simple direction picker
     if(rand() % 2 == 0)
     {
         // Right direction
-        dx = 3;
+        dx = 4;
         if(rand() % 2 == 0){
-            dy = 3;
+            dy = 4;
         }else{
-            dy = -3;
+            dy = -4;
         }
     }else{
         // Left direction
-        dx = -3;
+        dx = -4;
         if(rand() % 2 == 0)
         {
-            dy = 3;
+            dy = 4;
         }else{
-            dx = -3;
+            dx = -4;
         }
     }
 

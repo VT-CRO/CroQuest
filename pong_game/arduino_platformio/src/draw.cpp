@@ -21,32 +21,19 @@ struct Button {
 static Button pad[NUM_PAD_WIDTH][NUM_PAD_LENGTH];
 
 // Function to draw the paddle on the screen
-void drawPaddle(LGFX& tft, Paddle paddle, Prev_Paddle* prev_paddle) {
-// Clear previous paddle position (if any)
-    if(prev_paddle->y != paddle.y || prev_paddle->paddle_mod){
-        tft.fillRect(paddle.x, prev_paddle->y, paddle.w, paddle.h, TFT_BLACK);
-        prev_paddle->y = paddle.y;
-        prev_paddle->paddle_mod = false;
-    }
-
+void drawPaddle(LGFX_Sprite& tft, Paddle paddle) {
     // Draw new paddle position
     tft.fillRect(paddle.x, paddle.y, paddle.w, paddle.h, TFT_WHITE);
 }
 
 // Function to draw the ball on the screen
-void drawBall(LGFX& tft, Ball* ball, Ball* prev_ball) {
-    if(prev_ball->x != ball->x || prev_ball->y != ball->y){
-        tft.fillCircle(prev_ball->x + (ball->w/2), prev_ball->y + (ball->w/2), ball->w/2, TFT_BLACK);
-        prev_ball->x = ball->x;
-        prev_ball->y = ball->y;
-    }
-
+void drawBall(LGFX_Sprite& tft, Ball* ball) {
     // Draw new ball position
     tft.fillCircle(ball->x + (ball->w/2), ball->y + (ball->w/2), ball->w/2, TFT_WHITE);
 }
 
 // Function to draw the score on the screen
-void drawScore(LGFX& tft, int score0, int score1) {
+void drawScore(LGFX_Sprite& tft, int score0, int score1) {
     tft.setTextSize(2);
 
     tft.drawLine(SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 2, SCREEN_HEIGHT, TFT_WHITE);

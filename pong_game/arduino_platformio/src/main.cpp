@@ -7,6 +7,7 @@
 
 //Display
 static LGFX tft;
+static LGFX_Sprite framebuffer(&tft);
 
 //Game assets - ball, and paddles
 static Ball ball;
@@ -26,7 +27,7 @@ static int prev_pos_x = 0, prev_pos_y = 0;
 
 // Frame rate control variables
 static unsigned long previousMillis = 0;
-static const int targetFPS = 60;  // Set your desired frame rate
+static const int targetFPS = 1200;  // Set your desired frame rate
 static const unsigned long frameTime = 1000 / targetFPS;  // Time per frame in milliseconds
 static unsigned long currentFPS = 0;
 static unsigned long fpsUpdateTime = 0;
@@ -105,6 +106,10 @@ void setup() {
   tft.fillScreen(TFT_BLACK);
   tft.setTextSize(2);
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
+
+  //Frame buffer
+  framebuffer.setColorDepth(8);
+  framebuffer.createSprite(SCREEN_WIDTH, SCREEN_HEIGHT);
 
   // Initialize button pins
   pinMode(UP, INPUT_PULLUP);
@@ -301,11 +306,12 @@ void loop() {
           current_state = STATE_GAMEOVER;
           tft.fillScreen(TFT_BLACK);
       } else {
-        drawPaddle(tft, paddles[0], &prev_paddles[0]);
-        drawPaddle(tft, paddles[1], &prev_paddles[1]);
-        drawBall(tft, &ball, &prev_ball);
-        drawScore(tft, score0, score1);
-        
+        framebuffer.fillScreen(TFT_BLACK);
+        drawPaddle(framebuffer, paddles[0]);
+        drawPaddle(framebuffer, paddles[1]);
+        drawBall(framebuffer, &ball);
+        drawScore(framebuffer, score0, score1);
+        framebuffer.pushSprite(0, 0);
         // Reset paddle modification flags
         prev_paddles[0].paddle_mod = false;
         prev_paddles[1].paddle_mod = false;

@@ -10,7 +10,7 @@ extern "C" {
 #define SCREEN_WIDTH 320
 
 // Paddle dimensions
-#define PADDLE_HEIGHT 60
+#define PADDLE_HEIGHT 40
 #define PADDLE_WIDTH 10
 
 // The number of points to win the game
