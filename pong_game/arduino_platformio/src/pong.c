@@ -13,9 +13,7 @@
 #include "utils.h"
 #include "pong.h"
 
-// PADDLE dimensions, speed and paddle deadzone
-#define PADDLE_HEIGHT 60
-#define PADDLE_WIDTH 10
+// PADDLE speed and paddle deadzone
 #define PADDLE_SPEED 5
 #define DEADZONE 10
 
@@ -23,7 +21,7 @@
 #define BALL_HEIGHT 11
 #define BALL_WIDTH 11
 #define MAX_BALL_SPEED_Y 3.0
-#define MAX_BALL_SPEED_X 15
+#define MAX_BALL_SPEED_X 8
 
 #define NUM_PAD_LENGTH 4
 #define NUM_PAD_WIDTH 3
@@ -40,26 +38,26 @@ enum paddle_walls {
 
 void initialize_game(Ball * ball, Paddle * paddles, int * level)
 {
-    double dx = -1;
-    double dy = -1;
+    double dx = -3;
+    double dy = -3;
     // Simple direction picker
     if(rand() % 2 == 0)
     {
         // Right direction
-        dx = 1;
+        dx = 3;
         if(rand() % 2 == 0){
-            dy = 1;
+            dy = 3;
         }else{
-            dy = -1;
+            dy = -3;
         }
     }else{
         // Left direction
-        dx = -1;
+        dx = -3;
         if(rand() % 2 == 0)
         {
-            dy = 1;
+            dy = 3;
         }else{
-            dx = -1;
+            dx = -3;
         }
     }
 
@@ -101,79 +99,94 @@ static enum paddle_walls closest_wall(Paddle paddle, int inside_dist, int top_di
 Checks if the ball has collided with either
 paddle
 */
-static void check_paddle_collision(Ball * ball, Paddle * paddles, int * level)
+static void check_paddle_collision(Ball *ball, Paddle *paddles, int *level)
 {
-    // TODO - speedup ball when hitting paddle and change ball dx and dy based on 
-    // where the ball hits the paddle
-
-    // Check collision with left paddle
-    if(!(ball->x + ball->w < paddles[0].x ||
-         ball->x > paddles[0].x + PADDLE_WIDTH ||
-         ball->y + ball->h < paddles[0].y ||
-         ball->y > paddles[0].y + PADDLE_HEIGHT)) {
-
-        int inside_dist = abs((ball->x) - (paddles[0].x + PADDLE_WIDTH));
-        int top_dist = abs((ball->y + ball->h) - paddles[0].y);
-        int bottom_dist = abs(ball->y - (paddles[0].y + PADDLE_HEIGHT));
-
-        double paddle_center = paddles[0].y + PADDLE_HEIGHT / 2;
-        int offset = ball->y - paddle_center;
-        float normalized_offset = (float)offset / (PADDLE_HEIGHT / 2);
+    for (int i = 0; i < 2; i++) {
+        Paddle *paddle = &paddles[i];
+        
+        // Check if ball is colliding with this paddle
+        if (ball->x + ball->w < paddle->x ||
+            ball->x > paddle->x + PADDLE_WIDTH ||
+            ball->y + ball->h < paddle->y ||
+            ball->y > paddle->y + PADDLE_HEIGHT) {
+            continue;  // No collision with this paddle
+        }
+        
+        // Calculate distances to each wall
+        int inside_dist = (i == 0) ? 
+            abs(ball->x - (paddle->x + PADDLE_WIDTH)) : 
+            abs(ball->x + ball->w - paddle->x);
+        int top_dist = abs((ball->y + ball->h) - paddle->y);
+        int bottom_dist = abs(ball->y - (paddle->y + PADDLE_HEIGHT));
+        
+        // Find which wall was hit
+        enum paddle_walls minimum = closest_wall(*paddle, inside_dist, top_dist, bottom_dist);
+        
+        // Calculate vertical bounce angle based on where ball hits paddle
+        double paddle_center = paddle->y + PADDLE_HEIGHT / 2;
+        float normalized_offset = (float)(ball->y - paddle_center) / (PADDLE_HEIGHT / 2);
+        
+        // Apply a sinusoidal curve to move max velocity points inward
+        // This creates max velocity at around 2/3 from center instead of at the edge
+        normalized_offset = sinf(normalized_offset * 1.2f * M_PI / 2.0f);
+        
+        // Add randomization for additional variation (±20%)
+        float random_factor = 1.0f + ((rand() % 40) - 20) / 100.0f;
+        normalized_offset *= random_factor;
+        
+        // Occasional "wild bounce" for extreme variation (8% chance)
+        if (rand() % 100 < 8) {
+            // Create more dramatic angles occasionally 
+            float wild_factor = 1.3f + (rand() % 40) / 100.0f; // 1.3 to 1.7
+            normalized_offset *= wild_factor;
+            // Sometimes reverse expected direction for surprising effect
+            if (rand() % 100 < 30) { // 30% of wild bounces (2.4% overall)
+                normalized_offset = -normalized_offset;
+            }
+        }
+        
+        // Set the Y velocity with our enhanced variation
         ball->dy = normalized_offset * MAX_BALL_SPEED_Y;
         
-        if (fabs(ball->dy) < 1.0f) {
-            ball->dy = (ball->dy < 0 ? -1.0f : 1.0f);
+        // Ensure minimum vertical movement
+        float min_speed = 2.0f;
+        if (fabs(ball->dy) < min_speed) {
+            ball->dy = (ball->dy < 0 ? -min_speed : min_speed);
         }
-
-        enum paddle_walls minimum = closest_wall(paddles[0], inside_dist, top_dist, bottom_dist);
-        if(minimum == TOP) {
-            ball->y = paddles[0].y - ball->h;
-            ball->dy = -ball->dy;
-        } else if(minimum == BOTTOM) {
-            ball->y = paddles[0].y + PADDLE_HEIGHT;
-            ball->dy = -ball->dy;
+        
+        // Handle collision based on wall hit
+        if (minimum == TOP) {
+            ball->y = paddle->y - ball->h;
+            ball->dy = -fabs(ball->dy);  // Always bounce up
+        } else if (minimum == BOTTOM) {
+            ball->y = paddle->y + PADDLE_HEIGHT;
+            ball->dy = fabs(ball->dy);   // Always bounce down
         } else {
-            ball->x = paddles[0].x + PADDLE_WIDTH;
-            ball->dx = -ball->dx * 1.2;
+            // Side collision - set position and reverse horizontal direction
+            if (i == 0) {  // Left paddle
+                ball->x = paddle->x + PADDLE_WIDTH;
+                ball->dx = fabs(ball->dx) * (1.0 + (*level) * 0.05);  // Gradual speed increase
+            } else {       // Right paddle
+                ball->x = paddle->x - ball->w;
+                ball->dx = -fabs(ball->dx) * (1.0 + (*level) * 0.05);
+                (*level)++;  // Increase level on right paddle hit
+            }
         }
-    }
-    // Check collision with right paddle
-    else if(!(ball->x + ball->w < paddles[1].x ||
-              ball->x > paddles[1].x + PADDLE_WIDTH ||
-              ball->y + ball->h < paddles[1].y ||
-              ball->y > paddles[1].y + PADDLE_HEIGHT)) {
-
-        int inside_dist = abs(ball->x + ball->w - paddles[1].x);
-        int top_dist = abs((ball->y + ball->h) - paddles[1].y);
-        int bottom_dist = abs(ball->y - (paddles[1].y + PADDLE_HEIGHT));
-
-        double paddle_center = paddles[1].y + PADDLE_HEIGHT / 2;
-        int offset = ball->y - paddle_center;
-        float normalized_offset = (float)offset / (PADDLE_HEIGHT / 2);
-        ball->dy = normalized_offset * MAX_BALL_SPEED_Y;
-
-        if (fabs(ball->dy) < 1.0f) {
-            ball->dy = (ball->dy < 0 ? -1.0f : 1.0f);
+        
+        // Cap horizontal speed
+        if (fabs(ball->dx) > MAX_BALL_SPEED_X) {
+            ball->dx = (ball->dx > 0 ? MAX_BALL_SPEED_X : -MAX_BALL_SPEED_X);
         }
-
-        enum paddle_walls minimum = closest_wall(paddles[1], inside_dist, top_dist, bottom_dist);
-        if(minimum == TOP) {
-            ball->y = paddles[1].y - ball->h;
-            ball->dy = -ball->dy;
-        } else if(minimum == BOTTOM) {
-            ball->y = paddles[1].y + PADDLE_HEIGHT;
-            ball->dy = -ball->dy;
-        } else {
-            ball->x = paddles[1].x - ball->w;
-            ball->dx = -ball->dx * 1.2;
+        
+        // Also cap vertical speed (with a higher limit for extra variation)
+        float max_y_speed = MAX_BALL_SPEED_Y * 1.5f;
+        if (fabs(ball->dy) > max_y_speed) {
+            ball->dy = (ball->dy > 0 ? max_y_speed : -max_y_speed);
         }
-        (*level)++; 
+        
+        // We've handled a collision, no need to check the other paddle
+        return;
     }
-
-    if (fabs(ball->dx) > MAX_BALL_SPEED_X) {
-        ball->dx = (ball->dx > 0 ? MAX_BALL_SPEED_X : -MAX_BALL_SPEED_X);
-    }
-
 }
 
 /*
@@ -237,32 +250,74 @@ void updatePaddle(bool up, Paddle * paddle)
 /*
 AI paddle for single player
 */
-void ai_paddle(Paddle * paddle, Ball * ball, int level_index)
+void ai_paddle(Paddle *paddle, Ball *ball, int level_index)
 {
-    if(ball->dx > 0)
-        return; 
+    // Only react if the ball is moving toward the AI
+    // if (ball->dx > 0)
+        // return;
+
+    if (ball->x > SCREEN_WIDTH / 2) {
+        double paddle_center = paddle->y + PADDLE_HEIGHT / 2;
+    
+        // Curiosity strength increases as the ball approaches halfway
+        double curiosity_factor = 1.0 - ((ball->x - SCREEN_WIDTH / 2) / (SCREEN_WIDTH / 2));
+        if (curiosity_factor < 0) curiosity_factor = 0;
+        if (curiosity_factor > 1) curiosity_factor = 1;
+    
+        // 30% chance to move when curiosity is high, 5% when it's low
+        int chance = 5 + (int)(25 * curiosity_factor);
+        if ((rand() % 100) < chance) {
+            // Target near ball with some randomness
+            double target_y = ball->y + ((rand() % 21) - 10); // ±10px noise
+    
+            if (target_y < paddle_center - DEADZONE) {
+                updatePaddle(true, paddle); // move up
+            } else if (target_y > paddle_center + DEADZONE) {
+                updatePaddle(false, paddle); // move down
+            }
+        }
+        return;
+    }
+
     double intersection_time = ((paddle->x + PADDLE_WIDTH) - ball->x) / ball->dx;
     double y_intersect = ball->y + (ball->dy * intersection_time);
 
+    // Clamp y intersection within screen bounds
     y_intersect = y_intersect >= SCREEN_HEIGHT ? SCREEN_HEIGHT - PADDLE_HEIGHT : y_intersect;
     y_intersect = y_intersect < 0 ? 0 : y_intersect;
 
-    double target_y = ball->dy > 0 ? y_intersect - calculate_offset(level_index, PADDLE_HEIGHT) : y_intersect + calculate_offset(level_index, PADDLE_HEIGHT);
+    // Ball speed and difficulty-adjusted error
+    double ball_speed = sqrt(ball->dx * ball->dx + ball->dy * ball->dy);
+    double mistake_range = (ball_speed / 5.0) * (1.0 / (intersection_time + 0.1)); // avoid div by 0
+
+    // Scale error with level (higher level = smaller mistake)
+    double difficulty_factor = 1.0 + (level_index * 0.1);
+    mistake_range *= 1.0 / difficulty_factor;
+
+    // Clamp mistake range
+    if (mistake_range > PADDLE_HEIGHT / 2) mistake_range = PADDLE_HEIGHT / 2;
+    if (mistake_range < 2) mistake_range = 2;
+
+    // Add error to the target
+    double error = ((rand() % 100) / 100.0 - 0.5) * 2 * mistake_range; // [-range, +range]
+    double target_y = y_intersect + error;
+
+    // Clamp within screen bounds
     target_y = target_y >= SCREEN_HEIGHT ? SCREEN_HEIGHT - PADDLE_HEIGHT : target_y;
     target_y = target_y < 0 ? 0 : target_y;
-    
 
     double paddle_center = paddle->y + PADDLE_HEIGHT / 2;
 
-    if(target_y < paddle_center - DEADZONE && intersection_time > 0 && 
-        intersection_time < abs(target_y - paddle_center) / PADDLE_SPEED)
-     {
-         updatePaddle(true, paddle);
-     }
-     
-     if(target_y > paddle_center + DEADZONE && intersection_time > 0 &&
-        intersection_time < abs(target_y - paddle_center) / PADDLE_SPEED)
-     {
-         updatePaddle(false, paddle);
-     }
+    if (target_y < paddle_center - DEADZONE &&
+        intersection_time > 0 &&
+        intersection_time < fabs(target_y - paddle_center) / PADDLE_SPEED)
+    {
+        updatePaddle(true, paddle);
+    }
+    if (target_y > paddle_center + DEADZONE &&
+        intersection_time > 0 &&
+        intersection_time < fabs(target_y - paddle_center) / PADDLE_SPEED)
+    {
+        updatePaddle(false, paddle);
+    }
 }

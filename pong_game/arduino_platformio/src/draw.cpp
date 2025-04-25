@@ -135,6 +135,77 @@ void draw_multiplayer_screen(LGFX& tft) {
     tft.print(join);
 }
 
+void draw_waiting_screen(LGFX& tft, bool host_ready, bool guest_ready, String host_id) {
+    tft.clear(TFT_BLACK);
+
+    // Draw Host ID at top center
+    tft.setTextSize(2);
+    String host_id_label = "Host ID";
+    int host_id_label_x = (SCREEN_WIDTH - tft.textWidth(host_id_label)) / 2;
+    tft.setCursor(host_id_label_x, 30);
+    tft.setTextColor(TFT_WHITE, TFT_BLACK);
+    tft.print(host_id_label);
+    
+    // Draw the actual host ID value below the label
+    tft.setTextSize(3);
+    int host_id_x = (SCREEN_WIDTH - tft.textWidth(host_id)) / 2;
+    tft.setCursor(host_id_x, 55);
+    tft.setTextColor(TFT_YELLOW, TFT_BLACK);
+    tft.print(host_id);
+
+    // Host label and status - moved down
+    tft.setTextSize(2);
+    String host_label = "Host";
+    tft.setCursor(SCREEN_WIDTH / 4 - tft.textWidth(host_label) / 2, 110);
+    tft.setTextColor(TFT_WHITE);
+    tft.print(host_label);
+
+    String host_status = host_ready ? "READY" : "Waiting...";
+    tft.setTextColor(host_ready ? TFT_GREEN : TFT_LIGHTGREY);
+    tft.setCursor(SCREEN_WIDTH / 4 - tft.textWidth(host_status) / 2, 135);
+    tft.print(host_status);
+
+    // Guest label and status - moved down
+    String guest_label = "Guest";
+    tft.setCursor(3 * SCREEN_WIDTH / 4 - tft.textWidth(guest_label) / 2, 110);
+    tft.setTextColor(TFT_WHITE);
+    tft.print(guest_label);
+
+    String guest_status = guest_ready ? "READY" : "Waiting...";
+    tft.setTextColor(guest_ready ? TFT_GREEN : TFT_LIGHTGREY);
+    tft.setCursor(3 * SCREEN_WIDTH / 4 - tft.textWidth(guest_status) / 2, 135);
+    tft.print(guest_status);
+
+    // "Press A when ready" with red A button - moved down
+    int center_y = 190;
+    tft.setTextSize(2);
+
+    // "Press"
+    String press_text = "Press";
+    int press_x = (SCREEN_WIDTH / 2) - 80;
+    tft.setCursor(press_x, center_y);
+    tft.setTextColor(TFT_WHITE);
+    tft.print(press_text);
+
+    // Red "A" button (circle)
+    int circle_x = SCREEN_WIDTH / 2;
+    int circle_y = center_y + 8;
+    tft.fillCircle(circle_x, circle_y, 14, TFT_RED);
+
+    tft.setTextColor(TFT_WHITE);
+    tft.setTextSize(1);
+    tft.setCursor(circle_x - 4, circle_y - 4);
+    tft.print("A");
+
+    // "when ready"
+    String when_text = "when ready";
+    int when_x = (SCREEN_WIDTH / 2) + 30;
+    tft.setTextSize(2);
+    tft.setCursor(when_x, center_y);
+    tft.print(when_text);
+}
+
+
 
 /////////////// Button Logic ////////////////////////
 

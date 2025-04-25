@@ -1,11 +1,9 @@
 #include <BLEDevice.h>
-#include <BLEServer.h>
-#include <BLEUtils.h>
-#include <BLE2902.h>
-
+#include <SD.h>
 #include "pong.h"
 #include "main.hpp"
 #include "draw.hpp"
+#include "bluetooth.hpp"
 
 //Display
 static LGFX tft;
@@ -39,43 +37,62 @@ static unsigned long lastButtonPressTime = 0;
 static bool buttonAPressed = false;
 static bool buttonBPressed = false;
 static String code;
+static bool hosting = false;
+static int player_paddle = 1;
 
-
-// Bluetooth definitions
-#define SERVICE_UUID        "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
-#define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
-
-static bool isHost = true; // Starts as a host
-static String hostCode = "quest-"; //start of host code
-BLEAdvertisedDevice* myDevice;
-BLECharacteristic* pCharacteristic;
-BLEAdvertising *pAdvertising;
-
-void setupHost(){
-  //Create random host code
-  hostCode += String(random(100000, 999999));
-
-  BLEDevice::init(hostCode.c_str());
-  BLEServer *pServer = BLEDevice::createServer();
-  BLEService* pService = pServer->createService(SERVICE_UUID);
-  pCharacteristic = pService->createCharacteristic(
-                    CHARACTERISTIC_UUID,
-                    BLECharacteristic::PROPERTY_READ |
-                    BLECharacteristic::PROPERTY_WRITE |
-                    BLECharacteristic::PROPERTY_NOTIFY
-                  );
-  pCharacteristic->addDescriptor(new BLE2902());
-  pService->start();
-  pAdvertising = BLEDevice::getAdvertising();
-  pAdvertising->start();
+// Callback functions for Bluetooth data
+void onPaddleUpdate(int player, int y) {
+  // Update the appropriate paddle
+  if (player >= 0 && player < 2) {
+    paddles[player].y = y;
+    // Make sure y is within the required range
+    if (paddles[player].y < 0) {
+      paddles[player].y = 0;
+    } else if (paddles[player].y > SCREEN_HEIGHT - PADDLE_HEIGHT) {
+      paddles[player].y = SCREEN_HEIGHT - PADDLE_HEIGHT;
+    }
+    // Mark that the paddle has been modified
+    prev_paddles[player].paddle_mod = true;
+  }
 }
+
+void onBallUpdate(double x, double y, double speedX, double speedY) {
+  // Update the ball position and speed
+  prev_ball.x = ball.x;
+  prev_ball.y = ball.y;
+  
+  ball.x = x;
+  ball.y = y;
+  ball.dx = speedX;
+  ball.dy = speedY;
+}
+
+void onScoreUpdate(int player) {
+  // Update the score for the appropriate player
+  if (player == 1) {
+    score0++;
+  } else if (player == 2) {
+    score1++;
+  }
+}
+
+static void A_button_send_ready();
+static void A_button_client_connection_input();
 
 void setup() {
   Serial.begin(115200);
 
-  //Initialize rnadom number generator
-  randomSeed(analogRead(0));
+  //Initialize random number generator
+  randomSeed(esp_random());
 
+  //Initialize Bluetooth
+  initializeBluetooth();
+  
+  // Register callback functions for receiving data
+  registerPaddleUpdateCallback(onPaddleUpdate);
+  registerBallUpdateCallback(onBallUpdate);
+  registerScoreUpdateCallback(onScoreUpdate);
+  
   //Each device initially setup as a host
   setupHost();
 
@@ -149,6 +166,8 @@ void loop() {
           current_state = STATE_HOME;
           first_home_draw = true;  
           score0 = score1 = 0;
+          resetReadyStatus();
+          disableMultiplayer();
           game_initialized = false;
         }
         else if(current_state == STATE_MULTIPLAYER){
@@ -172,21 +191,20 @@ void loop() {
           draw_multiplayer_screen(tft);
         }
         else if (current_state == STATE_MULTIPLAYER) {
-          current_state = STATE_BLUETOOTH_START;
-          tft.fillScreen(TFT_BLUE); // Set the blue screen only if transitioning to Bluetooth start
+          current_state = STATE_BLUETOOTH_WAIT;
+          draw_waiting_screen(tft, isHostReady(), isClientReady(), getHostCode());
+          hosting = true;
+        }
+        else if(current_state == STATE_BLUETOOTH_WAIT){
+          A_button_send_ready();
         }
         else if (current_state == STATE_BLUETOOTH_CLIENT){
-          int button = draw_button_pressed(tft, pos_x, pos_y);
-          if(button == -2){
-            code.remove(code.length() - 1);
-          }else if(button == -1){
-            // do something with the enter
-          }
-          else{
-            if(code.length() < 6){
-              code += String(button);
-            }
-          }
+          A_button_client_connection_input();
+        }
+        else if(current_state == STATE_GAMEOVER){
+          current_state = STATE_PLAYING; 
+          score0 = score1 = 0;
+          game_initialized = false;
         }
       }
       // Set buttonAPressed flag to true to indicate button is pressed
@@ -225,43 +243,72 @@ void loop() {
 
       //Moves the paddle up
       if (digitalRead(UP) == LOW) {
-          updatePaddle(true, &paddles[1]);
+          updatePaddle(true, &paddles[player_paddle]);
           // Will make sure the previous position of 
           // the paddle is overwritten
-          if(paddles[1].y != prev_paddles[1].y){
-            prev_paddles[1].paddle_mod = true;
+          if(paddles[player_paddle].y != prev_paddles[player_paddle].y){
+            prev_paddles[player_paddle].paddle_mod = true;
           }
       } // Moves the paddle down
       else if (digitalRead(DOWN) == LOW) {
-          updatePaddle(false, &paddles[1]);
+          updatePaddle(false, &paddles[player_paddle]);
           // Will make sure the previous position of 
           // the paddle is overwritten
-          if(paddles[1].y != prev_paddles[1].y){
-            prev_paddles[1].paddle_mod = true;
+          if(paddles[player_paddle].y != prev_paddles[player_paddle].y){
+            prev_paddles[player_paddle].paddle_mod = true;
           }
       }
 
-      //Ai paddle logic
-      ai_paddle(&paddles[0], &ball, level);
-      if(paddles[0].y != prev_paddles[0].y){
-        prev_paddles[0].paddle_mod = true;
-      }
+      if(isMultiplayerEnabled()){
+        if(prev_paddles[player_paddle].paddle_mod == true){
+          sendPaddlePosition(player_paddle, paddles[player_paddle].y);
+          prev_paddles[player_paddle].paddle_mod = false;
+        }
 
-      //Updates the position of the ball
-      updateBall(&ball, paddles, &level, &score0, &score1);
+        // If host, also need to send ball updates (only host controls the ball logic)
+        if(isInHostMode()){
+          // Update ball position
+          updateBall(&ball, paddles, &level, &score0, &score1);
+
+          // Send ball position to client
+          sendBallPosition(ball.x, ball.y, ball.dx, ball.dy);
+          
+          // Check if any player scored and send the score update
+          if (ball.x <= 0) {
+            // Player 2 scored
+            sendScore(2);
+          } else if (ball.x >= SCREEN_WIDTH - ball.w) {
+            // Player 1 scored
+            sendScore(1);
+          }
+        }
+      } else {
+        // Single player mode
+        //AI paddle logic
+        ai_paddle(&paddles[0], &ball, level);
+        if(paddles[0].y != prev_paddles[0].y){
+          prev_paddles[0].paddle_mod = true;
+        }
+        
+        // Update ball position
+        updateBall(&ball, paddles, &level, &score0, &score1);
+      }
 
       //Checks if the game has been won by either player and
       // modified the gamestate accordingly, otherwise
       // draws all game assets
-      if(score0 >= GAME_WON || score1 >= GAME_WON)
-      {
+      if(score0 >= GAME_WON || score1 >= GAME_WON) {
           current_state = STATE_GAMEOVER;
           tft.fillScreen(TFT_BLACK);
-      }else{
+      } else {
         drawPaddle(tft, paddles[0], &prev_paddles[0]);
         drawPaddle(tft, paddles[1], &prev_paddles[1]);
         drawBall(tft, &ball, &prev_ball);
         drawScore(tft, score0, score1);
+        
+        // Reset paddle modification flags
+        prev_paddles[0].paddle_mod = false;
+        prev_paddles[1].paddle_mod = false;
       }
     }
     //Draws the endscreen/gameover screen
@@ -292,6 +339,81 @@ void loop() {
       prev_pos_x = pos_x;
       prev_pos_y = pos_y;
       draw_numbers(tft, code);
+    }
+    else if(current_state == STATE_BLUETOOTH_WAIT){
+      if(isHostReady() && isClientReady()){
+        draw_waiting_screen(tft, isHostReady(), isClientReady(), getHostCode());
+        delay(1000);
+        current_state = STATE_PLAYING;
+        first_home_draw = true;
+        resetReadyStatus();
+        enableMultiplayer();
+
+        if(!isInHostMode()){
+          player_paddle = 0;
+        }
+      }
+    }
+    
+    if(hosting){
+      if (!isDeviceConnected()) {
+        if(isInHostMode()){
+          startAdvertising();
+        }else{
+          connectToHost();
+        }
+      }
+    }
+  }
+}
+
+//////////// A Button ////////////////////////
+
+//Used to notify host and client if either are ready to connect
+static void A_button_send_ready()
+{
+  sendReadyStatus(isInHostMode());
+  draw_waiting_screen(tft, isHostReady(), isClientReady(), getHostCode());
+}
+
+//Logic for button presses when connecting to host and logic to connect to host
+static void A_button_client_connection_input()
+{
+  int button = draw_button_pressed(tft, pos_x, pos_y);
+  if(button == -2){
+    code.remove(code.length() - 1);
+  }
+  else if(button == -1){
+    if (code.length() == 6) {
+      Serial.println("Attempting to connect to host with code: quest-" + code);
+      
+      setConnectionCode(code);
+      setHostMode(false);
+      stopAdvertising();
+      startScan();
+  
+      unsigned long startTime = millis();
+      bool connected = false;
+      while (millis() - startTime < 6000 && !connected) {
+        connected = connectToHost();
+        delay(100);  // Wait for scan results
+      }
+  
+      if (isDeviceConnected()) {
+        // Transition to multiplayer gameplay or waiting state
+        current_state = STATE_BLUETOOTH_WAIT; // Or some other multiplayer state
+      } else {
+        Serial.println("Host not found or connection failed.");
+        tft.fillScreen(TFT_WHITE);
+        tft.setCursor(20, 20);
+        tft.setTextColor(TFT_BLACK);
+        tft.print("Failed to connect");
+      }
+    }
+  }
+  else{
+    if(code.length() < 6){
+      code += String(button);
     }
   }
 }

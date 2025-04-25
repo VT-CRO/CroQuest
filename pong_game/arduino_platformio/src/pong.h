@@ -9,6 +9,10 @@ extern "C" {
 #define SCREEN_HEIGHT 240
 #define SCREEN_WIDTH 320
 
+// Paddle dimensions
+#define PADDLE_HEIGHT 60
+#define PADDLE_WIDTH 10
+
 // The number of points to win the game
 #define GAME_WON 3
 
@@ -18,7 +22,7 @@ typedef enum {
     STATE_GAMEOVER,
     STATE_MULTIPLAYER,
     STATE_BLUETOOTH_CLIENT,
-    STATE_BLUETOOTH_START,
+    STATE_BLUETOOTH_WAIT,
 } GameState;
 
 // Pong paddles

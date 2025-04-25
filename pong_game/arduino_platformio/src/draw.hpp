@@ -16,3 +16,4 @@ void draw_button_hover(LGFX& tft, int col, int row);
 int draw_button_pressed(LGFX& tft, int col, int row);
 void draw_button_default(LGFX& tft, int col, int row);
 void draw_numbers(LGFX& tft, String code);
+void draw_waiting_screen(LGFX& tft, bool host_ready, bool guest_ready, String host_id);
