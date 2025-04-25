@@ -13,12 +13,13 @@
 #define TFT_DC 2
 
 // SD card CS pin
-#define SD_MISO 37
-#define SD_SCK 36
-#define SD_MOSI 35
+// #define SD_MISO 37
+// #define SD_SCK 36
+// #define SD_MOSI 35
 #define SD_CS 8
-
-SPIClass sdSPI(FSPI);  // Use FSPI (VSPI is 2nd SPI, FSPI is primary on ESP32-S3)
+#define SD_MISO TFT_MISO
+#define SD_SCK  TFT_SCK
+#define SD_MOSI TFT_MOSI
 
 /**************************************************************************************/
 // Creates communication bridge in between the library and the screen
@@ -75,7 +76,10 @@ public:
 };
 
 LGFX tft;
+
 /**************************************************************************************/
+
+SPIClass sdSPI(FSPI);  // Use FSPI (VSPI is 2nd SPI, FSPI is primary on ESP32-S3)
 
 // Format to print messages on the screen using LovyanGFX
 void printMessage(const char* message) {
@@ -130,15 +134,34 @@ void setup() {
 
   // Initialize SPI and SD card (SCK = 12, MISO = 13, MOSI = 11)
   sdSPI.begin(SD_SCK, SD_MISO, SD_MOSI, SD_CS);  // SCK, MISO, MOSI, CS
+  Serial.println("SPI started I guess");
   printMessage("SPI started.");    
   delay(3600);
 
+  printMessage("changing pinModes");
+  Serial.println("Changing PinModes");
+  pinMode(SD_CS, OUTPUT);
+  digitalWrite(TFT_CS, HIGH);    // Ensure TFT is deselected
+  digitalWrite(SD_CS, LOW);      // Select SD card briefly
+  delay(10);
+  digitalWrite(SD_CS, HIGH);     // Deselect before init
+  delay(10);
+
+
+  Serial.println("Attempting to detect SD card...");
   if (!SD.begin(SD_CS, sdSPI)) {
     printMessage("SD card failed!");
     Serial.println("SD card init failed!");
     while (true) delay(0);
   }
-  printMessage("SD card initialized.");
+
+  printMessage("GOT IT!! SD card initialized.");
+  Serial.println("You got it?");
+
+  sdcard_type_t cardType = SD.cardType();
+  Serial.print("Card type: ");
+  Serial.println(cardType);
+
 
   // Open the root directory
   File root = SD.open("/");
@@ -146,7 +169,7 @@ void setup() {
     printMessage("Failed to open root directory!");
     return;
   }
-
+  Serial.println("I guess is reading directories");
   printMessage("Reading directory...");
 
   printDirectory(root);
@@ -154,6 +177,7 @@ void setup() {
 
 
 void loop() {}
+
 
 
 
