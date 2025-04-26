@@ -4,7 +4,7 @@
 #include <vector>
 
 // When a host code is typed in, it begins advertising itself with quest-guest-xxx-yyyyyy.
-void                btStartAdvertising(uint8_t host_code); 
+void                btStartAdvertising(uint16_t host_code); 
 void                btStopAdvertising(); 
 
 // Returns if the device is connected to a host.
