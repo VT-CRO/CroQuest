@@ -6,8 +6,8 @@ extern "C" {
 
 // Screen dimensions subject to change
 // 250 200
-#define SCREEN_HEIGHT 240
-#define SCREEN_WIDTH 320
+#define SCREEN_HEIGHT 320
+#define SCREEN_WIDTH 480
 
 // Paddle dimensions
 #define PADDLE_HEIGHT 40
@@ -29,6 +29,7 @@ typedef enum {
 typedef struct {
     int x, y;  /* (x, y) position of paddle */
     int w, h;  /* width and height of paddle */
+    bool paddle_mod;
 } Paddle;
 
 // Pong ball
