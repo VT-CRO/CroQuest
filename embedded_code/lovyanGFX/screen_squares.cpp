@@ -1,9 +1,9 @@
 #include <LovyanGFX.hpp>
 
-#define TFT_MISO 13 // 12
+#define TFT_MISO 19 // 13 // 12
 #define TFT_LED 21
-#define TFT_SCK 12 // 14
-#define TFT_MOSI 11 // 13
+#define TFT_SCK 18 // 12 // 14
+#define TFT_MOSI 23 //11 // 13
 #define TFT_RESET 4
 #define TFT_CS 15
 #define TFT_DC 2
