@@ -5,6 +5,7 @@
 #include <Arduino.h>
 #include <SPI.h>
 #include <TFT_eSPI.h>
+#include "tictactoe.hpp"
 
 /* ---------- globals ------------------------------------------ */
 TFT_eSPI    tft;                          // 8-bit parallel (ILI9486)
@@ -35,8 +36,13 @@ uint32_t lastRender = 0;                // ms
 uint32_t fpsTimer   = 0;
 uint16_t frames     = 0, fps = 0;
 
+std::string currentGame = "CroQuest.tictactoe";
+
 void loop()
 {
+    // if (currentGame.compare("CroQuest.tictactoe") == 0) {
+        tictactoe(&tft);   
+    // }
 
     uint32_t now = millis();
     if (now - lastRender >= 33) {       // ~30 fps cap

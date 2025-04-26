@@ -133,7 +133,6 @@
  /Users/marcogonzalez/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/esp_hw_support/include/soc/esp32/spiram.h \
  /Users/marcogonzalez/.platformio/packages/framework-arduinoespressif32/cores/esp32/io_pin_remap.h \
  /Users/marcogonzalez/.platformio/packages/framework-arduinoespressif32/cores/esp32/Arduino.h \
- src/game.cpp \
  /Users/marcogonzalez/.platformio/packages/framework-arduinoespressif32/libraries/SPI/src/SPI.h \
  /Users/marcogonzalez/.platformio/packages/framework-arduinoespressif32/cores/esp32/esp32-hal-spi.h \
  .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.h \
@@ -231,4 +230,4 @@
  .pio/libdeps/esp32dev/TFT_eSPI/Fonts/Custom/Yellowtail_32.h \
  .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Smooth_font.h \
  .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Button.h \
- .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.h
+ .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.h src/game.cpp
