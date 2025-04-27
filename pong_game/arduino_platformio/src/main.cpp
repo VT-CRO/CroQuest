@@ -43,6 +43,7 @@ static int player_paddle = 1;
 static int waiting_select = 1;
 static int multiplayer_select = 1;
 static int client_select = 1;
+static int prev_score0, prev_score1 = 0;
 
 // Callback functions for Bluetooth data
 void onPaddleUpdate(int player, int y) {
@@ -259,6 +260,8 @@ void loop() {
           // and screen background is filled
           game_initialized = true;
           tft.fillScreen(TFT_BLACK);
+          prev_score0 = 0;
+          prev_score1 = 0;
       }
 
       // Moves the paddle up
@@ -350,6 +353,12 @@ void loop() {
           prev_paddles[1].y = paddles[1].y;
         }
         eraseBall(tft, &prev_ball);
+
+        if(prev_score0 != score0 || prev_score1 != score1){
+          erase_score(tft);
+          prev_score0 = score0;
+          prev_score1 = score1;
+        }
 
         drawPaddle(tft, paddles[0]);
         drawPaddle(tft, paddles[1]);

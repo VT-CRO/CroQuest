@@ -24,3 +24,4 @@ void draw_waiting_screen(TFT_eSPI& tft, bool host_ready, bool guest_ready, Strin
 void draw_back_waiting(TFT_eSPI& tft, int waiting_select);
 void draw_back_multiplayer(TFT_eSPI& tft, int multiplayer_select);
 void draw_client_input_back(TFT_eSPI& tft, int client_select);
+void erase_score(TFT_eSPI& tft);

@@ -70,6 +70,18 @@ void drawScore(TFT_eSPI& tft, int score0, int score1) {  // Changed from LGFX_Sp
     tft.print(scoreText2);
 }
 
+void erase_score(TFT_eSPI& tft) {
+    tft.setTextSize(2); // Make sure the same text size is set
+    int textHeight = tft.fontHeight();
+    int y = 5; // Same Y position you use for scores
+
+    // Clear left half where P1 score is
+    tft.fillRect(0, y, SCREEN_WIDTH / 2, textHeight, TFT_BLACK);
+
+    // Clear right half where P2 score is
+    tft.fillRect(SCREEN_WIDTH / 2, y, SCREEN_WIDTH / 2, textHeight, TFT_BLACK);
+}
+
 //Function to draw homescreen bitmap onto the screen
 void draw_homescreen(TFT_eSPI& tft, bool *first_home_draw)
 {
