@@ -1,18 +1,36 @@
 # Embedded Code
 
-This will be the documentation for any code needed for the ESP32-S3
+This repository contains all the necessary code for hardware programming on the ESP32.
+
+To simplify library management and avoid configuration issues, all development is consolidated within a single PlatformIO project directory rather than creating separate projects for each module.
+
+The full `ESP32` project folder is included, with new implementation files organized under the `Files` subdirectory. Inside Files, the `hardware/` folder contains low-level code specific to the CroQuest hardware (e.g., Bluetooth, SD card), while the `software/` folder includes higher-level features like game logic, UI menus, and more.
 
 
-04/14/2025 (World Quantum Day): I am working on implementing a test game into the SD card, and adding a way that the game can be accessed from the menu. (Everything is in the "menu" directory).  
+Tree Structure of Directories 
+
+```
+embedded_code 
+├── README.md
+└── ESP32
+    ├── Files
+    │   ├── hardware
+    │   │   ├── Bluetooth_Master.cpp
+    │   │   ├── Bluetooth_Slave.cpp
+    │   │   └── SD_working.cpp
+    │   └── software
+    │       └── menu.cpp
+    ├── include
+    │   └── README
+    ├── lib
+    │   └── README
+    ├── platformio.ini
+    ├── src
+    │   └── main.cpp
+    └── test
+        └── README
+
+9 directories, 10 files
 
 
-04/12/2025 Last updates, we have decided to change to "LovyanGFX" since it renders faster. 
-
-https://github.com/lovyan03/LovyanGFX/tree/master
-
-(I will transfer the previous code to the new library for testing purposes)
-
-
-## Test file with new library is: screen_love.cpp. Use that one for reference.
-
-
+```

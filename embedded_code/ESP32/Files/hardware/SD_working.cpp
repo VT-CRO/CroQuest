@@ -343,4 +343,3 @@ void printDirectory(File dir, int numTabs) {
       break; // Avoid drawing off screen
   }
 }
-

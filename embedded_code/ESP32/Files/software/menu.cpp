@@ -3,47 +3,46 @@
 // Custom LGFX class for ILI9341 on ESP32
 class LGFX : public lgfx::LGFX_Device {
   lgfx::Panel_ILI9341 _panel_instance;
-  lgfx::Bus_SPI       _bus_instance;
+  lgfx::Bus_SPI _bus_instance;
 
 public:
   LGFX(void) {
     auto cfg = _bus_instance.config();
 
-    cfg.spi_host   = SPI3_HOST;
-    cfg.spi_mode   = 0;
+    cfg.spi_host = SPI3_HOST;
+    cfg.spi_mode = 0;
     cfg.freq_write = 40000000;
-    cfg.freq_read  = 16000000;
-    cfg.spi_3wire  = false;
-    cfg.use_lock   = true;
+    cfg.freq_read = 16000000;
+    cfg.spi_3wire = false;
+    cfg.use_lock = true;
     cfg.dma_channel = 1;
 
-    cfg.pin_sclk = 14;   // SCK
-    cfg.pin_mosi = 13;   // MOSI
-    cfg.pin_miso = 12;   // MISO
-    cfg.pin_dc   = 2;
-
+    cfg.pin_sclk = 14; // SCK
+    cfg.pin_mosi = 13; // MOSI
+    cfg.pin_miso = 12; // MISO
+    cfg.pin_dc = 2;
 
     _bus_instance.config(cfg);
     _panel_instance.setBus(&_bus_instance);
 
     auto panel_cfg = _panel_instance.config();
-    panel_cfg.pin_cs  = 15;
+    panel_cfg.pin_cs = 15;
     panel_cfg.pin_rst = 4;
 
-    panel_cfg.memory_width  = 240;
+    panel_cfg.memory_width = 240;
     panel_cfg.memory_height = 320;
-    panel_cfg.panel_width   = 240;
-    panel_cfg.panel_height  = 320;
-    panel_cfg.offset_x      = 0;
-    panel_cfg.offset_y      = 0;
+    panel_cfg.panel_width = 240;
+    panel_cfg.panel_height = 320;
+    panel_cfg.offset_x = 0;
+    panel_cfg.offset_y = 0;
     panel_cfg.offset_rotation = 0;
     panel_cfg.dummy_read_pixel = 8;
     panel_cfg.dummy_read_bits = 1;
-    panel_cfg.readable      = true;
-    panel_cfg.invert        = false;
-    panel_cfg.rgb_order     = false;
-    panel_cfg.dlen_16bit    = false;
-    panel_cfg.bus_shared    = true;
+    panel_cfg.readable = true;
+    panel_cfg.invert = false;
+    panel_cfg.rgb_order = false;
+    panel_cfg.dlen_16bit = false;
+    panel_cfg.bus_shared = true;
 
     _panel_instance.config(panel_cfg);
     setPanel(&_panel_instance);
@@ -52,12 +51,11 @@ public:
 
 LGFX tft;
 
-#define TFT_LED  21
+#define TFT_LED 21
 #define BUTTON_RIGHT 36
-#define BUTTON_LEFT  35
+#define BUTTON_LEFT 35
 
-#define BUTTON_SELECT 34  // Choose the actual GPIO pin that will be used
-
+#define BUTTON_SELECT 34 // Choose the actual GPIO pin that will be used
 
 const int screenWidth = 320;
 const int screenHeight = 240;
@@ -70,11 +68,9 @@ const int padding = 10;
 const int cornerRadius = 12;
 
 // Games
-const char* gameNames[gridRows][gridCols] = {
-  { "Snake", "Pong", "Mario" },
-  { "Tetris", "Breakout", "Flappy" },
-  { "Asteroids", "Racer", "Shooter" }
-};
+const char *gameNames[gridRows][gridCols] = {{"Snake", "Pong", "Mario"},
+                                             {"Tetris", "Breakout", "Flappy"},
+                                             {"Asteroids", "Racer", "Shooter"}};
 
 int selectedRow = 0;
 int selectedCol = 0;
@@ -92,7 +88,6 @@ void setup() {
   tft.begin();
   tft.setRotation(1);
   tft.fillScreen(TFT_BLACK);
-
 
   drawDecoratedGrid();
 }
@@ -114,20 +109,23 @@ void drawDecoratedGrid() {
       int squareHeight = cellHeight - 2 * padding;
 
       uint16_t fillColor = TFT_BLUE;
-      uint16_t borderColor = (row == selectedRow && col == selectedCol) ? TFT_RED : TFT_WHITE;
+      uint16_t borderColor =
+          (row == selectedRow && col == selectedCol) ? TFT_RED : TFT_WHITE;
 
-      tft.fillRoundRect(x + padding, y + padding, squareWidth, squareHeight, cornerRadius, fillColor);
+      tft.fillRoundRect(x + padding, y + padding, squareWidth, squareHeight,
+                        cornerRadius, fillColor);
 
       int thickness = (row == selectedRow && col == selectedCol) ? 3 : 1;
       for (int i = 0; i < thickness; i++) {
-        tft.drawRoundRect(x + padding - i, y + padding - i, squareWidth + 2 * i, squareHeight + 2 * i, cornerRadius + i, borderColor);
+        tft.drawRoundRect(x + padding - i, y + padding - i, squareWidth + 2 * i,
+                          squareHeight + 2 * i, cornerRadius + i, borderColor);
       }
-      
+
       tft.setTextColor(TFT_WHITE);
       tft.setTextDatum(MC_DATUM);
       tft.setFont(&fonts::Font2);
-      tft.drawString(gameNames[row][col], x + cellWidth / 2, y + cellHeight / 2);
-    
+      tft.drawString(gameNames[row][col], x + cellWidth / 2,
+                     y + cellHeight / 2);
     }
   }
 }
@@ -186,13 +184,15 @@ void drawSingleSquare(int row, int col, bool isSelected) {
   int squareHeight = cellHeight - 2 * padding;
 
   for (int i = 0; i < 3; i++) {
-    tft.drawRoundRect(x + padding - i, y + padding - i, squareWidth + 2 * i, squareHeight + 2 * i, cornerRadius + i, TFT_BLUE);
+    tft.drawRoundRect(x + padding - i, y + padding - i, squareWidth + 2 * i,
+                      squareHeight + 2 * i, cornerRadius + i, TFT_BLUE);
   }
 
   int thickness = isSelected ? 3 : 1;
   uint16_t borderColor = isSelected ? TFT_RED : TFT_WHITE;
   for (int i = 0; i < thickness; i++) {
-    tft.drawRoundRect(x + padding - i, y + padding - i, squareWidth + 2 * i, squareHeight + 2 * i, cornerRadius + i, borderColor);
+    tft.drawRoundRect(x + padding - i, y + padding - i, squareWidth + 2 * i,
+                      squareHeight + 2 * i, cornerRadius + i, borderColor);
   }
 }
 
@@ -201,7 +201,7 @@ void handleGameSelection() {
   bool selectPressed = digitalRead(BUTTON_SELECT) == LOW;
 
   if (selectPressed && !selectLast) {
-    const char* selectedGame = gameNames[selectedRow][selectedCol];
+    const char *selectedGame = gameNames[selectedRow][selectedCol];
     Serial.print("Launching: ");
     Serial.println(selectedGame);
 
@@ -219,5 +219,3 @@ void handleGameSelection() {
 
   selectLast = selectPressed;
 }
-
-
