@@ -6,6 +6,8 @@ JpegDrawing drawing(tft);
 const char* BOARD_PATH = "/tic_tac_toe_assets/board.jpg";
 const char* X_PATH = "/tic_tac_toe_assets/x.jpg";
 const char* O_PATH = "/tic_tac_toe_assets/o.jpg";
+const char* DIS_O_PATH = "/tic_tac_toe_assets/disappearing_o.jpg";
+const char* DIS_X_PATH = "/tic_tac_toe_assets/disappearing_x.jpg";
 
 #define SCREEN_WIDTH 480
 #define SCREEN_HEIGHT 320
@@ -213,6 +215,49 @@ void loop() {
   }
 }
 
+void checkWinner() {
+  const int wins[8][3] = {
+    {0, 1, 2}, {3, 4, 5}, {6, 7, 8}, // rows
+    {0, 3, 6}, {1, 4, 7}, {2, 5, 8}, // cols
+    {0, 4, 8}, {2, 4, 6}             // diagonals
+  };
+
+  for (int i = 0; i < 8; i++) {
+    String a = board[wins[i][0]];
+    String b = board[wins[i][1]];
+    String c = board[wins[i][2]];
+
+    if (a != "**" && a == b && b == c) {
+      winner = a.charAt(0);
+      winCombo[0] = wins[i][0];
+      winCombo[1] = wins[i][1];
+      winCombo[2] = wins[i][2];
+      winTime = millis();
+      roundEnded = true;
+
+      if (winner == 'X') xWins++;
+      else if (winner == 'O') oWins++;
+
+      return;
+    }
+  }
+
+  // Check draw
+  bool full = true;
+  for (int i = 0; i < 9; i++) {
+    if (board[i] == "**") {
+      full = false;
+      break;
+    }
+  }
+  if (full) {
+    winner = 'D';
+    winTime = millis();
+    roundEnded = true;
+  }
+}
+
+///////// DRAWING //////////////////
 
 void drawEndScreen() {
   
@@ -294,50 +339,6 @@ void drawHomeScreen() {
   tft.drawString("Best of Three!", SCREEN_WIDTH / 2, 290);
 }
 
-void checkWinner() {
-  const int wins[8][3] = {
-    {0, 1, 2}, {3, 4, 5}, {6, 7, 8}, // rows
-    {0, 3, 6}, {1, 4, 7}, {2, 5, 8}, // cols
-    {0, 4, 8}, {2, 4, 6}             // diagonals
-  };
-
-  for (int i = 0; i < 8; i++) {
-    String a = board[wins[i][0]];
-    String b = board[wins[i][1]];
-    String c = board[wins[i][2]];
-
-    if (a != "**" && a == b && b == c) {
-      winner = a.charAt(0);
-      winCombo[0] = wins[i][0];
-      winCombo[1] = wins[i][1];
-      winCombo[2] = wins[i][2];
-      winTime = millis();
-      roundEnded = true;
-
-      if (winner == 'X') xWins++;
-      else if (winner == 'O') oWins++;
-
-      return;
-    }
-  }
-
-  // Check draw
-  bool full = true;
-  for (int i = 0; i < 9; i++) {
-    if (board[i] == "**") {
-      full = false;
-      break;
-    }
-  }
-  if (full) {
-    winner = 'D';
-    winTime = millis();
-    roundEnded = true;
-  }
-}
-
-///////// DRAWING //////////////////
-
 void drawAllPlaying(){
   drawScoreboard();
   drawGrid();
@@ -358,9 +359,17 @@ void drawGrid() {
       int y = row * cell_size + cell_size/3 - 3;
 
       if(board[i] == "X"){
-        drawing.drawSdJpeg(X_PATH, x, y);
+        if(moveCount >= 5 && moveQueue[0].index == i){
+          drawing.drawSdJpeg(DIS_X_PATH, x, y);
+        }else{
+          drawing.drawSdJpeg(X_PATH, x, y);
+        }
       }else{
-        drawing.drawSdJpeg(O_PATH, x, y);
+        if(moveCount >= 5 && moveQueue[0].index == i){
+          drawing.drawSdJpeg(DIS_O_PATH, x, y);
+        }else{
+          drawing.drawSdJpeg(O_PATH, x, y);
+        }
       }
     }
   }
