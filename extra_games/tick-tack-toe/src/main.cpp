@@ -16,6 +16,7 @@ const char* O_PATH = "/tic_tac_toe_assets/o.jpg";
 #define BTN_LEFT   36
 #define BTN_RIGHT  39
 #define BTN_SELECT 21
+#define SD_CS 5
 
 void drawScoreboard();
 void drawWinnerMessage();
@@ -24,14 +25,16 @@ void checkWinner();
 void clearCursor(int index);
 void highlightCursor(int index);
 void drawGrid();
-void drawAll();
+void drawAllPlaying();
+void drawEndScreen();
+void drawHomeScreen();
 
 String board[9] = { "**", "**", "**", "**", "**", "**", "**", "**", "**" };
 char currentPlayer = 'X';
 char winner = 'N';  // 'X', 'O', 'D' (draw), or 'N' (none)
 int winCombo[3] = {-1, -1, -1};  // indices of the winning 3 cells
 unsigned long winTime = 0;
-bool gameEnded = false;
+bool roundEnded = false;
 
 // Cursor position (0–8)
 int cursorIndex = 0;
@@ -48,16 +51,31 @@ struct Move {
 Move moveQueue[6];  // FIFO queue of last 6 moves
 int moveCount = 0;  // total moves placed
 
+//Player score
 int xWins = 0;
 int oWins = 0;
+
+//Background orange color
+uint16_t orange_color = tft.color565(0xFF, 0x70, 0x00);
+
+static bool buttonPreviouslyPressed = false;
+
+//Gamestate
+typedef enum state{ 
+            HOMESCREEN, 
+            MULTIPLAYER, 
+            SINGLE_PLAYER,
+            GAMEOVER_SCREEN,
+          }State;
+
+State game_state = HOMESCREEN;
 
 void setup() {
   // Initialize display
   tft.init();
   tft.setRotation(1);
 
-  uint16_t color = tft.color565(0xFF, 0x70, 0x00);
-  tft.fillScreen(color);
+  tft.fillScreen(orange_color);
 
   // Get screen dimensions dynamically
   screen_width = tft.width();    // e.g., 240 or 320
@@ -70,7 +88,7 @@ void setup() {
   pinMode(BTN_RIGHT, INPUT_PULLUP);
   pinMode(BTN_SELECT, INPUT_PULLUP);
 
-  if (!SD.begin(5)) {
+  if (!SD.begin(SD_CS)) {
     Serial.println("Card Mount Failed");
     return;
   }
@@ -86,8 +104,7 @@ void setup() {
   x_start = (SCREEN_WIDTH - dim.width) / 2;
   y_start = (SCREEN_HEIGHT - dim.height) / 2;
 
-  // Draw initial screen
-  drawAll();
+  drawHomeScreen();
 }
 
 void loop() {
@@ -95,68 +112,186 @@ void loop() {
   static unsigned long lastMoveTime = 0;
   const unsigned long moveDelay = 200;
 
-  // Cursor Movement
-  if (!gameEnded && millis() - lastMoveTime > moveDelay) {
-    if (digitalRead(BTN_UP) == LOW && cursorIndex >= 3) {
-      cursorIndex -= 3;
-      lastMoveTime = millis();
-    } else if (digitalRead(BTN_DOWN) == LOW && cursorIndex <= 5) {
-      cursorIndex += 3;
-      lastMoveTime = millis();
-    } else if (digitalRead(BTN_LEFT) == LOW && cursorIndex % 3 != 0) {
-      cursorIndex -= 1;
-      lastMoveTime = millis();
-    } else if (digitalRead(BTN_RIGHT) == LOW && cursorIndex % 3 != 2) {
-      cursorIndex += 1;
+  if(game_state == HOMESCREEN){
+    if(millis() - lastMoveTime > moveDelay/2){
+      if(digitalRead(BTN_SELECT) == LOW){
+        game_state = SINGLE_PLAYER;
+        // Clear the screen with orange background
+        tft.fillScreen(orange_color);
+        // Draw initial screen
+        drawAllPlaying();
+      }
       lastMoveTime = millis();
     }
   }
-
-  // Piece Placement
-  static bool buttonPreviouslyPressed = false;
-  bool selectPressed = digitalRead(BTN_SELECT) == LOW;
-
-  if (!gameEnded && selectPressed && !buttonPreviouslyPressed && board[cursorIndex] == "**") {
-    if (moveCount >= 6) {
-      int oldIndex = moveQueue[0].index;
-      board[oldIndex] = "**";
-      for (int i = 1; i < 6; i++) moveQueue[i - 1] = moveQueue[i];
-      moveCount = 5;
+  else if(game_state == SINGLE_PLAYER){
+    if (!roundEnded && millis() - lastMoveTime > moveDelay) {
+      if (digitalRead(BTN_UP) == LOW && cursorIndex >= 3) {
+        cursorIndex -= 3;
+        lastMoveTime = millis();
+      } else if (digitalRead(BTN_DOWN) == LOW && cursorIndex <= 5) {
+        cursorIndex += 3;
+        lastMoveTime = millis();
+      } else if (digitalRead(BTN_LEFT) == LOW && cursorIndex % 3 != 0) {
+        cursorIndex -= 1;
+        lastMoveTime = millis();
+      } else if (digitalRead(BTN_RIGHT) == LOW && cursorIndex % 3 != 2) {
+        cursorIndex += 1;
+        lastMoveTime = millis();
+      }
     }
 
-    board[cursorIndex] = String(currentPlayer);
-    moveQueue[moveCount].index = cursorIndex;
-    moveQueue[moveCount].symbol = currentPlayer;
-    moveCount++;
+    // Piece Placement
+    bool selectPressed = digitalRead(BTN_SELECT) == LOW;
 
-    currentPlayer = (currentPlayer == 'X') ? 'O' : 'X';
-    checkWinner();
+    if (!roundEnded && selectPressed && !buttonPreviouslyPressed && board[cursorIndex] == "**") {
+      if (moveCount >= 6) {
+        int oldIndex = moveQueue[0].index;
+        board[oldIndex] = "**";
+        for (int i = 1; i < 6; i++) moveQueue[i - 1] = moveQueue[i];
+        moveCount = 5;
+      }
+
+      board[cursorIndex] = String(currentPlayer);
+      moveQueue[moveCount].index = cursorIndex;
+      moveQueue[moveCount].symbol = currentPlayer;
+      moveCount++;
+
+      currentPlayer = (currentPlayer == 'X') ? 'O' : 'X';
+      checkWinner();
+    }
+
+    buttonPreviouslyPressed = selectPressed;
+
+    // Redraw
+    if (cursorIndex != lastCursor || selectPressed) {
+      drawAllPlaying();
+      drawWinLine();
+      if (roundEnded) drawWinnerMessage();
+      lastCursor = cursorIndex;
+    }
+    // Auto Restart
+    if (roundEnded && millis() - winTime >= 5000 && xWins < 2 && oWins < 2) {
+      for (int i = 0; i < 9; i++) board[i] = "**";
+      currentPlayer = 'X';
+      cursorIndex = 0;
+      lastCursor = -1;
+      winner = 'N';
+      winCombo[0] = winCombo[1] = winCombo[2] = -1;
+      roundEnded = false;
+      moveCount = 0;
+      tft.fillScreen(orange_color);
+      drawAllPlaying();
+    }
+    else if(xWins >= 2 || oWins >= 2){
+      game_state = GAMEOVER_SCREEN;
+      for (int i = 0; i < 9; i++) board[i] = "**";
+      currentPlayer = 'X';
+      cursorIndex = 0;
+      lastCursor = -1;
+      winner = 'N';
+      winCombo[0] = winCombo[1] = winCombo[2] = -1;
+      roundEnded = false;
+      moveCount = 0;
+      // Clear the screen with orange background
+      tft.fillScreen(orange_color);
+    }
   }
+  else if(game_state == GAMEOVER_SCREEN){
+    drawEndScreen();
+    if(millis() - lastMoveTime > moveDelay){
+      if(digitalRead(BTN_SELECT) == LOW){
+        game_state = HOMESCREEN;
+        oWins = 0;
+        xWins = 0;
 
-  buttonPreviouslyPressed = selectPressed;
-
-  // Redraw
-  if (cursorIndex != lastCursor || selectPressed) {
-    drawAll();
-    drawWinLine();
-    if (gameEnded) drawWinnerMessage();
-    lastCursor = cursorIndex;
+        // Draw homescreen
+        drawHomeScreen();
+      }
+      lastMoveTime = millis();
+    }
   }
+}
 
-  // Auto Restart
-  if (gameEnded && millis() - winTime >= 5000) {
-    for (int i = 0; i < 9; i++) board[i] = "**";
-    currentPlayer = 'X';
-    cursorIndex = 0;
-    lastCursor = -1;
-    winner = 'N';
-    winCombo[0] = winCombo[1] = winCombo[2] = -1;
-    gameEnded = false;
-    moveCount = 0;
-    uint16_t color = tft.color565(0xFF, 0x70, 0x00);
-    tft.fillScreen(color);
-    drawAll();
+
+void drawEndScreen() {
+  
+  // Set text properties
+  tft.setTextDatum(MC_DATUM);
+  tft.setTextColor(TFT_WHITE);
+  tft.setTextSize(4);
+  
+  // Display winner
+  String winnerText = (xWins > oWins) ? "X WINS THE GAME!" : "O WINS THE GAME!";
+  tft.drawString(winnerText, SCREEN_WIDTH / 2, 80);
+  
+  // Display final score
+  tft.setTextSize(3);
+  tft.drawString("FINAL SCORE", SCREEN_WIDTH / 2, 130);
+  
+  // Draw score display
+  int scoreYPos = 180;
+  int xPos1 = SCREEN_WIDTH / 2 - 80;
+  int xPos2 = SCREEN_WIDTH / 2 + 80;
+  
+  // X score
+  tft.setTextSize(5);
+  tft.drawString("X", xPos1, scoreYPos);
+  tft.drawString(String(xWins), xPos1, scoreYPos + 50);
+  
+  // Divider
+  tft.drawString("-", SCREEN_WIDTH / 2, scoreYPos);
+  
+  // O score
+  tft.drawString("O", xPos2, scoreYPos);
+  tft.drawString(String(oWins), xPos2, scoreYPos + 50);
+  
+  // Instructions to continue
+  tft.setTextSize(2);
+  tft.drawString("Press SELECT to return to menu", SCREEN_WIDTH / 2, 280);
+  
+  // Draw trophy next to winner's symbol
+  if (xWins > oWins) {
+    // Draw small graphic for winner (could use a custom trophy JPG if available)
+    tft.fillTriangle(xPos1 - 40, scoreYPos, xPos1 - 60, scoreYPos + 20, xPos1 - 20, scoreYPos + 20, TFT_YELLOW);
+  } else {
+    // Draw small graphic for winner
+    tft.fillTriangle(xPos2 + 40, scoreYPos, xPos2 + 60, scoreYPos + 20, xPos2 + 20, scoreYPos + 20, TFT_YELLOW);
   }
+}
+
+
+void drawHomeScreen() {
+  // Clear the screen with orange background
+  tft.fillScreen(orange_color);
+  
+  // Set text properties for title
+  tft.setTextDatum(MC_DATUM);
+  tft.setTextColor(TFT_WHITE);
+  tft.setTextSize(4);
+  
+  // Draw game title
+  tft.drawString("TIC TAC TOE", SCREEN_WIDTH / 2, 60);
+  
+  // Draw tic-tac-toe grid manually in center
+  int gridSize = 90; // Total grid size
+  int cellSize = gridSize / 3;
+  int gridX = (SCREEN_WIDTH - gridSize) / 2;
+  int gridY = 50;
+  
+  // Draw the grid lines with thickness of 5 pixels
+  // Vertical lines
+  tft.fillRect(gridX + cellSize - 2, gridY + 50, 5, gridSize, TFT_WHITE);
+  tft.fillRect(gridX + 2*cellSize - 2, gridY + 50, 5, gridSize, TFT_WHITE);
+  
+  // Horizontal lines
+  tft.fillRect(gridX, gridY + cellSize - 2 + 50, gridSize, 5, TFT_WHITE);
+  tft.fillRect(gridX, gridY + 2*cellSize - 2 + 50, gridSize, 5, TFT_WHITE);
+  
+  // Display instructions
+  tft.setTextSize(2);
+  tft.drawString("Press SELECT to start", SCREEN_WIDTH / 2, 260);
+  tft.drawString("Best of Three!", SCREEN_WIDTH / 2, 290);
 }
 
 void checkWinner() {
@@ -177,7 +312,7 @@ void checkWinner() {
       winCombo[1] = wins[i][1];
       winCombo[2] = wins[i][2];
       winTime = millis();
-      gameEnded = true;
+      roundEnded = true;
 
       if (winner == 'X') xWins++;
       else if (winner == 'O') oWins++;
@@ -197,13 +332,13 @@ void checkWinner() {
   if (full) {
     winner = 'D';
     winTime = millis();
-    gameEnded = true;
+    roundEnded = true;
   }
 }
 
 ///////// DRAWING //////////////////
 
-void drawAll(){
+void drawAllPlaying(){
   drawScoreboard();
   drawGrid();
   drawing.pushSprite();
@@ -297,7 +432,6 @@ void drawWinnerMessage() {
 }
 
 void drawScoreboard() {
-  uint16_t bgColor = tft.color565(0xFF, 0x70, 0x00);
   int centerY = tft.height() / 2;
   int padding = 20;
 
@@ -312,7 +446,7 @@ void drawScoreboard() {
   int scoreOffset = 32;         // Distance from underline to score
 
   // === X Side ===
-  tft.setTextColor(TFT_WHITE, bgColor);
+  tft.setTextColor(TFT_WHITE, orange_color);
   int xX = padding + underlineWidth;
   int yX = centerY - (underlineOffset + scoreOffset) / 2;
   tft.drawString("X", xX, yX);
@@ -325,7 +459,7 @@ void drawScoreboard() {
   tft.drawString(String(xWins), xX, xLineY + scoreOffset);
 
   // === O Side ===
-  tft.setTextColor(TFT_WHITE, bgColor);
+  tft.setTextColor(TFT_WHITE, orange_color);
   int xO = tft.width() - padding - underlineWidth;
   int yO = yX;
   tft.drawString("O", xO, yO);
