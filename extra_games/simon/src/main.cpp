@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include "JpegDrawing.hpp"
 TFT_eSPI tft = TFT_eSPI();
+
 JpegDrawing drawing(tft);
 
 // Assets paths
@@ -42,7 +43,6 @@ int sequence[100];         // Sequence storage
 int sequenceLength = 0;    // Current sequence length
 int playerPos = 0;         // Player's current position in the sequence
 int playerScore = 0;       // Player's score
-int highScore = 0;         // High score
 
 // Button colors
 uint16_t buttonColors[4] = {TFT_RED, TFT_BLUE, TFT_GREEN, TFT_YELLOW};
@@ -57,8 +57,10 @@ unsigned long levelUpTime = 0;
 
 // Screen positioning 
 int buttonSize = 120;
-int centerX, centerY;
-int diskSize = 240; // Size of the disk image
+int centerX = SCREEN_WIDTH / 2; 
+int centerY = SCREEN_HEIGHT / 2;
+int diskCenterX, diskCenterY;
+int diskSize;
 
 // Function declarations
 void drawIntroScreen();
@@ -84,9 +86,6 @@ void setup() {
   tft.setRotation(1);
   tft.fillScreen(TFT_BLACK);
   
-  // Calculate center of screen
-  centerX = SCREEN_WIDTH / 2;
-  centerY = SCREEN_HEIGHT / 2;
   
   // Initialize buttons
   pinMode(BTN_UP, INPUT_PULLUP);
@@ -94,19 +93,26 @@ void setup() {
   pinMode(BTN_LEFT, INPUT_PULLUP);
   pinMode(BTN_RIGHT, INPUT_PULLUP);
   pinMode(BTN_SELECT, INPUT_PULLUP);
-
+  
   // Initialize SD card
   if (!SD.begin(5)) {
     Serial.println("Card Mount Failed");
     return;
   }
   uint8_t cardType = SD.cardType();
-
+  
   if (cardType == CARD_NONE) {
     Serial.println("No SD card attached");
     return;
   }
   
+  diskCenterY = SCREEN_HEIGHT / 2;
+  JpegDrawing::ImageInfo dim =  drawing.getJpegDimensions("/simon_assets/disk.jpg");
+  
+  // disk has same height and width
+  diskSize = dim.width;
+  
+  diskCenterX = diskSize / 2;
   // Set initial state
   currentState = STATE_INTRO;
   drawIntroScreen();
@@ -165,7 +171,7 @@ void startNewGame() {
   playerScore = 0;
   sequenceLength = 1;
   playerPos = 0;
-  
+  tft.fillScreen(TFT_BLACK);
   // Generate first element in sequence
   generateSequence();
   
@@ -198,7 +204,6 @@ void playSequence() {
     currentStep = 0;
     playerPos = 0;
     currentState = STATE_PLAY;
-    tft.fillScreen(TFT_BLACK);
     drawGameScreen(); // Reset all buttons to normal state
     return;
   }
@@ -215,9 +220,6 @@ void checkPlayerInput(int buttonPressed) {
     // Check if player completed the sequence
     if (playerPos >= sequenceLength) {
       playerScore++;
-      if (playerScore > highScore) {
-        highScore = playerScore;
-      }
       
       levelUp();
     }
@@ -254,15 +256,14 @@ void drawIntroScreen() {
   
   tft.setTextSize(2);
   tft.drawString("MEMORY GAME", centerX, centerY);
-  tft.drawString("HIGH SCORE: " + String(highScore), centerX, centerY + 30);
   tft.drawString("Press SELECT to start", centerX, centerY + 70);
 }
 
 void drawGameScreen() {
   
   // Draw the disk in the center
-  int diskX = centerX - diskSize/2;
-  int diskY = centerY - diskSize/2;
+  int diskX = 0;
+  int diskY = diskCenterY - diskSize/2;
   drawing.drawSdJpeg(BOARD_PATH, diskX, diskY);
   
   // Draw score on the right side
@@ -282,21 +283,20 @@ void drawGameOverScreen() {
   tft.setTextSize(2);
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
   tft.drawString("Your Score: " + String(playerScore), centerX, centerY + 10);
-  tft.drawString("High Score: " + String(highScore), centerX, centerY + 40);
 }
 
 void drawLevelUpScreen() {
   // Overlay a message on the game screen
-  int boxWidth = 240;
+  int boxWidth = 140;
   int boxHeight = 60;
-  tft.fillRect(centerX - boxWidth/2, centerY - boxHeight/2, boxWidth, boxHeight, TFT_BLACK);
-  tft.drawRect(centerX - boxWidth/2, centerY - boxHeight/2, boxWidth, boxHeight, TFT_GREEN);
+  tft.fillRect(diskCenterX - boxWidth/2, diskCenterY - boxHeight/2, boxWidth, boxHeight, TFT_BLACK);
+  tft.drawRect(diskCenterX - boxWidth/2, diskCenterY - boxHeight/2, boxWidth, boxHeight, TFT_GREEN);
   
   tft.setTextColor(TFT_GREEN, TFT_BLACK);
   tft.setTextSize(2);
   tft.setTextDatum(MC_DATUM);
-  tft.drawString("LEVEL UP!", centerX, centerY - 10);
-  tft.drawString("Score: " + String(playerScore), centerX, centerY + 10);
+  tft.drawString("LEVEL UP!", diskCenterX, diskCenterY - 10);
+  tft.drawString("Score: " + String(playerScore), diskCenterX, diskCenterY + 10);
 
   delay(200);
   drawGameScreen();
@@ -311,21 +311,17 @@ void drawScore() {
   tft.setTextSize(2);
   tft.setTextDatum(TL_DATUM); // Top-left alignment
   
-  tft.drawString("P1 Score:", scoreX, scoreY);
+  tft.drawString("P1", scoreX, scoreY);
+  tft.drawLine(scoreX, scoreY, scoreX, scoreY, TFT_WHITE); // Underline P1 score
   
   // Display player score with underline
   tft.drawString(String(playerScore), scoreX + 10, scoreY + 30);
-  tft.drawLine(scoreX, scoreY + 50, scoreX + 80, scoreY + 50, TFT_WHITE); // Underline P1 score
-  
-  // Display high score
-  tft.drawString("High Score:", scoreX, scoreY + 70);
-  tft.drawString(String(highScore), scoreX + 10, scoreY + 100);
 }
 
 void drawButton(int buttonId, bool highlight) {
   // Calculate positions around the disk for triangle indicators
-  int diskX = centerX - diskSize/2;
-  int diskY = centerY - diskSize/2;
+  int diskX = diskCenterX - diskSize/2;
+  int diskY = diskCenterY - diskSize/2;
   int arrowSize = 30; // Size of the triangle
   
   if (highlight) {
@@ -333,7 +329,7 @@ void drawButton(int buttonId, bool highlight) {
     switch(buttonId) {
       case BUTTON_UP: {
         // Draw upward-pointing triangle at top of disk
-        int16_t x0 = centerX;
+        int16_t x0 = diskCenterX;
         int16_t y0 = diskY + 20;
         int16_t x1 = x0 - arrowSize/2;
         int16_t y1 = y0 + arrowSize;
@@ -344,7 +340,7 @@ void drawButton(int buttonId, bool highlight) {
       }
       case BUTTON_DOWN: {
         // Draw downward-pointing triangle at bottom of disk
-        int16_t x0 = centerX;
+        int16_t x0 = diskCenterX;
         int16_t y0 = diskY + diskSize - 20;
         int16_t x1 = x0 - arrowSize/2;
         int16_t y1 = y0 - arrowSize;
