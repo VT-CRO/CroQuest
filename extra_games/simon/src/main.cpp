@@ -151,14 +151,15 @@ void loop() {
         }
       }
       break;
-      
+
     case STATE_GAMEOVER:
-      if (millis() - gameOverTime > 3000) {
+      if (digitalRead(BTN_SELECT) == LOW && millis() - lastButtonPressTime > buttonDebounceDelay) {
+        lastButtonPressTime = millis();
         currentState = STATE_INTRO;
         drawIntroScreen();
       }
       break;
-      
+
     case STATE_LEVELUP:
       if (millis() - levelUpTime > 1500) {
         currentState = STATE_WATCH;
@@ -279,12 +280,16 @@ void drawGameOverScreen() {
   tft.setTextColor(TFT_RED, TFT_BLACK);
   tft.setTextSize(3);
   tft.setTextDatum(MC_DATUM);
-  tft.drawString("GAME OVER", centerX, centerY - 30);
+  tft.drawString("GAME OVER", centerX, centerY - 40);
   
   tft.setTextSize(2);
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
-  tft.drawString("Your Score: " + String(playerScore), centerX, centerY + 10);
+  tft.drawString("Your Score: " + String(playerScore), centerX, centerY);
+  
+  tft.setTextColor(TFT_YELLOW, TFT_BLACK);
+  tft.drawString("Press SELECT for homescreen", centerX, centerY + 40);
 }
+
 
 void drawLevelUpScreen() {
   // Overlay a message on the game screen
