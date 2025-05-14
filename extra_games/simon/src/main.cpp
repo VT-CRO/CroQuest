@@ -16,6 +16,7 @@ const char* BOARD_PATH = "/simon_assets/disk.jpg";
 #define BTN_LEFT   36
 #define BTN_RIGHT  39
 #define BTN_SELECT 21
+#define SD_CS 5
 
 // Game states
 enum GameState {
@@ -95,7 +96,7 @@ void setup() {
   pinMode(BTN_SELECT, INPUT_PULLUP);
   
   // Initialize SD card
-  if (!SD.begin(5)) {
+  if (!SD.begin(SD_CS)) {
     Serial.println("Card Mount Failed");
     return;
   }
@@ -304,7 +305,7 @@ void drawLevelUpScreen() {
 
 void drawScore() {
   // Draw scores on the right side
-  int scoreX = SCREEN_WIDTH - 100;
+  int scoreX = SCREEN_WIDTH / 2;
   int scoreY = 80;
   
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
@@ -312,9 +313,9 @@ void drawScore() {
   tft.setTextDatum(TL_DATUM); // Top-left alignment
   
   tft.drawString("P1", scoreX, scoreY);
-  tft.drawLine(scoreX, scoreY, scoreX, scoreY, TFT_WHITE); // Underline P1 score
+
+  tft.drawLine(scoreX, scoreY + 20, scoreX + tft.textWidth("P1"), scoreY + 20, TFT_WHITE);
   
-  // Display player score with underline
   tft.drawString(String(playerScore), scoreX + 10, scoreY + 30);
 }
 
