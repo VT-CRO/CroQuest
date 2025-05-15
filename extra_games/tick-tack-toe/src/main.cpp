@@ -1,5 +1,6 @@
 #include <TFT_eSPI.h>
 #include "JpegDrawing.hpp"
+#include "NumPad.hpp"
 TFT_eSPI tft = TFT_eSPI();
 JpegDrawing drawing(tft);
 //Assets
@@ -30,6 +31,7 @@ void drawGrid();
 void drawAllPlaying();
 void drawEndScreen();
 void drawHomeScreen();
+void drawHomescreenSelect();
 
 String board[9] = { "**", "**", "**", "**", "**", "**", "**", "**", "**" };
 char currentPlayer = 'X';
@@ -61,6 +63,9 @@ int oWins = 0;
 uint16_t orange_color = tft.color565(0xFF, 0x70, 0x00);
 
 static bool buttonPreviouslyPressed = false;
+int selection = 0;
+
+NumPad pad(tft);
 
 //Gamestate
 typedef enum state{ 
@@ -68,6 +73,7 @@ typedef enum state{
             MULTIPLAYER, 
             SINGLE_PLAYER,
             GAMEOVER_SCREEN,
+            BLUETOOTH_NUMPAD,
           }State;
 
 State game_state = HOMESCREEN;
@@ -117,11 +123,27 @@ void loop() {
   if(game_state == HOMESCREEN){
     if(millis() - lastMoveTime > moveDelay/2){
       if(digitalRead(BTN_SELECT) == LOW){
-        game_state = SINGLE_PLAYER;
-        // Clear the screen with orange background
-        tft.fillScreen(orange_color);
-        // Draw initial screen
-        drawAllPlaying();
+        if(selection == 0){
+          game_state = SINGLE_PLAYER;
+          // Clear the screen with orange background
+          tft.fillScreen(orange_color);
+          // Draw initial screen
+          drawAllPlaying();
+        }else if(selection == 1){
+          game_state = BLUETOOTH_NUMPAD;
+          tft.fillScreen(TFT_BLUE);
+          pad.drawAllButtons();
+          pad.modButtonState(NumPad::NONE, NumPad::SELECTED);
+        }
+      }
+      // Selection logic
+      if(digitalRead(BTN_UP) == LOW){
+        selection = 0;
+        drawHomescreenSelect();
+      }
+      else if(digitalRead(BTN_DOWN) == LOW){
+        selection = 1;
+        drawHomescreenSelect();
       }
       lastMoveTime = millis();
     }
@@ -209,6 +231,28 @@ void loop() {
 
         // Draw homescreen
         drawHomeScreen();
+      }
+      lastMoveTime = millis();
+    }
+  }
+  else if(game_state == BLUETOOTH_NUMPAD){
+    if(millis() - lastMoveTime > moveDelay/2){
+      //Press Logic
+      if(digitalRead(BTN_SELECT) == LOW){
+        pad.modButtonState(NumPad::NONE, NumPad::PRESSED);
+      }
+      // Selection logic
+      if(digitalRead(BTN_UP) == LOW){
+        pad.modButtonState(NumPad::UP, NumPad::SELECTED);
+      }
+      else if(digitalRead(BTN_DOWN) == LOW){
+        pad.modButtonState(NumPad::DOWN, NumPad::SELECTED);
+      }
+      else if(digitalRead(BTN_RIGHT) == LOW){
+        pad.modButtonState(NumPad::RIGHT, NumPad::SELECTED);
+      }
+      else if(digitalRead(BTN_LEFT) == LOW){
+        pad.modButtonState(NumPad::LEFT, NumPad::SELECTED);
       }
       lastMoveTime = millis();
     }
@@ -335,9 +379,40 @@ void drawHomeScreen() {
   
   // Display instructions
   tft.setTextSize(2);
-  tft.drawString("Press SELECT to start", SCREEN_WIDTH / 2, 260);
-  tft.drawString("Best of Three!", SCREEN_WIDTH / 2, 290);
+  tft.drawString("Press for Single-Player", SCREEN_WIDTH / 2, 240);
+  tft.drawString("Press for Multiplayer", SCREEN_WIDTH / 2, 290);
+
+  drawHomescreenSelect();
 }
+
+void drawHomescreenSelect() {
+  int y_single = 240;
+  int y_multi = 290;
+
+  // Clear the areas where text is drawn
+  tft.setTextDatum(MC_DATUM);
+  tft.setTextColor(TFT_WHITE);
+
+  // Clear background areas (oversized box to fully erase previous text)
+  tft.fillRect(0, y_single - 15, SCREEN_WIDTH, 35, orange_color);
+  tft.fillRect(0, y_multi - 15, SCREEN_WIDTH, 35, orange_color);
+
+  // options
+  if (selection == 0) {
+    tft.setTextSize(3);
+    tft.drawString("Press for Single-Player", SCREEN_WIDTH / 2, y_single);
+    
+    tft.setTextSize(2); 
+    tft.drawString("Press for Multiplayer", SCREEN_WIDTH / 2, y_multi);
+  } else {
+    tft.setTextSize(2);
+    tft.drawString("Press for Single-Player", SCREEN_WIDTH / 2, y_single);
+    
+    tft.setTextSize(3);
+    tft.drawString("Press for Multiplayer", SCREEN_WIDTH / 2, y_multi);
+  }
+}
+
 
 void drawAllPlaying(){
   drawScoreboard();
