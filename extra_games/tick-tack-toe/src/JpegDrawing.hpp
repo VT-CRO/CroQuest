@@ -33,7 +33,7 @@ public:
     
     // Public methods
     void drawSdJpeg(const char *filename, int xpos, int ypos);
-    void pushSprite();
+    void pushSprite(bool transparent = false, uint16_t transparent_color = 0);
     ImageInfo getJpegDimensions(const char *filename);
 };
 

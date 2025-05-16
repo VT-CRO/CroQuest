@@ -112,9 +112,13 @@ void JpegDrawing::drawSdJpeg(const char *filename, int xpos, int ypos) {
     }
 }
 
-void JpegDrawing::pushSprite(){
+void JpegDrawing::pushSprite(bool transparent, uint16_t transparent_color){
     // Push full image to the screen
-    sprite.pushSprite(x_pos, y_pos);
+    if(transparent){
+        sprite.pushSprite(x_pos, y_pos, transparent_color);
+    }else{
+        sprite.pushSprite(x_pos, y_pos);
+    }
 
     // Clean up
     sprite.setSwapBytes(swapBytes);

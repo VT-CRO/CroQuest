@@ -64,8 +64,15 @@ uint16_t orange_color = tft.color565(0xFF, 0x70, 0x00);
 
 static bool buttonPreviouslyPressed = false;
 int selection = 0;
+const unsigned long moveDelay = 100;
 
-NumPad pad(tft);
+NumPad pad(tft, 
+          drawing,
+          BTN_UP, 
+          BTN_DOWN, 
+          BTN_LEFT, 
+          BTN_RIGHT, 
+          BTN_SELECT);
 
 //Gamestate
 typedef enum state{ 
@@ -118,7 +125,6 @@ void setup() {
 void loop() {
   static int lastCursor = -1;
   static unsigned long lastMoveTime = 0;
-  const unsigned long moveDelay = 200;
 
   if(game_state == HOMESCREEN){
     if(millis() - lastMoveTime > moveDelay/2){
@@ -131,9 +137,7 @@ void loop() {
           drawAllPlaying();
         }else if(selection == 1){
           game_state = BLUETOOTH_NUMPAD;
-          tft.fillScreen(TFT_BLUE);
-          pad.drawAllButtons();
-          pad.modButtonState(NumPad::NONE, NumPad::SELECTED);
+          pad.numPadSetup();
         }
       }
       // Selection logic
@@ -236,26 +240,7 @@ void loop() {
     }
   }
   else if(game_state == BLUETOOTH_NUMPAD){
-    if(millis() - lastMoveTime > moveDelay/2){
-      //Press Logic
-      if(digitalRead(BTN_SELECT) == LOW){
-        pad.modButtonState(NumPad::NONE, NumPad::PRESSED);
-      }
-      // Selection logic
-      if(digitalRead(BTN_UP) == LOW){
-        pad.modButtonState(NumPad::UP, NumPad::SELECTED);
-      }
-      else if(digitalRead(BTN_DOWN) == LOW){
-        pad.modButtonState(NumPad::DOWN, NumPad::SELECTED);
-      }
-      else if(digitalRead(BTN_RIGHT) == LOW){
-        pad.modButtonState(NumPad::RIGHT, NumPad::SELECTED);
-      }
-      else if(digitalRead(BTN_LEFT) == LOW){
-        pad.modButtonState(NumPad::LEFT, NumPad::SELECTED);
-      }
-      lastMoveTime = millis();
-    }
+    pad.handleButtonInput(&lastMoveTime,  moveDelay);
   }
 }
 

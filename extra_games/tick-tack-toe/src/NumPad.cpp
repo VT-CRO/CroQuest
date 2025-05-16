@@ -2,7 +2,9 @@
 
 //modify button position and state, also redraws the button
 void NumPad::modButtonState(enum direction direction, enum button_state state){
-    drawButton(BASIC);
+    
+    int prev_row = row;
+    int prev_col = column;
     
     switch(direction){
         case UP:
@@ -20,6 +22,9 @@ void NumPad::modButtonState(enum direction direction, enum button_state state){
         default:
             break;
     }
+    if(prev_row != row || prev_col != column)
+        drawButton(BASIC, prev_row, prev_col);
+
     if(state == PRESSED){
         if(pad[row][column] == DEL){
             if(code.length() > 0){
@@ -37,71 +42,95 @@ void NumPad::modButtonState(enum direction direction, enum button_state state){
             }
         }
     }
+    
     //Draws the code and button state
     drawCode();
-    drawButton(state);
+    drawButton(state, row, column);
 }
 
-//Draw all of the numpad
-void NumPad::drawAllButtons(){
-    for(int i = 0; i < 4; i++){
-        for(int j = 0; j < 3; j++){
-            row = i;
-            column = j;
-            drawButton(BASIC);
-        }
-    }
-    row = 0;
-    column = 0;
+void NumPad::drawAllButtons() {
+    JpegDrawing::ImageInfo dim = drawing.getJpegDimensions("/numpad/numpad.jpg");
+    int x = (480 - dim.width) / 2;
+    int y = (320 - dim.height) / 2;
+
+    drawing.drawSdJpeg("/numpad/numpad.jpg", x, y);
+    drawing.pushSprite(true);
 }
 
 //Draw a button
-void NumPad::drawButton(enum button_state state){
-    struct Position position =  buttonPos[row][column];
-    
+void NumPad::drawButton(enum button_state state, int row_button, int column_button){
+    struct Position position =  buttonPos[row_button][column_button];
     switch(state){
         case PRESSED:
-            tft.fillRect(position.row, position.column, buttonWidth, buttonHeight, TFT_CYAN);
+            drawing.drawSdJpeg((std::string("/numpad/pressed/") + std::to_string(pad[row_button][column_button]) + ".jpg").c_str(), position.x, position.y);
             break;
         case BASIC:
-            tft.fillRect(position.row, position.column, buttonWidth, buttonHeight, TFT_WHITE);
+            drawing.drawSdJpeg((std::string("/numpad/basic/") + std::to_string(pad[row_button][column_button]) + ".jpg").c_str(), position.x, position.y);
             break;
         case SELECTED:
-            tft.fillRect(position.row, position.column, buttonWidth, buttonHeight, TFT_BLACK);
+            drawing.drawSdJpeg((std::string("/numpad/selected/") + std::to_string(pad[row_button][column_button]) + ".jpg").c_str(), position.x, position.y);
             break;
     }
+    drawing.pushSprite(true);
 }
 
 //Draw Code
 void NumPad::drawCode() {
-    // Clear area at top for label + code with padding
-    tft.fillRect(0, 0, tft.width(), 70, TFT_WHITE);
-
-    // Draw the label "Enter Host Code" centered horizontally near the top
+    // --- Draw Label ---
+    tft.setTextDatum(TL_DATUM);
     tft.setTextSize(2);
-    tft.setTextColor(TFT_BLACK, TFT_WHITE);
-    const char* label = "Enter Host Code";
+    tft.setTextColor(TFT_WHITE, TFT_BLACK);  // white text on black
+    const char* label = "Join a Host Code:";
     int labelWidth = tft.textWidth(label);
-    int labelX = (tft.width() - labelWidth) / 2;  // center horizontally
-
-    // For vertical centering, calculate text height: text height = text size * 8 pixels (default font)
-    // So for size 2, height = 2 * 8 = 16 pixels
-    // To center vertically in area y=0..30 (for example), position y = (30 - 16) / 2 = 7
-    // You can adjust 7 or 8 depending on how it looks.
-
-    int labelHeight = 2 * 8;
-    int labelY = (30 - labelHeight) / 2;  // center vertically in 0..30 px region
-
+    int labelX = (SCREEN_WIDTH - labelWidth) / 2;
+    int labelY = 10;  // near the top
     tft.drawString(label, labelX, labelY);
 
-    // Draw a rounded rectangle background behind the code
-    tft.fillRoundRect(40, 40, tft.width() - 80, 40, 8, TFT_LIGHTGREY);
-
-    // Draw the code string centered inside the rounded rect at y=45
-    tft.setTextSize(3);
-    tft.setTextColor(TFT_BLACK, TFT_LIGHTGREY);
+    // --- Clear old code text area ---
+    int codeY = labelY + 30;  // space below the label
+    int codeHeight = 8 * 4;    // height of textSize 4 (font height * text size)
     int codeWidth = tft.textWidth(code.c_str());
-    int codeX = (tft.width() - codeWidth) / 2;
-    tft.drawString(code.c_str(), codeX, 45);
+    int codeX = (SCREEN_WIDTH - codeWidth) / 2;
+    // Clear the entire area behind the code with black
+    tft.fillRect(0, codeY, SCREEN_WIDTH, codeHeight, TFT_BLACK);
+
+    // --- Draw Code ---
+    tft.setTextSize(4);
+    tft.setTextColor(TFT_WHITE, TFT_BLACK);
+    tft.drawString(code.c_str(), codeX, codeY);
 }
 
+void NumPad::handleButtonInput(unsigned long * lastMoveTime, const long moveDelay){
+    if(millis() - *lastMoveTime > moveDelay){
+      // Press Logic
+      if(digitalRead(BTN_SELECT) == LOW && !pressed){
+        modButtonState(NumPad::NONE, NumPad::PRESSED);
+        pressed = true;
+      }
+      else if(digitalRead(BTN_SELECT) == HIGH && pressed){
+        modButtonState(NumPad::NONE, NumPad::SELECTED);
+        pressed = false;
+      }
+      // Selection logic
+      if(digitalRead(BTN_UP) == LOW){
+        modButtonState(NumPad::UP, NumPad::SELECTED);
+      }
+      else if(digitalRead(BTN_DOWN) == LOW){
+        modButtonState(NumPad::DOWN, NumPad::SELECTED);
+      }
+      else if(digitalRead(BTN_RIGHT) == LOW){
+        modButtonState(NumPad::RIGHT, NumPad::SELECTED);
+      }
+      else if(digitalRead(BTN_LEFT) == LOW){
+        modButtonState(NumPad::LEFT, NumPad::SELECTED);
+      }
+      
+      *lastMoveTime = millis();
+    }
+}
+
+void NumPad::numPadSetup(){
+    tft.fillScreen(TFT_BLACK);
+    drawAllButtons();
+    modButtonState(NumPad::NONE, NumPad::SELECTED);
+}
