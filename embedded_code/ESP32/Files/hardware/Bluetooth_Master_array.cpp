@@ -93,7 +93,7 @@ void setup() {
   Serial.begin(115200);
 
   tft.init();
-  tft.setRotation(2);
+  tft.setRotation(3);
 
   // Set the built-in LED pin as output
   // pinMode(BUILTIN_LED, OUTPUT);

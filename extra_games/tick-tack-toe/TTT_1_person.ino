@@ -2,16 +2,16 @@
 TFT_eSPI tft = TFT_eSPI();
 
 // Pin definitions
-#define BTN_UP     18
-#define BTN_DOWN   22
-#define BTN_LEFT   21
-#define BTN_RIGHT  19
+#define BTN_UP 18
+#define BTN_DOWN 22
+#define BTN_LEFT 21
+#define BTN_RIGHT 19
 #define BTN_SELECT 23
 
-String board[9] = { "**", "**", "**", "**", "**", "**", "**", "**", "**" };
+String board[9] = {"**", "**", "**", "**", "**", "**", "**", "**", "**"};
 char currentPlayer = 'X';
-char winner = 'N';  // 'X', 'O', 'D' (draw), or 'N' (none)
-int winCombo[3] = {-1, -1, -1};  // indices of the winning 3 cells
+char winner = 'N';              // 'X', 'O', 'D' (draw), or 'N' (none)
+int winCombo[3] = {-1, -1, -1}; // indices of the winning 3 cells
 unsigned long winTime = 0;
 bool gameEnded = false;
 
@@ -20,15 +20,15 @@ int cursorIndex = 0;
 
 int screen_width, screen_height;
 const int cell_size = 60;
-int x_start, y_start;  // computed in setup()
+int x_start, y_start; // computed in setup()
 
 struct Move {
   int index;
   char symbol;
 };
 
-Move moveQueue[6];  // FIFO queue of last 6 moves
-int moveCount = 0;  // total moves placed
+Move moveQueue[6]; // FIFO queue of last 6 moves
+int moveCount = 0; // total moves placed
 
 int xWins = 0;
 int oWins = 0;
@@ -40,8 +40,8 @@ void setup() {
   tft.fillScreen(TFT_WHITE);
 
   // Get screen dimensions dynamically
-  screen_width = tft.width();    // e.g., 240 or 320
-  screen_height = tft.height();  // e.g., 320
+  screen_width = tft.width();   // e.g., 240 or 320
+  screen_height = tft.height(); // e.g., 320
 
   // Compute board position to center it
   x_start = (screen_width - 3 * cell_size) / 2;
@@ -86,11 +86,13 @@ void loop() {
   static bool buttonPreviouslyPressed = false;
   bool selectPressed = digitalRead(BTN_SELECT) == LOW;
 
-  if (!gameEnded && selectPressed && !buttonPreviouslyPressed && board[cursorIndex] == "**") {
+  if (!gameEnded && selectPressed && !buttonPreviouslyPressed &&
+      board[cursorIndex] == "**") {
     if (moveCount >= 6) {
       int oldIndex = moveQueue[0].index;
       board[oldIndex] = "**";
-      for (int i = 1; i < 6; i++) moveQueue[i - 1] = moveQueue[i];
+      for (int i = 1; i < 6; i++)
+        moveQueue[i - 1] = moveQueue[i];
       moveCount = 5;
     }
 
@@ -112,13 +114,15 @@ void loop() {
     drawGrid();
     highlightCursor(cursorIndex);
     drawWinLine();
-    if (gameEnded) drawWinnerMessage();
+    if (gameEnded)
+      drawWinnerMessage();
     lastCursor = cursorIndex;
   }
 
   // Auto Restart
   if (gameEnded && millis() - winTime >= 5000) {
-    for (int i = 0; i < 9; i++) board[i] = "**";
+    for (int i = 0; i < 9; i++)
+      board[i] = "**";
     currentPlayer = 'X';
     cursorIndex = 0;
     lastCursor = -1;
@@ -135,10 +139,11 @@ void loop() {
 
 void drawGrid() {
   // Draw grid lines
-  for (int i = 1; i < 3; i++) 
-  {
-    tft.drawLine(x_start + i * cell_size, y_start, x_start + i * cell_size, y_start + 3 * cell_size, TFT_BLACK);
-    tft.drawLine(x_start, y_start + i * cell_size, x_start + 3 * cell_size, y_start + i * cell_size, TFT_BLACK);
+  for (int i = 1; i < 3; i++) {
+    tft.drawLine(x_start + i * cell_size, y_start, x_start + i * cell_size,
+                 y_start + 3 * cell_size, TFT_BLACK);
+    tft.drawLine(x_start, y_start + i * cell_size, x_start + 3 * cell_size,
+                 y_start + i * cell_size, TFT_BLACK);
   }
 
   tft.drawRect(x_start, y_start, 3 * cell_size, 3 * cell_size, TFT_BLACK);
@@ -170,7 +175,8 @@ void highlightCursor(int index) {
 }
 
 void clearCursor(int index) {
-  if (index < 0 || index > 8) return;
+  if (index < 0 || index > 8)
+    return;
 
   int row = index / 3;
   int col = index % 3;
@@ -183,17 +189,23 @@ void clearCursor(int index) {
   tft.drawRect(x, y, cell_size, cell_size, TFT_BLACK);
 
   // Redraw the grid lines manually if needed (for crossovers)
-  if (col > 0) tft.drawLine(x, y, x, y + cell_size, TFT_BLACK); // left
-  if (col < 2) tft.drawLine(x + cell_size, y, x + cell_size, y + cell_size, TFT_BLACK); // right
-  if (row > 0) tft.drawLine(x, y, x + cell_size, y, TFT_BLACK); // top
-  if (row < 2) tft.drawLine(x, y + cell_size, x + cell_size, y + cell_size, TFT_BLACK); // bottom
+  if (col > 0)
+    tft.drawLine(x, y, x, y + cell_size, TFT_BLACK); // left
+  if (col < 2)
+    tft.drawLine(x + cell_size, y, x + cell_size, y + cell_size,
+                 TFT_BLACK); // right
+  if (row > 0)
+    tft.drawLine(x, y, x + cell_size, y, TFT_BLACK); // top
+  if (row < 2)
+    tft.drawLine(x, y + cell_size, x + cell_size, y + cell_size,
+                 TFT_BLACK); // bottom
 }
 
 void checkWinner() {
   const int wins[8][3] = {
-    {0, 1, 2}, {3, 4, 5}, {6, 7, 8}, // rows
-    {0, 3, 6}, {1, 4, 7}, {2, 5, 8}, // cols
-    {0, 4, 8}, {2, 4, 6}             // diagonals
+      {0, 1, 2}, {3, 4, 5}, {6, 7, 8}, // rows
+      {0, 3, 6}, {1, 4, 7}, {2, 5, 8}, // cols
+      {0, 4, 8}, {2, 4, 6}             // diagonals
   };
 
   for (int i = 0; i < 8; i++) {
@@ -209,8 +221,10 @@ void checkWinner() {
       winTime = millis();
       gameEnded = true;
 
-      if (winner == 'X') xWins++;
-      else if (winner == 'O') oWins++;
+      if (winner == 'X')
+        xWins++;
+      else if (winner == 'O')
+        oWins++;
 
       return;
     }
@@ -232,7 +246,8 @@ void checkWinner() {
 }
 
 void drawWinLine() {
-  if (winner != 'X' && winner != 'O') return;
+  if (winner != 'X' && winner != 'O')
+    return;
 
   int i1 = winCombo[0];
   int i3 = winCombo[2];
@@ -259,11 +274,14 @@ void drawWinnerMessage() {
   tft.setTextColor(TFT_BLACK, TFT_WHITE);
 
   String msg = "";
-  if (winner == 'X') msg = "X Wins!";
-  else if (winner == 'O') msg = "O Wins!";
-  else if (winner == 'D') msg = "Draw!";
+  if (winner == 'X')
+    msg = "X Wins!";
+  else if (winner == 'O')
+    msg = "O Wins!";
+  else if (winner == 'D')
+    msg = "Draw!";
 
-  tft.drawString(msg, tft.width() / 2, 30);  // above grid
+  tft.drawString(msg, tft.width() / 2, 30); // above grid
 }
 
 void drawScoreboard() {
@@ -276,5 +294,3 @@ void drawScoreboard() {
   tft.setTextColor(TFT_BLUE, TFT_WHITE);
   tft.drawString("O: " + String(oWins), tft.width() - 60, 5);
 }
-
-
