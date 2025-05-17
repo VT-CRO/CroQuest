@@ -77,51 +77,52 @@ void NumPad::drawButton(enum button_state state, int row_button, int column_butt
 //Draw Code
 void NumPad::drawCode() {
     // --- Draw Label ---
-    tft.setTextDatum(TL_DATUM);
+    tft.setTextDatum(TL_DATUM);  // Top-left corner for label
     tft.setTextSize(2);
-    tft.setTextColor(TFT_WHITE, TFT_BLACK);  // white text on black
+    tft.setTextColor(TFT_WHITE, TFT_BLACK);
     const char* label = "Join a Host Code:";
-    int labelWidth = tft.textWidth(label);
-    int labelX = (SCREEN_WIDTH - labelWidth) / 2;
-    int labelY = 10;  // near the top
+    int labelX = (SCREEN_WIDTH - tft.textWidth(label)) / 2;
+    int labelY = 10;
     tft.drawString(label, labelX, labelY);
 
-    // --- Clear old code text area ---
-    int codeY = labelY + 30;  // space below the label
-    int codeHeight = 8 * 4;    // height of textSize 4 (font height * text size)
-    int codeWidth = tft.textWidth(code.c_str());
-    int codeX = (SCREEN_WIDTH - codeWidth) / 2;
-    // Clear the entire area behind the code with black
-    tft.fillRect(0, codeY, SCREEN_WIDTH, codeHeight, TFT_BLACK);
-
-    // --- Draw Code ---
+    // --- Draw Code Centered Below ---
+    tft.setTextDatum(MC_DATUM);  // Middle-center for code
     tft.setTextSize(4);
     tft.setTextColor(TFT_WHITE, TFT_BLACK);
-    tft.drawString(code.c_str(), codeX, codeY);
+
+    int codeY = labelY + 50;  // space below the label
+    int codeHeight = 8 * 4;   // estimated height of text at size 4
+
+    // Clear code area
+    tft.fillRect(0, codeY - codeHeight / 2, SCREEN_WIDTH, codeHeight, TFT_BLACK);
+
+    // Draw centered code
+    tft.drawString(code.c_str(), SCREEN_WIDTH / 2, codeY);
 }
+
 
 void NumPad::handleButtonInput(unsigned long * lastMoveTime, const long moveDelay){
     if(millis() - *lastMoveTime > moveDelay){
       // Press Logic
-      if(digitalRead(BTN_SELECT) == LOW && !pressed){
+      if(!BTN_SELECT.isPressed() && !pressed){
         modButtonState(NumPad::NONE, NumPad::PRESSED);
         pressed = true;
       }
-      else if(digitalRead(BTN_SELECT) == HIGH && pressed){
+      else if(BTN_SELECT.isPressed() && pressed){
         modButtonState(NumPad::NONE, NumPad::SELECTED);
         pressed = false;
       }
       // Selection logic
-      if(digitalRead(BTN_UP) == LOW){
+      if(BTN_UP.isPressed()){
         modButtonState(NumPad::UP, NumPad::SELECTED);
       }
-      else if(digitalRead(BTN_DOWN) == LOW){
+      else if(BTN_DOWN.isPressed()){
         modButtonState(NumPad::DOWN, NumPad::SELECTED);
       }
-      else if(digitalRead(BTN_RIGHT) == LOW){
+      else if(BTN_RIGHT.isPressed()){
         modButtonState(NumPad::RIGHT, NumPad::SELECTED);
       }
-      else if(digitalRead(BTN_LEFT) == LOW){
+      else if(BTN_LEFT.isPressed()){
         modButtonState(NumPad::LEFT, NumPad::SELECTED);
       }
       

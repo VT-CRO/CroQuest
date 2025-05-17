@@ -1,6 +1,8 @@
 #include <TFT_eSPI.h>
 #include "JpegDrawing.hpp"
 #include "NumPad.hpp"
+#include "Buttons.hpp"
+
 TFT_eSPI tft = TFT_eSPI();
 JpegDrawing drawing(tft);
 //Assets
@@ -13,12 +15,13 @@ const char* DIS_X_PATH = "/tic_tac_toe_assets/disappearing_x.jpg";
 #define SCREEN_WIDTH 480
 #define SCREEN_HEIGHT 320
 
-// Pin definitions
-#define BTN_UP     35
-#define BTN_DOWN   34
-#define BTN_LEFT   36
-#define BTN_RIGHT  39
-#define BTN_SELECT 21
+Button A(22, "A", DIGITAL);
+Button B(39, "B", DIGITAL);
+Button up(35, "Up", ANALOG_INPUT, 2000, 3600);
+Button right(35, "Right", ANALOG_INPUT, 3601, 4095);
+Button left(34, "Left", ANALOG_INPUT, 2000, 3600);
+Button down(34, "Down", ANALOG_INPUT, 3601, 4095);
+
 #define SD_CS 5
 
 void drawScoreboard();
@@ -68,11 +71,11 @@ const unsigned long moveDelay = 100;
 
 NumPad pad(tft, 
           drawing,
-          BTN_UP, 
-          BTN_DOWN, 
-          BTN_LEFT, 
-          BTN_RIGHT, 
-          BTN_SELECT);
+          up, 
+          down, 
+          left, 
+          right, 
+          A);
 
 //Gamestate
 typedef enum state{ 
@@ -83,25 +86,18 @@ typedef enum state{
             BLUETOOTH_NUMPAD,
           }State;
 
-State game_state = HOMESCREEN;
+State game_state = BLUETOOTH_NUMPAD;
 
 void setup() {
   // Initialize display
   tft.init();
-  tft.setRotation(1);
+  tft.setRotation(3);
 
   tft.fillScreen(orange_color);
 
   // Get screen dimensions dynamically
   screen_width = tft.width();    // e.g., 240 or 320
   screen_height = tft.height();  // e.g., 320
-
-  // Initialize buttons
-  pinMode(BTN_UP, INPUT_PULLUP);
-  pinMode(BTN_DOWN, INPUT_PULLUP);
-  pinMode(BTN_LEFT, INPUT_PULLUP);
-  pinMode(BTN_RIGHT, INPUT_PULLUP);
-  pinMode(BTN_SELECT, INPUT_PULLUP);
 
   if (!SD.begin(SD_CS)) {
     Serial.println("Card Mount Failed");
@@ -120,6 +116,7 @@ void setup() {
   y_start = (SCREEN_HEIGHT - dim.height) / 2;
 
   drawHomeScreen();
+  pad.numPadSetup();
 }
 
 void loop() {
@@ -128,7 +125,7 @@ void loop() {
 
   if(game_state == HOMESCREEN){
     if(millis() - lastMoveTime > moveDelay/2){
-      if(digitalRead(BTN_SELECT) == LOW){
+      if(A.isPressed()){
         if(selection == 0){
           game_state = SINGLE_PLAYER;
           // Clear the screen with orange background
@@ -141,11 +138,11 @@ void loop() {
         }
       }
       // Selection logic
-      if(digitalRead(BTN_UP) == LOW){
+      if(up.isPressed()){
         selection = 0;
         drawHomescreenSelect();
       }
-      else if(digitalRead(BTN_DOWN) == LOW){
+      else if(down.isPressed()){
         selection = 1;
         drawHomescreenSelect();
       }
@@ -154,23 +151,23 @@ void loop() {
   }
   else if(game_state == SINGLE_PLAYER){
     if (!roundEnded && millis() - lastMoveTime > moveDelay) {
-      if (digitalRead(BTN_UP) == LOW && cursorIndex >= 3) {
+      if (up.isPressed() && cursorIndex >= 3) {
         cursorIndex -= 3;
         lastMoveTime = millis();
-      } else if (digitalRead(BTN_DOWN) == LOW && cursorIndex <= 5) {
+      } else if (down.isPressed() && cursorIndex <= 5) {
         cursorIndex += 3;
         lastMoveTime = millis();
-      } else if (digitalRead(BTN_LEFT) == LOW && cursorIndex % 3 != 0) {
+      } else if (left.isPressed() == LOW && cursorIndex % 3 != 0) {
         cursorIndex -= 1;
         lastMoveTime = millis();
-      } else if (digitalRead(BTN_RIGHT) == LOW && cursorIndex % 3 != 2) {
+      } else if (right.isPressed() == LOW && cursorIndex % 3 != 2) {
         cursorIndex += 1;
         lastMoveTime = millis();
       }
     }
 
     // Piece Placement
-    bool selectPressed = digitalRead(BTN_SELECT) == LOW;
+    bool selectPressed = A.isPressed();
 
     if (!roundEnded && selectPressed && !buttonPreviouslyPressed && board[cursorIndex] == "**") {
       if (moveCount >= 6) {
@@ -228,7 +225,7 @@ void loop() {
   else if(game_state == GAMEOVER_SCREEN){
     drawEndScreen();
     if(millis() - lastMoveTime > moveDelay){
-      if(digitalRead(BTN_SELECT) == LOW){
+      if(A.isPressed()){
         game_state = HOMESCREEN;
         oWins = 0;
         xWins = 0;
