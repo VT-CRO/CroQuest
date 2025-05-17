@@ -67,6 +67,7 @@ uint16_t orange_color = tft.color565(0xFF, 0x70, 0x00);
 
 static bool buttonPreviouslyPressed = false;
 int selection = 0;
+int subselection = 0;
 const unsigned long moveDelay = 100;
 
 NumPad pad(tft, 
@@ -84,9 +85,11 @@ typedef enum state{
             SINGLE_PLAYER,
             GAMEOVER_SCREEN,
             BLUETOOTH_NUMPAD,
+            MULTIPLAYER_SELECTION,
+            JOIN_SCREEN,
           }State;
 
-State game_state = BLUETOOTH_NUMPAD;
+State game_state = HOMESCREEN;
 
 void setup() {
   // Initialize display
@@ -116,7 +119,6 @@ void setup() {
   y_start = (SCREEN_HEIGHT - dim.height) / 2;
 
   drawHomeScreen();
-  pad.numPadSetup();
 }
 
 void loop() {
@@ -125,7 +127,7 @@ void loop() {
 
   if(game_state == HOMESCREEN){
     if(millis() - lastMoveTime > moveDelay/2){
-      if(A.isPressed()){
+      if(A.wasJustPressed()){
         if(selection == 0){
           game_state = SINGLE_PLAYER;
           // Clear the screen with orange background
@@ -133,8 +135,8 @@ void loop() {
           // Draw initial screen
           drawAllPlaying();
         }else if(selection == 1){
-          game_state = BLUETOOTH_NUMPAD;
-          pad.numPadSetup();
+          game_state = MULTIPLAYER_SELECTION;
+          drawHomescreenSelect();
         }
       }
       // Selection logic
@@ -149,25 +151,57 @@ void loop() {
       lastMoveTime = millis();
     }
   }
-  else if(game_state == SINGLE_PLAYER){
+  else if(game_state == MULTIPLAYER_SELECTION){
     if (!roundEnded && millis() - lastMoveTime > moveDelay) {
+      if(A.wasJustPressed()){
+        if(subselection == 0){
+          game_state = JOIN_SCREEN;
+          tft.fillScreen(TFT_BLUE);
+        }else{
+          game_state = BLUETOOTH_NUMPAD;
+          pad.numPadSetup();
+        }
+      }
+      if(up.isPressed()){
+        game_state = HOMESCREEN;
+        drawHomescreenSelect();
+      }
+      else if(left.isPressed()){
+        if(subselection == 1){
+          subselection = 0;
+          drawHomescreenSelect();
+        }
+      }
+      else if(right.isPressed()){
+        if(subselection == 0){
+          subselection = 1;
+          drawHomescreenSelect();
+        }
+      }
+      lastMoveTime = millis();
+    }
+  }
+  else if(game_state == SINGLE_PLAYER){
+    if (!roundEnded && millis() - lastMoveTime > moveDelay/2) {
       if (up.isPressed() && cursorIndex >= 3) {
         cursorIndex -= 3;
         lastMoveTime = millis();
       } else if (down.isPressed() && cursorIndex <= 5) {
         cursorIndex += 3;
         lastMoveTime = millis();
-      } else if (left.isPressed() == LOW && cursorIndex % 3 != 0) {
+      }
+       else if (left.isPressed() && cursorIndex % 3 != 0) {
         cursorIndex -= 1;
         lastMoveTime = millis();
-      } else if (right.isPressed() == LOW && cursorIndex % 3 != 2) {
+      } 
+      else if (right.isPressed() && cursorIndex % 3 != 2) {
         cursorIndex += 1;
         lastMoveTime = millis();
       }
     }
 
     // Piece Placement
-    bool selectPressed = A.isPressed();
+    bool selectPressed = A.wasJustPressed();
 
     if (!roundEnded && selectPressed && !buttonPreviouslyPressed && board[cursorIndex] == "**") {
       if (moveCount >= 6) {
@@ -225,7 +259,7 @@ void loop() {
   else if(game_state == GAMEOVER_SCREEN){
     drawEndScreen();
     if(millis() - lastMoveTime > moveDelay){
-      if(A.isPressed()){
+      if(A.wasJustPressed()){
         game_state = HOMESCREEN;
         oWins = 0;
         xWins = 0;
@@ -342,13 +376,13 @@ void drawHomeScreen() {
   tft.setTextSize(4);
   
   // Draw game title
-  tft.drawString("TIC TAC TOE", SCREEN_WIDTH / 2, 60);
+  tft.drawString("TIC TAC TOE", SCREEN_WIDTH / 2, 40);
   
   // Draw tic-tac-toe grid manually in center
   int gridSize = 90; // Total grid size
   int cellSize = gridSize / 3;
   int gridX = (SCREEN_WIDTH - gridSize) / 2;
-  int gridY = 50;
+  int gridY = 30;
   
   // Draw the grid lines with thickness of 5 pixels
   // Vertical lines
@@ -361,37 +395,83 @@ void drawHomeScreen() {
   
   // Display instructions
   tft.setTextSize(2);
-  tft.drawString("Press for Single-Player", SCREEN_WIDTH / 2, 240);
-  tft.drawString("Press for Multiplayer", SCREEN_WIDTH / 2, 290);
+  tft.drawString("Press for Single-Player", SCREEN_WIDTH / 2, 200);
+  tft.drawString("Press for Multiplayer", SCREEN_WIDTH / 2, 250);
 
   drawHomescreenSelect();
 }
 
 void drawHomescreenSelect() {
-  int y_single = 240;
-  int y_multi = 290;
+  int y_single = 200;
+  int y_multi = 250;
+  int y_sub1 = y_multi + 20;
+  int y_sub2 = y_multi + 40;
 
-  // Clear the areas where text is drawn
+  // Clear areas
   tft.setTextDatum(MC_DATUM);
   tft.setTextColor(TFT_WHITE);
+  tft.setTextSize(1);  // reset default
 
-  // Clear background areas (oversized box to fully erase previous text)
   tft.fillRect(0, y_single - 15, SCREEN_WIDTH, 35, orange_color);
-  tft.fillRect(0, y_multi - 15, SCREEN_WIDTH, 35, orange_color);
+  tft.fillRect(0, y_multi - 15, SCREEN_WIDTH, 80, orange_color);  // extra space for sub-options
 
-  // options
   if (selection == 0) {
+    // Single-player selected
     tft.setTextSize(3);
     tft.drawString("Press for Single-Player", SCREEN_WIDTH / 2, y_single);
-    
-    tft.setTextSize(2); 
+
+    tft.setTextSize(2);
     tft.drawString("Press for Multiplayer", SCREEN_WIDTH / 2, y_multi);
   } else {
+    // Multiplayer selected
     tft.setTextSize(2);
     tft.drawString("Press for Single-Player", SCREEN_WIDTH / 2, y_single);
-    
+
     tft.setTextSize(3);
     tft.drawString("Press for Multiplayer", SCREEN_WIDTH / 2, y_multi);
+
+    // Draw sub-options
+    tft.setTextSize(1);
+    const char* sub1 = "Press to Host a Game";
+    const char* sub2 = "Press to Join a Game";
+
+    int sub1Width = tft.textWidth(sub1);
+    int sub2Width = tft.textWidth(sub2);
+
+    // Draw highlight rectangles for selected sub-option
+    if (game_state == MULTIPLAYER_SELECTION) {
+      const char* sub1 = "Host a Game";
+      const char* sub2 = "Join a Game";
+
+      int textSize = 2;
+      tft.setTextSize(textSize);
+      tft.setTextDatum(MC_DATUM);
+
+      int y_sub = y_multi + 40;  // vertical position for both buttons
+      int padding_x = 10;        // horizontal padding around text
+      int padding_y = 2;         // vertical padding around text
+
+      int sub1Width = tft.textWidth(sub1);
+      int sub2Width = tft.textWidth(sub2);
+
+      int sub1BoxWidth = sub1Width + padding_x * 2;
+      int sub2BoxWidth = sub2Width + padding_x * 2;
+      int boxHeight = 16 * textSize + padding_y * 2;
+
+      int x_sub1 = SCREEN_WIDTH / 4;
+      int x_sub2 = 3 * SCREEN_WIDTH / 4;
+
+      // Draw highlight rectangle if selected
+      if (subselection == 0) {
+        tft.drawRect(x_sub1 - sub1BoxWidth / 2, y_sub - boxHeight / 2, sub1BoxWidth, boxHeight, TFT_WHITE);
+      } else if (subselection == 1) {
+        tft.drawRect(x_sub2 - sub2BoxWidth / 2, y_sub - boxHeight / 2, sub2BoxWidth, boxHeight, TFT_WHITE);
+      }
+
+      // Draw the sub-option text
+      tft.drawString(sub1, x_sub1, y_sub);
+      tft.drawString(sub2, x_sub2, y_sub);
+    }
   }
 }
 
