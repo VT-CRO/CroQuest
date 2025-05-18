@@ -5,8 +5,8 @@
 const int globalYOffset =
     30; // or however far down you want to shift the entire pad
 
-int x = (480 - 170) / 2 + 9; // Based on your earlier offset
-int y = (320 - 172) / 2 + 10 + globalYOffset;
+int x = (480 - 170) / 2 + 1; // Based on your earlier offset
+int y = (320 - 172) / 2 + 4 + globalYOffset;
 
 NumPad::NumPad(TFT_eSPI &tft, JpegDrawing &drawing, Button &btnUp,
                Button &btnDown, Button &btnLeft, Button &btnRight,
@@ -16,8 +16,8 @@ NumPad::NumPad(TFT_eSPI &tft, JpegDrawing &drawing, Button &btnUp,
 
   const int buttonWidth = 47;
   const int buttonHeight = 31;
-  const int spacingX = 4;
-  const int spacingY = 9;
+  const int spacingX = 14;
+  const int spacingY = 14;
 
   for (int row = 0; row < 4; row++) {
     for (int col = 0; col < 3; col++) {
@@ -123,20 +123,20 @@ void NumPad::drawButton(enum button_state state, int row_button,
   float xOffset = 0;
   float yOffset = 0;
 
-  switch (state) {
-  case PRESSED:
-    xOffset = 2; // Adjust to center it like BASIC
-    yOffset = 1;
-    break;
-  case SELECTED:
-    xOffset = -1;
-    yOffset = -2; // Was slightly lower than BASIC
-    break;
-  case BASIC:
-    xOffset = 2.5;
-    yOffset = 0;
-    break;
-  }
+  // switch (state) {
+  // case PRESSED:
+  //   xOffset = 2; // Adjust to center it like BASIC
+  //   yOffset = 1;
+  //   break;
+  // case SELECTED:
+  //   xOffset = -1;
+  //   yOffset = -2; // Was slightly lower than BASIC
+  //   break;
+  // case BASIC:
+  //   xOffset = 2.5;
+  //   yOffset = 0;
+  //   break;
+  // }
 
   std::string basePath;
   switch (state) {
