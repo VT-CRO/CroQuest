@@ -3,6 +3,7 @@
 #pragma once
 
 #include "Core/Buttons.hpp"
+#include "Core/JpegDrawing.hpp"
 #include <TFT_eSPI.h>
 
 // === Game Data Structure ===
@@ -24,6 +25,8 @@ private:
   TFT_eSPI *tft;
   int selectedIndex;
 
+  JpegDrawing drawer;
+
   // TODO: Change to 11 once all the games are developed.
   static const int ITEM_COUNT = 8;
   GameBox gameBoxes[ITEM_COUNT];
@@ -31,15 +34,6 @@ private:
   void drawPage(); // Draws the menu page and selector
   void
   launchGameByName(const char *name); // Handles launching the selected game
-
-  // Input Buttons
-  Button buttonA;
-  Button buttonB;
-  Button buttonStart;
-  Button buttonUp;
-  Button buttonDown;
-  Button buttonLeft;
-  Button buttonRight;
 };
 
 // === Layout Constants ===

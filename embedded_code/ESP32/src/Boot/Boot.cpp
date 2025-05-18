@@ -14,6 +14,8 @@ TFT_eSPI tft = TFT_eSPI(); // Shared display object
 // ======================== Init Display + SD ========================
 void initBoot() {
   Serial.begin(115200);
+
+  // Initializes screen, rotation and background.
   tft.init();
   tft.setRotation(3);
   tft.fillScreen(TFT_BLACK);
@@ -191,4 +193,14 @@ void jpegRender(int xpos, int ypos) {
   }
 
   tft.setSwapBytes(swapBytes);
+}
+
+// ======================== Speaker Start up noise ========================
+void speaker() {
+  // Set PWM channel 0 for speaker output
+  ledcAttachPin(SPEAKER_PIN, 0); // GPIO 21 to channel 0
+  ledcWriteTone(0, 1000);        // 1000 Hz tone
+
+  delay(500);          // Play for 500ms
+  ledcWriteTone(0, 0); // Stop tone
 }

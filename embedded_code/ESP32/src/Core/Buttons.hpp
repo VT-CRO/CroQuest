@@ -3,6 +3,7 @@
 #pragma once
 #include <Arduino.h>
 
+// ====== Button Class Definition ======
 enum ButtonType { DIGITAL, ANALOG_INPUT };
 
 class Button {
@@ -22,7 +23,7 @@ public:
 
   void begin() {
     if (type == DIGITAL) {
-      pinMode(pin, INPUT_PULLUP); // Recommended for button wiring
+      pinMode(pin, INPUT_PULLUP);
     } else {
       pinMode(pin, INPUT);
     }
@@ -30,7 +31,7 @@ public:
 
   bool isPressed() const {
     if (type == DIGITAL) {
-      return digitalRead(pin) == LOW; // LOW = pressed when using pull-up
+      return digitalRead(pin) == LOW;
     } else {
       int value = analogRead(pin);
       return (value >= thresholdLow && value <= thresholdHigh);
@@ -44,7 +45,7 @@ public:
       lastState = currentState;
       return pressed;
     } else {
-      return isPressed(); // Analog buttons can't track previous state yet
+      return isPressed(); // analog wasJustPressed support could be improved
     }
   }
 
@@ -55,3 +56,19 @@ public:
   const char *getLabel() const { return label; }
   int getPin() const { return pin; }
 };
+
+// ====== Global Button Instances ======
+
+// Digital
+extern Button A;
+extern Button B;
+extern Button Start;
+
+// Analog shared-pin directions
+extern Button up;
+extern Button down;
+extern Button left;
+extern Button right;
+
+// Optional init function
+void initButtons();

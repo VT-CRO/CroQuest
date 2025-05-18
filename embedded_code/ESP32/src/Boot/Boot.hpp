@@ -8,6 +8,7 @@
 #define DELAY_MS 150     // delay between fade frames
 #define CIRCLE_RADIUS 45 // circle radius for boot animation
 #define SPACING 97       // spacing between circles
+#define SPEAKER_PIN 21   // Speaker GPIO pin
 
 // ======================== Display ==========================
 extern TFT_eSPI tft; // Declare shared display instance
@@ -23,3 +24,4 @@ void fadeInJpeg();                            // Simple fade-in effect
 void drawCroQuestCircleGrid(float progress);  // Grid circle animation frame
 void showLoadingDotsLine(int frame);          // Animated dots for "Loading..."
 void showBootLoadingCombined(int durationMs); // Combined loading effect
+void speaker();

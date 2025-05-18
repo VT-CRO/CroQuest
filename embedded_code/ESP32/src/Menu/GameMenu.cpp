@@ -4,18 +4,14 @@
 #include <JPEGDecoder.h>
 #include <SD.h>
 
+#include "Core/Buttons.hpp"
+#include "Core/JpegDrawing.hpp"
 #include "Menu/GameSetup.hpp"
 
 using namespace MenuLayout; // Use layout constants
 
 // ###################### Initialize Buttons ######################
-GameMenu::GameMenu(TFT_eSPI *tft)
-    : tft(tft), selectedIndex(0), buttonA(22, "A", DIGITAL),
-      buttonB(39, "B", DIGITAL), buttonStart(36, "Start", DIGITAL),
-      buttonUp(35, "Up", ANALOG_INPUT, 2000, 3600),
-      buttonRight(35, "Right", ANALOG_INPUT, 3601, 4095),
-      buttonLeft(34, "Left", ANALOG_INPUT, 2000, 3600),
-      buttonDown(34, "Down", ANALOG_INPUT, 3601, 4095) {
+GameMenu::GameMenu(TFT_eSPI *tft) : tft(tft), selectedIndex(0), drawer(*tft) {
 
   // ###################### Lists Games ######################
   gameBoxes[0] = {"Snake", 0, 0};
@@ -40,23 +36,34 @@ void GameMenu::draw() { drawPage(); }
 void GameMenu::drawPage() {
 
   // Screen Background Color (Gray)
+
   tft->fillScreen(BACKGROUND_COLOR);
 
   // Check for Background.jpg file
+
   File jpegFile = SD.open(MENU_BG_PATH);
+
   if (!jpegFile) {
+
     Serial.println("Menu background not found!");
+
     return;
   }
 
   // Set correct colors when drawing
+
   tft->setSwapBytes(true);
 
   // Positions the Jpeg image
+
   if (JpegDec.decodeSdFile(jpegFile)) {
+
     while (JpegDec.read()) {
+
       int x = JpegDec.MCUx * JpegDec.MCUWidth;
+
       int y = JpegDec.MCUy * JpegDec.MCUHeight;
+
       tft->pushImage(x, y, JpegDec.MCUWidth, JpegDec.MCUHeight, JpegDec.pImage);
     }
   }
@@ -64,33 +71,48 @@ void GameMenu::drawPage() {
   jpegFile.close(); // Closes image.
 
   // Draw all game names
+
   tft->setTextColor(TFT_WHITE, BACKGROUND_COLOR);
-  tft->setTextSize(1);         // You can increase to 2 if needed
+
+  tft->setTextSize(1); // You can increase to 2 if needed
+
   tft->setTextDatum(MC_DATUM); // Middle center alignment (requires setFreeFont
-                               // or use default)
+
+  // or use default)
 
   for (int i = 0; i < ITEM_COUNT; i++) {
+
     int row = i / ITEMS_PER_ROW;
+
     int col = i % ITEMS_PER_ROW;
+
     int x = LEFT_MARGIN + col * (ICON_SIZE + H_SPACING);
+
     int y = TOP_MARGIN + row * (ICON_SIZE + MARGIN_Y);
 
     int textX = x + ICON_SIZE / 2;
+
     int textY = y + ICON_SIZE + 10; // 10px below the icon
 
     tft->drawString(gameBoxes[i].name, textX, textY);
   }
 
   // Draw initial selector
+
   int row = selectedIndex / ITEMS_PER_ROW;
+
   int col = selectedIndex % ITEMS_PER_ROW;
 
   int x = LEFT_MARGIN + col * (ICON_SIZE + H_SPACING);
+
   int y = TOP_MARGIN + row * (ICON_SIZE + MARGIN_Y);
 
   // Draw a "thicker" rounded rectangle by layering multiple ones
+
   for (int i = 0; i < SELECTOR_THICKNESS; i++) {
+
     tft->drawRoundRect(x - i, y - i, ICON_SIZE + 2 * i, ICON_SIZE + 2 * i,
+
                        SELECTOR_RADIUS, TFT_WHITE);
   }
 }
@@ -105,24 +127,24 @@ void GameMenu::handleInput() {
   bool moved = false;
 
   // Checks what button was pressed and executes movement (ANALOG)
-  if (buttonUp.isPressed()) {
+  if (up.isPressed()) {
     if (selectedIndex >= ITEMS_PER_ROW) {
       selectedIndex -= ITEMS_PER_ROW;
       moved = true;
     }
-  } else if (buttonDown.isPressed()) {
+  } else if (down.isPressed()) {
     if (selectedIndex + ITEMS_PER_ROW < ITEM_COUNT) {
       selectedIndex += ITEMS_PER_ROW;
       moved = true;
     }
-  } else if (buttonLeft.isPressed()) {
+  } else if (left.isPressed()) {
     if (selectedIndex == 0) {
       selectedIndex = ITEM_COUNT - 1;
     } else {
       selectedIndex--;
     }
     moved = true;
-  } else if (buttonRight.isPressed()) {
+  } else if (right.isPressed()) {
     if (selectedIndex == ITEM_COUNT - 1) {
       selectedIndex = 0;
     } else {
@@ -135,7 +157,7 @@ void GameMenu::handleInput() {
   }
 
   // Checks what button was pressed and executes movement (DIGITAL)
-  if (buttonA.wasJustPressed()) {
+  if (A.wasJustPressed()) {
     launchGameByName(gameBoxes[selectedIndex].name);
     lastInput = millis();
     return;

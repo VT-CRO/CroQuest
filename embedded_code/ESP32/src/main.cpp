@@ -5,6 +5,9 @@
 #include "Boot/Boot.hpp"
 #include "Menu/GameMenu.hpp"
 
+// Include Games
+#include "tic_tac_toe/TicTacToe.hpp"
+
 GameMenu menu(&tft);
 
 // ####################################################################################################
@@ -12,11 +15,11 @@ GameMenu menu(&tft);
 // ####################################################################################################
 void setup() {
 
-  // Starts Boot
+  // Starts Boot + Speaker
+  speaker();                                    // Speaker Start UP
   initBoot();                                   // Initializes SD + TFT
   showBootWithLoading("/boot/assets/boot.jpg"); // Show Splash + animation
-
-  menu.draw(); // Draw menu page
+  menu.draw();                                  // Draw menu page
 }
 
 // ####################################################################################################
