@@ -48,9 +48,6 @@ int sequenceLength = 0;    // Current sequence length
 int playerPos = 0;         // Player's current position in the sequence
 int playerScore = 0;       // Player's score
 
-// Button colors
-uint16_t buttonColors[4] = {TFT_RED, TFT_BLUE, TFT_GREEN, TFT_YELLOW};
-
 // Timing variables
 unsigned long lastButtonPressTime = 0;
 unsigned long buttonDebounceDelay = 200;
@@ -65,6 +62,8 @@ int centerX = SCREEN_WIDTH / 2;
 int centerY = SCREEN_HEIGHT / 2;
 int diskCenterX, diskCenterY;
 int diskSize;
+
+bool first = true;
 
 int selection = 0;
 int subselection = 0;
@@ -169,7 +168,7 @@ void loop() {
       }
       break;
     case MULTIPLAYER_SELECTION:
-      if(millis() - lastButtonPressTime > buttonDebounceDelay/2){
+      if(millis() - lastButtonPressTime > buttonDebounceDelay){
         if(digitalRead(BTN_LEFT) == LOW){
           if(subselection == 1){
             subselection = 0;
@@ -336,15 +335,18 @@ void gameOver() {
 
 void drawGameScreen() {
   
-  // Draw the disk in the center
-  int diskX = 0;
-  int diskY = diskCenterY - diskSize/2;
-  drawing.drawSdJpeg(BOARD_PATH, diskX, diskY);
+  if(first){
+    // Draw the disk in the center
+    int diskX = 0;
+    int diskY = diskCenterY - diskSize/2;
+    drawing.drawSdJpeg(BOARD_PATH, diskX, diskY);
+    first = false;
+  }
   
   // Draw score on the right side
   drawScore();
   
-  drawing.pushSprite();
+  drawing.pushSprite(true);
 }
 
 void drawGameOverScreen() {
@@ -406,9 +408,9 @@ void drawLevelUpScreen() {
   int boxWidth = 140;
   int boxHeight = 60;
   tft.fillRect(diskCenterX - boxWidth/2, diskCenterY - boxHeight/2, boxWidth, boxHeight, TFT_BLACK);
-  tft.drawRect(diskCenterX - boxWidth/2, diskCenterY - boxHeight/2, boxWidth, boxHeight, TFT_GREEN);
+  tft.drawRect(diskCenterX - boxWidth/2, diskCenterY - boxHeight/2, boxWidth, boxHeight, TFT_YELLOW);
   
-  tft.setTextColor(TFT_GREEN, TFT_BLACK);
+  tft.setTextColor(TFT_YELLOW, TFT_BLACK);
   tft.setTextSize(2);
   tft.setTextDatum(MC_DATUM);
   tft.drawString("LEVEL UP!", diskCenterX, diskCenterY - 10);
@@ -427,10 +429,10 @@ void drawScore() {
 
     // Draw background box for the score
     tft.fillRoundRect(scoreX, scoreY, boxWidth, boxHeight, 8, TFT_BLACK);
-    tft.drawRoundRect(scoreX, scoreY, boxWidth, boxHeight, 8, TFT_GREEN);
+    tft.drawRoundRect(scoreX, scoreY, boxWidth, boxHeight, 8, TFT_YELLOW);
   
     // Set text properties
-    tft.setTextColor(TFT_GREEN, TFT_BLACK);
+    tft.setTextColor(TFT_YELLOW, TFT_BLACK);
     tft.setTextSize(2);
     tft.setTextDatum(TL_DATUM);
   
@@ -504,21 +506,19 @@ void highlightButton(int buttonId) {
   // Could add sound here
   
   // Delay to keep the button visibly highlighted
-  if(currentState == STATE_WATCH){
     delay(200);
-  }
   
   // Return button to normal state
   drawButton(buttonId, false);
 
   if(currentState == STATE_WATCH){
-    delay(200);
+    delay(300);
   }
 }
 
 void drawHomeScreenSimon() {
-  // Clear the screen with a distinct color (e.g., dark blue)
-  uint16_t bgColor = TFT_DARKGREY;
+  // Clear the screen
+  uint16_t bgColor = TFT_BLACK;
   tft.fillScreen(bgColor);
 
   // Set title properties
@@ -549,8 +549,8 @@ void drawSimonHomeSelection() {
   tft.setTextDatum(MC_DATUM);
   tft.setTextColor(TFT_WHITE);
   tft.setTextSize(1);
-  tft.fillRect(0, y_single - 15, SCREEN_WIDTH, 35, TFT_DARKGREY);
-  tft.fillRect(0, y_multi - 15, SCREEN_WIDTH, 80, TFT_DARKGREY);
+  tft.fillRect(0, y_single - 15, SCREEN_WIDTH, 35, TFT_BLACK);
+  tft.fillRect(0, y_multi - 15, SCREEN_WIDTH, 80, TFT_BLACK);
 
   if (selection == 0) {
     // Single-player selected

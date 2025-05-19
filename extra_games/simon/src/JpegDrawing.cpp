@@ -112,13 +112,29 @@ void JpegDrawing::drawSdJpeg(const char *filename, int xpos, int ypos) {
     }
 }
 
-void JpegDrawing::pushSprite(){
+void JpegDrawing::pushSprite(bool persistent, bool transparent, uint16_t transparent_color){
     // Push full image to the screen
-    sprite.pushSprite(x_pos, y_pos);
+    if(transparent){
+        sprite.pushSprite(x_pos, y_pos, transparent_color);
+    }else{
+        sprite.pushSprite(x_pos, y_pos);
+    }
 
-    // Clean up
+    if(!persistent){
+        // Clean up
+        sprite.setSwapBytes(swapBytes);
+        sprite.deleteSprite();
+        buffer_created = false;
+        buffer_width = 0;
+        buffer_height = 0;
+        x_pos = 0; 
+        y_pos = 0;
+        first = true;
+    }
+}
+
+void JpegDrawing::deleteSprite(){
     sprite.setSwapBytes(swapBytes);
-
     sprite.deleteSprite();
     buffer_created = false;
     buffer_width = 0;
