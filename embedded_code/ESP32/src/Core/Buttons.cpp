@@ -21,3 +21,13 @@ void initButtons() {
   left.begin();
   right.begin();
 }
+
+// void updateAllButtons() {
+//   A.update();
+//   B.update();
+//   Start.update();
+//   up.update();
+//   down.update();
+//   left.update();
+//   right.update();
+// }

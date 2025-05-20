@@ -73,25 +73,17 @@ void GameMenu::drawPage() {
   // Draw all game names
 
   tft->setTextColor(TFT_WHITE, BACKGROUND_COLOR);
-
-  tft->setTextSize(1); // You can increase to 2 if needed
-
+  tft->setTextSize(1);         // You can increase to 2 if needed
   tft->setTextDatum(MC_DATUM); // Middle center alignment (requires setFreeFont
 
   // or use default)
 
   for (int i = 0; i < ITEM_COUNT; i++) {
-
     int row = i / ITEMS_PER_ROW;
-
     int col = i % ITEMS_PER_ROW;
-
     int x = LEFT_MARGIN + col * (ICON_SIZE + H_SPACING);
-
     int y = TOP_MARGIN + row * (ICON_SIZE + MARGIN_Y);
-
     int textX = x + ICON_SIZE / 2;
-
     int textY = y + ICON_SIZE + 10; // 10px below the icon
 
     tft->drawString(gameBoxes[i].name, textX, textY);
@@ -100,11 +92,8 @@ void GameMenu::drawPage() {
   // Draw initial selector
 
   int row = selectedIndex / ITEMS_PER_ROW;
-
   int col = selectedIndex % ITEMS_PER_ROW;
-
   int x = LEFT_MARGIN + col * (ICON_SIZE + H_SPACING);
-
   int y = TOP_MARGIN + row * (ICON_SIZE + MARGIN_Y);
 
   // Draw a "thicker" rounded rectangle by layering multiple ones

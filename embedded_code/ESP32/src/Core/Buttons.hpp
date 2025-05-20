@@ -72,3 +72,6 @@ extern Button right;
 
 // Optional init function
 void initButtons();
+
+// Declare the global update function
+void updateAllButtons();

@@ -1,6 +1,7 @@
 // Boot.cpp
 
 #include "Boot.hpp"
+#include "Core/JpegDrawing.hpp"
 
 #include <FS.h>
 #include <JPEGDecoder.h>
@@ -10,6 +11,8 @@
 
 // ======================== Global Display Instance ========================
 TFT_eSPI tft = TFT_eSPI(); // Shared display object
+
+JpegDrawing drawing(tft);
 
 // ======================== Init Display + SD ========================
 void initBoot() {

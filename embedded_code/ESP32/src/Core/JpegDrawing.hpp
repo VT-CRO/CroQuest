@@ -34,9 +34,13 @@ public:
 
   // Public methods
   void drawSdJpeg(const char *filename, int xpos, int ypos);
-  void pushSprite(bool transparent = false, uint16_t transparent_color = 0);
+  void pushSprite(bool persistent = false, bool transparent = false,
+                  uint16_t transparent_color = 0);
   void drawJpegTile(const char *filename, int srcX, int srcY, int w, int h,
                     int dstX, int dstY);
+
+  void deleteSprite();
+
   ImageInfo getJpegDimensions(const char *filename);
 };
 

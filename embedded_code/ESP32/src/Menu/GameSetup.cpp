@@ -4,7 +4,8 @@
 #include <Arduino.h>
 
 // Include Games
-#include "tic_tac_toe/TicTacToe.hpp"
+#include "Games/simon/Simon.hpp"
+#include "Games/tic_tac_toe/TicTacToe.hpp"
 
 // Include games headers here
 // #include "Games/Tetris/Tetris.hpp"
@@ -22,7 +23,7 @@ void launchGameByName(const char *name) {
   } else if (strcmp(name, "Tic Tac Toe") == 0) {
     runTicTacToe();
   } else if (strcmp(name, "Simon") == 0) {
-    // launchSimon();
+    runSimon();
   } else if (strcmp(name, "Connect 4") == 0) {
     // launchConnect4();
   } else if (strcmp(name, "Breakout") == 0) {

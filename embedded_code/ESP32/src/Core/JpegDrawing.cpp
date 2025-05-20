@@ -82,7 +82,6 @@ void JpegDrawing::jpegRender(int xpos, int ypos) {
   first = false;
 }
 
-// Constructor - sets up basic properties
 JpegDrawing::JpegDrawing(TFT_eSPI &tft) : tft(tft), sprite(&tft) {
   sprite.setColorDepth(8); // 8-bit for JPEG colors
   buffer_created = false;
@@ -117,7 +116,8 @@ void JpegDrawing::drawSdJpeg(const char *filename, int xpos, int ypos) {
   }
 }
 
-void JpegDrawing::pushSprite(bool transparent, uint16_t transparent_color) {
+void JpegDrawing::pushSprite(bool persistent, bool transparent,
+                             uint16_t transparent_color) {
   // Push full image to the screen
   if (transparent) {
     sprite.pushSprite(x_pos, y_pos, transparent_color);
@@ -125,9 +125,21 @@ void JpegDrawing::pushSprite(bool transparent, uint16_t transparent_color) {
     sprite.pushSprite(x_pos, y_pos);
   }
 
-  // Clean up
-  sprite.setSwapBytes(swapBytes);
+  if (!persistent) {
+    // Clean up
+    sprite.setSwapBytes(swapBytes);
+    sprite.deleteSprite();
+    buffer_created = false;
+    buffer_width = 0;
+    buffer_height = 0;
+    x_pos = 0;
+    y_pos = 0;
+    first = true;
+  }
+}
 
+void JpegDrawing::deleteSprite() {
+  sprite.setSwapBytes(swapBytes);
   sprite.deleteSprite();
   buffer_created = false;
   buffer_width = 0;

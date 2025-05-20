@@ -6,11 +6,6 @@
 #include "Core/JpegDrawing.hpp"
 #include <TFT_eSPI.h>
 #include <string>
-#include "States/States.hpp"
-
-extern TFT_eSPI tft;
-extern JpegDrawing drawing;
-extern Button A, up, down, left, right;
 
 class NumPad {
 public:
@@ -19,12 +14,11 @@ public:
   enum button_type { DEL = 10, ENTER = 11 };
 
   // Constructor
-  NumPad(void (*backScreen)(), void (*forwardScreen)(), 
-          State * gameState, State prevState, State nextState);
+  NumPad(TFT_eSPI &tft, JpegDrawing &drawing, Button &btnUp, Button &btnDown,
+         Button &btnLeft, Button &btnRight, Button &btnSelect);
 
   void drawAllButtons();
-  void handleButtonInput(unsigned long *lastMoveTime,
-                               const long moveDelay);
+  void handleButtonInput(unsigned long *lastMoveTime, const long moveDelay);
   void modButtonState(direction dir, button_state state);
   void numPadSetup();
 
@@ -32,15 +26,6 @@ public:
   void clearCode() { code.clear(); }
 
 private:
-
-  void (*backScreen)();
-  void (*forwardScreen)();
-  State * gameState;
-
-  // The two states that the numpad can jump to
-  State prevState;
-  State nextState;
-
   const int SCREEN_WIDTH = 480;
 
   // Pad layout
@@ -62,8 +47,15 @@ private:
   // Drawing
   int buttonWidth = 50;
   int buttonHeight = 45;
+  TFT_eSPI &tft;
+  JpegDrawing &drawing;
 
-  int selected = 1;
+  // Control buttons
+  Button &BTN_UP;
+  Button &BTN_DOWN;
+  Button &BTN_LEFT;
+  Button &BTN_RIGHT;
+  Button &BTN_SELECT;
 
   void drawButton(button_state state, int row, int col);
   void drawCode();
