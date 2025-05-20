@@ -3,44 +3,45 @@
 #include "TicTacToe.hpp"
 
 // ======================== Global Definitions ========================
-extern TFT_eSPI tft;
-JpegDrawing drawing(tft);
 
-const char *BOARD_PATH = "/tic_tac_toe_assets/board.jpg";
-const char *X_PATH = "/tic_tac_toe_assets/x.jpg";
-const char *O_PATH = "/tic_tac_toe_assets/o.jpg";
-const char *DIS_O_PATH = "/tic_tac_toe_assets/disappearing_o.jpg";
-const char *DIS_X_PATH = "/tic_tac_toe_assets/disappearing_x.jpg";
-
-NumPad pad(tft, drawing, up, down, left, right, A);
+static const char *BOARD_PATH = "/tic_tac_toe_assets/board.jpg";
+static const char *X_PATH = "/tic_tac_toe_assets/x.jpg";
+static const char *O_PATH = "/tic_tac_toe_assets/o.jpg";
+static const char *DIS_O_PATH = "/tic_tac_toe_assets/disappearing_o.jpg";
+static const char *DIS_X_PATH = "/tic_tac_toe_assets/disappearing_x.jpg";
 
 // Game Board
-String board[9] = {"**", "**", "**", "**", "**", "**", "**", "**", "**"};
-Move moveQueue[6];
-int moveCount = 0;
-int cursorIndex = 0;
-char currentPlayer = 'X';
-char winner = 'N';
-int winCombo[3] = {-1, -1, -1};
-bool roundEnded = false;
-unsigned long winTime = 0;
+static String board[9] = {"**", "**", "**", "**", "**", "**", "**", "**", "**"};
+static Move moveQueue[6];
+static int moveCount = 0;
+static int cursorIndex = 0;
+static char currentPlayer = 'X';
+static char winner = 'N';
+static int winCombo[3] = {-1, -1, -1};
+static bool roundEnded = false;
+static unsigned long winTime = 0;
 
 // Game State
 State game_state = HOMESCREEN;
-int selection = 0;
-int subselection = 0;
-const unsigned long moveDelay = 100;
-bool buttonPreviouslyPressed = false;
+static int selection = 0;
+static int subselection = 0;
+static const unsigned long moveDelay = 100;
+static bool buttonPreviouslyPressed = false;
+static bool firstDrawingPlaying = true;
 
 // Screen
 int screen_width, screen_height;
-const int cell_size = 80;
-int x_start, y_start;
-uint16_t orange_color = tft.color565(0xFF, 0x70, 0x00);
+static const int cell_size = 80;
+static int x_start, y_start;
+static uint16_t orange_color = tft.color565(0xFF, 0x70, 0x00);
 
 // Score
-int xWins = 0;
-int oWins = 0;
+static int xWins = 0;
+static int oWins = 0;
+
+// Jpeg and Numpad initialization
+JpegDrawing drawing(tft);
+NumPad pad(drawHomeScreen, drawAllPlaying, &game_state, HOMESCREEN, PLAYING);
 
 // ======================== Game Entry ========================
 void runTicTacToe() {
@@ -76,9 +77,7 @@ void handleTicTacToeFrame() {
     if (millis() - lastMoveTime > moveDelay / 2) {
       if (A.wasJustPressed()) {
         if (selection == 0) {
-          game_state = SINGLE_PLAYER;
-          // Clear the screen with orange background
-          tft.fillScreen(orange_color);
+          game_state = PLAYING;
           // Draw initial screen
           drawAllPlaying();
         } else if (selection == 1) {
@@ -123,7 +122,7 @@ void handleTicTacToeFrame() {
       }
       lastMoveTime = millis();
     }
-  } else if (game_state == SINGLE_PLAYER) {
+  } else if (game_state == PLAYING) {
     if (!roundEnded && millis() - lastMoveTime > moveDelay / 2) {
       if (up.isPressed() && cursorIndex >= 3) {
         cursorIndex -= 3;
@@ -236,6 +235,7 @@ void handleTicTacToeFrame() {
       tft.fillScreen(orange_color);
     }
   } else if (game_state == GAMEOVER_SCREEN) {
+    firstDrawingPlaying = true;
     drawEndScreen();
     if (millis() - lastMoveTime > moveDelay) {
       if (A.wasJustPressed()) {
@@ -253,7 +253,7 @@ void handleTicTacToeFrame() {
   }
 }
 
-void checkWinner() {
+static void checkWinner() {
   const int wins[8][3] = {
       {0, 1, 2}, {3, 4, 5}, {6, 7, 8}, // rows
       {0, 3, 6}, {1, 4, 7}, {2, 5, 8}, // cols
@@ -297,7 +297,7 @@ void checkWinner() {
   }
 }
 
-void drawEndScreen() {
+static void drawEndScreen() {
 
   // Set text properties
   tft.setTextDatum(MC_DATUM);
@@ -346,7 +346,7 @@ void drawEndScreen() {
   }
 }
 
-void drawHomeScreen() {
+static void drawHomeScreen() {
   // Clear the screen with orange background
   tft.fillScreen(orange_color);
 
@@ -381,7 +381,7 @@ void drawHomeScreen() {
   drawHomescreenSelect();
 }
 
-void drawHomescreenSelect() {
+static void drawHomescreenSelect() {
   int y_single = 200;
   int y_multi = 250;
   int y_sub1 = y_multi + 20;
@@ -458,7 +458,12 @@ void drawHomescreenSelect() {
   }
 }
 
-void drawAllPlaying() {
+static void drawAllPlaying() {
+  if(firstDrawingPlaying){
+    // Clear the screen with orange background
+    tft.fillScreen(orange_color);
+    firstDrawingPlaying = false;
+  }
   drawScoreboard();
   drawGrid();
   drawing.pushSprite();
@@ -494,7 +499,7 @@ void drawGrid() {
   }
 }
 
-void highlightCursor(int index) {
+static void highlightCursor(int index) {
   int row = index / 3;
   int col = index % 3;
 
@@ -531,7 +536,7 @@ void clearCursor(int index) {
                  TFT_BLACK); // bottom
 }
 
-void drawWinLine() {
+static void drawWinLine() {
   if (winner != 'X' && winner != 'O')
     return;
 
@@ -554,7 +559,7 @@ void drawWinLine() {
   }
 }
 
-void drawWinnerMessage() {
+static void drawWinnerMessage() {
   tft.setTextDatum(MC_DATUM);
   tft.setTextSize(3);
   tft.setTextColor(TFT_BLACK, TFT_WHITE);
@@ -570,7 +575,7 @@ void drawWinnerMessage() {
   tft.drawString(msg, tft.width() / 2, 30); // above grid
 }
 
-void drawScoreboard() {
+static void drawScoreboard() {
   int centerY = tft.height() / 2;
   int padding = 20;
 
@@ -613,7 +618,7 @@ void drawScoreboard() {
   tft.drawString(String(oWins), xO, oLineY + scoreOffset);
 }
 
-int findBestMove(char aiSymbol, char playerSymbol) {
+static int findBestMove(char aiSymbol, char playerSymbol) {
   // Winning combinations
   const int wins[8][3] = {{0, 1, 2}, {3, 4, 5}, {6, 7, 8}, {0, 3, 6},
                           {1, 4, 7}, {2, 5, 8}, {0, 4, 8}, {2, 4, 6}};

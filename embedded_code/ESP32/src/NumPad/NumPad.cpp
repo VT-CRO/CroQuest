@@ -1,6 +1,7 @@
 // /src/NumPad/NumPad.cpp
 
 #include "NumPad.hpp"
+#include "BackButton/BackButton.hpp"
 
 const int globalYOffset =
     30; // or however far down you want to shift the entire pad
@@ -8,12 +9,12 @@ const int globalYOffset =
 int x = (480 - 170) / 2 + 1; // Based on your earlier offset
 int y = (320 - 172) / 2 + 4 + globalYOffset;
 
-NumPad::NumPad(TFT_eSPI &tft, JpegDrawing &drawing, Button &btnUp,
-               Button &btnDown, Button &btnLeft, Button &btnRight,
-               Button &btnSelect)
-    : tft(tft), drawing(drawing), BTN_UP(btnUp), BTN_DOWN(btnDown),
-      BTN_LEFT(btnLeft), BTN_RIGHT(btnRight), BTN_SELECT(btnSelect) {
-
+NumPad::NumPad(void (*backScreen)(), void (*forwardScreen)(), 
+              State * gameState, State prevState, State nextState)
+              : backScreen(backScreen), forwardScreen(forwardScreen){
+  this->gameState = gameState;
+  this->prevState = prevState;
+  this->nextState = nextState;
   const int buttonWidth = 47;
   const int buttonHeight = 31;
   const int spacingX = 14;
@@ -93,7 +94,20 @@ void NumPad::modButtonState(enum direction direction, enum button_state state) {
     } else if (pad[row][column] == ENTER) {
       //////// TO-DO /////////////
       /// BLUETOOTH LOGIC //////////
-    } else {
+      
+      // Temp logic, simply changes state and draws to the screen
+      (*gameState) = nextState;
+      forwardScreen();
+      return;
+    } else if(selected == 0){
+        // Back Button Selected - returns to previous screen,
+        // resetting the gamestate and selected number
+        (*gameState) = prevState;
+        backScreen();
+        selected = 1;
+        return;
+    }
+    else {
       if (code.length() < max_length) {
         std::string button = std::to_string(pad[row][column]);
         code += button;
@@ -113,6 +127,7 @@ void NumPad::drawAllButtons() {
 
   drawing.drawSdJpeg("/numpad/numpad.jpg", x, y);
   drawing.pushSprite(true);
+  back(selected, TFT_BLACK);
 }
 
 // Draw a button
@@ -197,25 +212,43 @@ void NumPad::handleButtonInput(unsigned long *lastMoveTime,
                                const long moveDelay) {
   if (millis() - *lastMoveTime > moveDelay) {
     // Press Logic
-    if (!BTN_SELECT.isPressed() && !pressed) {
-      modButtonState(NumPad::NONE, NumPad::PRESSED);
-      pressed = true;
-    } else if (BTN_SELECT.isPressed() && pressed) {
+    if (!A.isPressed() && !pressed) {
+        modButtonState(NumPad::NONE, NumPad::PRESSED);
+        pressed = true;
+      *lastMoveTime = millis();
+    } else if (A.isPressed() && pressed) {
       modButtonState(NumPad::NONE, NumPad::SELECTED);
       pressed = false;
     }
-    // Selection logic
-    if (BTN_UP.isPressed()) {
-      modButtonState(NumPad::UP, NumPad::SELECTED);
-    } else if (BTN_DOWN.isPressed()) {
-      modButtonState(NumPad::DOWN, NumPad::SELECTED);
-    } else if (BTN_RIGHT.isPressed()) {
+    if (up.isPressed()) {
+      // Back button selection logic to
+      // highlight the back button
+      if(row <= 0 && selected == 1){
+        selected = 0;
+        modButtonState(NumPad::NONE, NumPad::BASIC);
+        back(selected, TFT_BLACK);
+      }else{
+        modButtonState(NumPad::UP, NumPad::SELECTED);
+      }
+      *lastMoveTime = millis();
+    } else if (down.isPressed()) {
+      // Back button selection logic to 
+      // de-select the button
+      if(row <= 0 && selected == 0){
+        selected = 1;
+        back(selected, TFT_BLACK);
+        modButtonState(NumPad::NONE, NumPad::SELECTED);
+      }else{
+        modButtonState(NumPad::DOWN, NumPad::SELECTED);
+      }
+      *lastMoveTime = millis();
+    } else if (right.isPressed()) {
       modButtonState(NumPad::RIGHT, NumPad::SELECTED);
-    } else if (BTN_LEFT.isPressed()) {
+      *lastMoveTime = millis();
+    } else if (left.isPressed()) {
       modButtonState(NumPad::LEFT, NumPad::SELECTED);
+      *lastMoveTime = millis();
     }
-
-    *lastMoveTime = millis();
   }
 }
 
