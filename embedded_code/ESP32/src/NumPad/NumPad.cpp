@@ -29,7 +29,7 @@ NumPad::NumPad(void (*backScreen)(), void (*forwardScreen)(),
 
   // // Optionally preload the background
   // drawing.drawSdJpeg("/numpad/numpad.jpg", x, y);
-  drawing.pushSprite(true);
+  drawing.pushSprite(false, true);
 }
 
 // modify button position and state, also redraws the button
@@ -78,7 +78,7 @@ void NumPad::modButtonState(enum direction direction, enum button_state state) {
 
     drawing.drawJpegTile("/numpad/numpad.jpg", srcX, srcY, buttonW, buttonH,
                          dstX, dstY);
-    drawing.pushSprite(true);
+    drawing.pushSprite(false, true);
 
     // === Step 2: Restore full BASIC button ===
     drawButton(BASIC, prev_row, prev_col);
@@ -126,7 +126,7 @@ void NumPad::drawAllButtons() {
   int y = (320 - dim.height) / 2 + globalYOffset;
 
   drawing.drawSdJpeg("/numpad/numpad.jpg", x, y);
-  drawing.pushSprite(true);
+  drawing.pushSprite(false, true);
   back(selected, TFT_BLACK);
 }
 
@@ -169,7 +169,7 @@ void NumPad::drawButton(enum button_state state, int row_button,
   std::string file =
       basePath + std::to_string(pad[row_button][column_button]) + ".jpg";
   drawing.drawSdJpeg(file.c_str(), position.x + xOffset, position.y + yOffset);
-  drawing.pushSprite(true);
+  drawing.pushSprite(false, true);
 
   if (state == PRESSED) {
     delay(100);
@@ -178,7 +178,7 @@ void NumPad::drawButton(enum button_state state, int row_button,
                            std::to_string(pad[row_button][column_button]) +
                            ".jpg";
     drawing.drawSdJpeg(fallback.c_str(), position.x, position.y);
-    drawing.pushSprite(true);
+    drawing.pushSprite(false, true);
   }
 }
 
