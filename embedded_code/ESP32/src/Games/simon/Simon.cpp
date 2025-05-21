@@ -1,5 +1,28 @@
 #include "Simon.hpp"
 
+// ========== Drawing ==========
+void drawSimonHomeScreen();
+void drawSimonGameScreen();
+void drawSimonGameOverScreen();
+void drawSimonLevelUpScreen();
+void drawSimonScore();
+void highlightSimonButton(int buttonId);
+void drawSimonHomeSelection();
+void drawSimonGameOverSelect();
+void drawCenteredOverlay(const char *imagePath);
+void drawSimonTriangleOverlay(int buttonId);
+
+// ========== Logic ==========
+void simonGenerateSequence();
+void simonExtendSequence();
+void simonPlaySequence();
+void simonCheckInput(int buttonPressed);
+void simonStartNewGame();
+void simonGameOver();
+void simonLevelUp();
+void simonHandleInput();
+void drawPlayerStatusTable();
+
 // ======================== Global Definitions ========================
 
 // Assets paths
@@ -20,7 +43,7 @@ bool playerFailed = false;
 int playerLevels[MAX_PLAYERS] = {0}; // Track how many levels each player passed
 
 // Game variables
-SimonState simonCurrentState = SIMON_HOMESCREEN;
+SimonState simon_game_state = SIMON_HOMESCREEN;
 int sequence[100];      // Sequence storage
 int sequenceLength = 0; // Current sequence length
 int playerPos = 0;      // Player's current position in the sequence
@@ -53,6 +76,9 @@ int simonSelection = 0;
 int simonsubselection = 0;
 bool start = true;
 
+// Numpad 
+static NumPad<SimonState> pad(drawSimonHomeScreen, simonStartNewGame, &simon_game_state, SIMON_HOMESCREEN, SIMON_STATE_WATCH);
+
 // ======================== Game Entry ========================
 void runSimon() {
 
@@ -80,7 +106,7 @@ void runSimon() {
   randomSeed(analogRead(3));
 
   // Set initial state
-  simonCurrentState = SIMON_HOMESCREEN;
+  simon_game_state = SIMON_HOMESCREEN;
   drawSimonHomeScreen();
 
   // Main game loop
@@ -100,7 +126,8 @@ void runSimon() {
 void handleSimonFrame() {
 
   // === State machine for Simon ===
-  switch (simonCurrentState) {
+  switch (simon_game_state) {
+  
   case SIMON_HOMESCREEN:
     if (start) {
       drawSimonHomeScreen();
@@ -110,7 +137,7 @@ void handleSimonFrame() {
     if (millis() - lastButtonPressTime > buttonDebounceDelay) {
       if (A.wasJustPressed()) {
         if (simonSelection == 1) {
-          simonCurrentState = SIMON_MULTIPLAYER_SELECTION;
+          simon_game_state = SIMON_MULTIPLAYER_SELECTION;
           drawSimonHomeSelection();
         } else {
           simonStartNewGame();
@@ -147,13 +174,14 @@ void handleSimonFrame() {
       } else if (A.wasJustPressed()) {
         if (simonsubselection == 0) {
           tft.fillScreen(TFT_BLUE);
-          simonCurrentState = SIMON_JOIN_SCREEN;
+          simon_game_state = SIMON_JOIN_SCREEN;
         } else {
-          tft.fillScreen(TFT_BROWN);
-          simonCurrentState = SIMON_BLUETOOTH_NUMPAD;
+          pad.numPadSetup();
+          simon_game_state = SIMON_BLUETOOTH_NUMPAD;
+          break;
         }
-      } else if (up.wasJustPressed()) {
-        simonCurrentState = SIMON_HOMESCREEN;
+      }else if (up.wasJustPressed()) {
+        simon_game_state = SIMON_HOMESCREEN;
         simonsubselection = 0;
         simonSelection = 1;
         drawSimonHomeSelection();
@@ -195,7 +223,7 @@ void handleSimonFrame() {
       }
       if (A.wasJustPressed()) {
         if (simonSelection == 0) {
-          simonCurrentState = SIMON_HOMESCREEN;
+          simon_game_state = SIMON_HOMESCREEN;
           drawSimonHomeScreen();
         } else {
           simonStartNewGame();
@@ -207,9 +235,13 @@ void handleSimonFrame() {
 
   case SIMON_LEVELUP:
     if (millis() - levelUpTime > 1500) {
-      simonCurrentState = SIMON_STATE_WATCH;
+      simon_game_state = SIMON_STATE_WATCH;
       lastSequenceTime = millis();
     }
+    break;
+
+  case SIMON_BLUETOOTH_NUMPAD:
+    pad.handleButtonInput(&lastButtonPressTime, buttonDebounceDelay/2);
     break;
   }
 }
@@ -241,7 +273,7 @@ void simonStartNewGame() {
   showing = false;
   lastStepTime = millis() - 600;
 
-  simonCurrentState = SIMON_STATE_WATCH;
+  simon_game_state = SIMON_STATE_WATCH;
 }
 
 void simonGenerateSequence() {
@@ -262,7 +294,7 @@ void simonPlaySequence() {
 
   if (currentStep >= sequenceLength) {
     currentStep = 0;
-    simonCurrentState = SIMON_STATE_PLAY;
+    simon_game_state = SIMON_STATE_PLAY;
     drawSimonGameScreen();
     return;
   }
@@ -305,7 +337,7 @@ void simonLevelUp() {
   simonExtendSequence(); // Add one new triangle to the sequence
   playerPos = 0;
 
-  simonCurrentState = SIMON_LEVELUP;
+  simon_game_state = SIMON_LEVELUP;
   levelUpTime = millis();
 
   drawSimonGameScreen();   // Redraw disk
@@ -314,7 +346,7 @@ void simonLevelUp() {
 }
 
 void simonGameOver() {
-  simonCurrentState = SIMON_GAMEOVER_SCREEN;
+  simon_game_state = SIMON_GAMEOVER_SCREEN;
   drawSimonGameOverScreen();
   gameOverTime = millis();
 }
@@ -489,7 +521,7 @@ void drawSimonHomeSelection() {
     tft.setTextSize(3);
     tft.drawString("Press for Multiplayer", SCREEN_WIDTH / 2, y_multi);
 
-    if (simonCurrentState == SIMON_MULTIPLAYER_SELECTION) {
+    if (simon_game_state == SIMON_MULTIPLAYER_SELECTION) {
       const char *sub1 = "Host a Game";
       const char *sub2 = "Join a Game";
 

@@ -2,6 +2,28 @@
 
 #include "TicTacToe.hpp"
 
+// ========== Drawing ==========
+void drawScoreboard();
+void drawWinnerMessage();
+void drawWinLine();
+void drawGrid();
+void drawAllPlaying();
+void drawEndScreen();
+void drawHomeScreen();
+void drawHomescreenSelect();
+void drawHostGameScreen(const String &code);
+
+// ========== Sound ==========
+void playMoveSound();
+void playWinSound();
+void playErrorSound();
+
+// ========== Logic ==========
+void checkWinner();
+void clearCursor(int index);
+void highlightCursor(int index);
+int findBestMove(char aiSymbol, char playerSymbol);
+
 // ======================== Global Definitions ========================
 
 #define SPEAKER_PIN 21
@@ -11,8 +33,6 @@ const char *X_PATH = "/tic_tac_toe_assets/x.jpg";
 const char *O_PATH = "/tic_tac_toe_assets/o.jpg";
 const char *DIS_O_PATH = "/tic_tac_toe_assets/disappearing_o.jpg";
 const char *DIS_X_PATH = "/tic_tac_toe_assets/disappearing_x.jpg";
-
-NumPad pad(tft, drawing, up, down, left, right, A);
 
 // Game Board
 String board[9] = {"**", "**", "**", "**", "**", "**", "**", "**", "**"};
@@ -41,6 +61,9 @@ uint16_t orange_color = tft.color565(0xFF, 0x70, 0x00);
 // Score
 int xWins = 0;
 int oWins = 0;
+
+// Numpad w/ pointers to functions (drawAllPlaying and SINGLE_PLAYER arguments are temporary)
+static NumPad<State> pad(drawHomeScreen, drawAllPlaying, &game_state, HOMESCREEN, SINGLE_PLAYER);
 
 // ======================== Game Entry ========================
 void runTicTacToe() {
