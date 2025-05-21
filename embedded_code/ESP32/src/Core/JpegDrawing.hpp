@@ -20,6 +20,7 @@ private:
 
   bool createBuffer(int width, int height);
   void jpegRender(int xpos, int ypos);
+  bool isWhiteOrNearWhite(uint16_t color);
 
 public:
   // Constructor
@@ -40,6 +41,10 @@ public:
                     int dstX, int dstY);
 
   void deleteSprite();
+
+  void clearSprite(uint16_t color = TFT_BLACK);
+
+  void setFirst(bool value); // Cntrol sprite logic manually
 
   ImageInfo getJpegDimensions(const char *filename);
 };

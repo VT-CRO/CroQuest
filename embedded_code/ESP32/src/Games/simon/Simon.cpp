@@ -4,13 +4,20 @@
 
 // Assets paths
 const char *DISK_PATH = "/simon/assets/disk.jpg";
+const char *UP_TRIANGLE = "/simon/assets/triangle_up.jpg";
+const char *DOWN_TRIANGLE = "/simon/assets/triangle_down.jpg";
+const char *LEFT_TRIANGLE = "/simon/assets/triangle_left.jpg";
+const char *RIGHT_TRIANGLE = "/simon/assets/triangle_right.jpg";
 
 // Button mapping for Simon game
-Button *simonButtons[] = {&A, &B, &left, &right};
-NumPad simonPad(tft, drawing, up, down, left, right, A);
+Button *simonButtons[] = {&up, &down, &left, &right};
 
 #define SCREEN_WIDTH 480
 #define SCREEN_HEIGHT 320
+
+#define MAX_PLAYERS 6
+bool playerFailed = false;
+int playerLevels[MAX_PLAYERS] = {0}; // Track how many levels each player passed
 
 // Game variables
 SimonState simonCurrentState = SIMON_HOMESCREEN;
@@ -29,12 +36,18 @@ unsigned long levelUpTime = 0;
 
 // Screen positioning
 int buttonSize = 120;
+int diskX = 0;
+int diskY = 0;
 int centerX = SCREEN_WIDTH / 2;
 int centerY = SCREEN_HEIGHT / 2;
 int diskCenterX, diskCenterY;
 int diskSize;
 
 bool first = true;
+
+int currentStep = 0;
+unsigned long lastStepTime = 0;
+bool showing = false;
 
 int simonSelection = 0;
 int simonsubselection = 0;
@@ -47,12 +60,21 @@ void runSimon() {
   tft.setRotation(3);
   tft.fillScreen(TFT_BLACK);
 
-  diskCenterY = SCREEN_HEIGHT / 2;
-
   // Load board asset dimensions
   JpegDrawing::ImageInfo dim = drawing.getJpegDimensions(DISK_PATH);
-  diskSize = dim.width; // Assuming square image
-  diskCenterX = diskSize / 2;
+  diskSize = dim.width; // Still assuming square
+
+  // Center of the disk: left third of screen, vertical middle
+  // Compute center positions
+  diskCenterX = SCREEN_WIDTH / 3;
+  diskCenterY = SCREEN_HEIGHT / 2;
+
+  // Save position for reuse
+  diskX = diskCenterX - 120; // Change if you want to move the disk
+  diskY = diskCenterY - 120;
+
+  // Draw the disk
+  drawing.drawSdJpeg(DISK_PATH, diskX, diskY); // First render (first = true)
 
   // Seed RNG
   randomSeed(analogRead(3));
@@ -76,7 +98,6 @@ void runSimon() {
 }
 
 void handleSimonFrame() {
-  // === Always update button states at the start ===
 
   // === State machine for Simon ===
   switch (simonCurrentState) {
@@ -93,7 +114,6 @@ void handleSimonFrame() {
           drawSimonHomeSelection();
         } else {
           simonStartNewGame();
-          simonCurrentState = SIMON_STATE_PLAY;
         }
         lastButtonPressTime = millis();
       } else if (up.wasJustPressed()) {
@@ -179,7 +199,6 @@ void handleSimonFrame() {
           drawSimonHomeScreen();
         } else {
           simonStartNewGame();
-          simonCurrentState = SIMON_STATE_PLAY;
         }
         lastButtonPressTime = millis();
       }
@@ -197,22 +216,38 @@ void handleSimonFrame() {
 
 void simonStartNewGame() {
   playerScore = 0;
+  playerLevels[0] = 0;
+  playerFailed = false;
+
   sequenceLength = 1;
   playerPos = 0;
   tft.fillScreen(TFT_BLACK);
-  // Generate first element in sequence
+
   simonGenerateSequence();
 
-  // Move to WATCH state
-  simonCurrentState = SIMON_STATE_WATCH;
+  first = true; // This makes the sprites not to shift IMPORTANT!!!
+
+  // Draws the disk
   drawSimonGameScreen();
-  lastSequenceTime = millis();
+
+  // Print Score
+  drawSimonScore();
+
+  // Player Status
+  drawPlayerStatusTable();
+
+  // Reset sequence playback state
+  currentStep = 0;
+  showing = false;
+  lastStepTime = millis() - 600;
+
+  simonCurrentState = SIMON_STATE_WATCH;
 }
 
 void simonGenerateSequence() {
   // Generate initial sequence
-  for (int i = 0; i < sequenceLength; i++) {
-    sequence[i] = random(4); // 0-3 for the 4 buttons
+  for (int i = 0; i < 100; i++) {
+    sequence[i] = random(0, 4); // 0-3 for the 4 buttons
   }
 }
 
@@ -223,48 +258,59 @@ void simonExtendSequence() {
 }
 
 void simonPlaySequence() {
-  static int currentStep = 0;
-  static unsigned long lastStepTime = 0;
-  static bool buttonOn = false;
+  unsigned long now = millis();
 
   if (currentStep >= sequenceLength) {
-    // Sequence complete, move to player input
     currentStep = 0;
-    playerPos = 0;
     simonCurrentState = SIMON_STATE_PLAY;
-    drawSimonGameScreen(); // Reset all buttons to normal state
+    drawSimonGameScreen();
     return;
   }
-  highlightSimonButton(sequence[currentStep]);
-  lastStepTime = millis();
-  currentStep++;
+
+  if (!showing && now - lastStepTime > 400) {
+    highlightSimonButton(sequence[currentStep]);
+    showing = true;
+    lastStepTime = now;
+  }
+
+  if (showing && now - lastStepTime > 600) {
+    drawSimonGameScreen();
+    showing = false;
+    currentStep++;
+    lastStepTime = now;
+  }
 }
 
 void simonCheckInput(int buttonPressed) {
   if (buttonPressed == sequence[playerPos]) {
-    // Correct button pressed
+    playerScore++;    // Count 1 point for this correct input
+    drawSimonScore(); // Update display
+
     playerPos++;
-
-    // Check if player completed the sequence
-    if (playerPos >= sequenceLength) {
-      playerScore++;
-
-      simonLevelUp();
+    if (playerPos == sequenceLength) {
+      simonLevelUp(); // Full pattern matched
     }
   } else {
-    // Wrong button, game over
+    playerFailed = true;     // Mark failure
+    drawPlayerStatusTable(); // Shows table
+    delay(800);              // Let player visualize the table
     simonGameOver();
   }
 }
 
 void simonLevelUp() {
+
+  playerLevels[0]++; // Only P1 for now
+
+  simonExtendSequence(); // Add one new triangle to the sequence
+  playerPos = 0;
+
   simonCurrentState = SIMON_LEVELUP;
-  drawSimonLevelUpScreen();
   levelUpTime = millis();
 
-  // Extend the sequence for the next level
-  simonExtendSequence();
-  playerPos = 0;
+  drawSimonGameScreen();   // Redraw disk
+  drawSimonScore();        // Show updated score
+  drawPlayerStatusTable(); // Draw updated check marks
 }
 
 void simonGameOver() {
@@ -275,17 +321,12 @@ void simonGameOver() {
 
 void drawSimonGameScreen() {
 
-  if (first) {
-    // Draw the disk in the center
-    int diskX = 0;
-    int diskY = diskCenterY - diskSize / 2;
-    drawing.drawSdJpeg(DISK_PATH, diskX, diskY);
-    first = false;
-  }
-
-  // Draw score on the right side
+  // Print Score
   drawSimonScore();
 
+  // Draw the entire disk sprite.
+  drawing.clearSprite();
+  drawing.drawSdJpeg(DISK_PATH, diskX, diskY);
   drawing.pushSprite(true);
 }
 
@@ -367,101 +408,34 @@ void drawSimonLevelUpScreen() {
 }
 
 void drawSimonScore() {
-  const int scoreX = diskSize + 20; // Positioned right of the disk
-  int scoreY = 5;                   // Top position
-  const int boxWidth = 100;
-  const int boxHeight = 50;
-  const int padding = 8;
-
-  // Draw background box for the score
-  tft.fillRoundRect(scoreX, scoreY, boxWidth, boxHeight, 8, TFT_BLACK);
-  tft.drawRoundRect(scoreX, scoreY, boxWidth, boxHeight, 8, TFT_YELLOW);
+  const int scoreX = 5;                  // Left margin
+  const int scoreY = SCREEN_HEIGHT - 30; // Bottom of screen
+  const int padding = 4;
 
   // Set text properties
-  tft.setTextColor(TFT_YELLOW, TFT_BLACK);
+  tft.setTextColor(TFT_WHITE, TFT_BLACK);
   tft.setTextSize(2);
-  tft.setTextDatum(TL_DATUM);
+  tft.setTextDatum(TL_DATUM); // Top-left corner
 
-  // Player label
-  tft.drawString("P1", scoreX + padding, scoreY + padding);
-
-  // Score value
-  tft.setTextSize(2);
-  tft.drawString(String(playerScore), scoreX + padding, scoreY + 28);
-}
-
-void drawSimonButton(int index, bool highlight) {
-  int arrowSize = 45;
-
-  int diskX = diskCenterX - diskSize / 2;
-  int diskY = diskCenterY - diskSize / 2;
-
-  // Set arrow coordinates based on direction
-  if (highlight) {
-    switch (index) {
-    case 0: { // Up
-      int16_t x0 = diskCenterX;
-      int16_t y0 = diskY + 30;
-      int16_t x1 = x0 - arrowSize / 2;
-      int16_t y1 = y0 + arrowSize;
-      int16_t x2 = x0 + arrowSize / 2;
-      int16_t y2 = y0 + arrowSize;
-      tft.fillTriangle(x0, y0, x1, y1, x2, y2, TFT_WHITE);
-      break;
-    }
-    case 1: { // Down
-      int16_t x0 = diskCenterX;
-      int16_t y0 = diskY + diskSize - 30;
-      int16_t x1 = x0 - arrowSize / 2;
-      int16_t y1 = y0 - arrowSize;
-      int16_t x2 = x0 + arrowSize / 2;
-      int16_t y2 = y0 - arrowSize;
-      tft.fillTriangle(x0, y0, x1, y1, x2, y2, TFT_WHITE);
-      break;
-    }
-    case 2: { // Left
-      int16_t x0 = diskX + 30;
-      int16_t y0 = diskCenterY;
-      int16_t x1 = x0 + arrowSize;
-      int16_t y1 = y0 - arrowSize / 2;
-      int16_t x2 = x0 + arrowSize;
-      int16_t y2 = y0 + arrowSize / 2;
-      tft.fillTriangle(x0, y0, x1, y1, x2, y2, TFT_WHITE);
-      break;
-    }
-    case 3: { // Right
-      int16_t x0 = diskX + diskSize - 30;
-      int16_t y0 = diskCenterY;
-      int16_t x1 = x0 - arrowSize;
-      int16_t y1 = y0 - arrowSize / 2;
-      int16_t x2 = x0 - arrowSize;
-      int16_t y2 = y0 + arrowSize / 2;
-      tft.fillTriangle(x0, y0, x1, y1, x2, y2, TFT_WHITE);
-      break;
-    }
-    }
-  } else {
-    drawSimonGameScreen();
-  }
+  // Draw score string
+  String scoreText = "Score: " + String(playerScore);
+  tft.drawString(scoreText, scoreX + padding, scoreY);
 }
 
 void highlightSimonButton(int buttonId) {
-  // Highlight the button
-  drawSimonButton(buttonId, true);
-  // Could add sound here
+  // Draw triangle sprite overlay
+  drawSimonTriangleOverlay(buttonId);
 
-  // Optional: play a tone or add feedback here
-  // tone(BUZZER_PIN, 440 + buttonId * 100, 150);
+  // Play tone
+  tone(21, 440 + buttonId * 100, 150);
 
-  // Delay to keep the button visibly highlighted
+  // Keep highlight visible briefly
   delay(200);
 
-  // Return button to normal state
-  drawSimonButton(buttonId, false);
+  // Clear by redrawing full game screen (disk + score, etc.)
+  drawSimonGameScreen();
 
-  if (simonCurrentState == SIMON_STATE_WATCH) {
-    delay(300);
-  }
+  delay(150); // Short pause before resuming logic
 }
 
 void drawSimonHomeScreen() {
@@ -544,6 +518,119 @@ void drawSimonHomeSelection() {
       // Draw sub-option labels
       tft.drawString(sub1, x_sub1, y_sub);
       tft.drawString(sub2, x_sub2, y_sub);
+    }
+  }
+}
+
+void drawCenteredOverlay(const char *imagePath) {
+  File imageFile = SD.open(imagePath);
+  if (!imageFile) {
+    Serial.print("❌ Failed to open: ");
+    Serial.println(imagePath);
+    return;
+  }
+
+  tft.setSwapBytes(true); // for TFT_eSPI JPEG decoder
+
+  if (JpegDec.decodeSdFile(imageFile)) {
+    int imgW = JpegDec.width;
+    int imgH = JpegDec.height;
+
+    int xpos = diskCenterX - imgW / 2;
+    int ypos = diskCenterY - imgH / 2;
+
+    while (JpegDec.read()) {
+      int x = JpegDec.MCUx * JpegDec.MCUWidth + xpos;
+      int y = JpegDec.MCUy * JpegDec.MCUHeight + ypos;
+
+      if (x < tft.width() && y < tft.height()) {
+        tft.pushImage(x, y, JpegDec.MCUWidth, JpegDec.MCUHeight,
+                      JpegDec.pImage);
+      }
+    }
+  }
+
+  imageFile.close();
+}
+
+void drawSimonTriangleOverlay(int buttonId) {
+  const char *path;
+  int x = 0, y = 0;
+
+  switch (buttonId) {
+  case 0:
+    path = "/simon/assets/triangle_up.jpg";
+    x = diskX + 30;
+    y = diskY - 15; // DON'T TOUCH
+    break;
+  case 1:
+    path = "/simon/assets/triangle_down.jpg";
+    x = diskX + 30; // DON'T TOUCH
+    y = diskY + 120;
+    break;
+  case 2:
+    path = "/simon/assets/triangle_left.jpg";
+    x = diskX - 15; // DON'T TOUCH
+    y = diskY + 30;
+    break;
+  case 3:
+    path = "/simon/assets/triangle_right.jpg";
+    x = diskX + 120; // DON'T TOUCH
+    y = diskY + 30;
+    break;
+  default:
+    return;
+  }
+
+  drawing.deleteSprite();
+
+  drawing.drawSdJpeg(path, x, y);
+  drawing.pushSprite(false, true, 0xFFFF); // white treated as transparen
+}
+
+void drawPlayerStatusTable() {
+  const int startX = SCREEN_WIDTH - 160; // "-" Move more to the left
+  const int startY = 20;
+  const int nameHeight = 20;
+  const int checkSize = 12;
+  const int checkSpacing = 16;
+  const int maxPerRow = 6;
+
+  tft.setTextDatum(TL_DATUM);
+  tft.setTextSize(1);
+  tft.setTextColor(TFT_WHITE, TFT_BLACK);
+
+  for (int i = 0; i < 1; i++) { // 1 for now (P1)
+    int nameX = startX;
+    int nameY = startY + i * (nameHeight + 50);
+    String name = "P" + String(i + 1);
+    tft.drawString(name, nameX, nameY);
+
+    // Draw green checks for levels passed
+    for (int lvl = 0; lvl < playerLevels[i]; lvl++) {
+      int row = lvl / maxPerRow;
+      int col = lvl % maxPerRow;
+
+      int checkX = nameX + col * (checkSize + checkSpacing);
+      int checkY = nameY + nameHeight + 5 + row * (checkSize + 10);
+
+      tft.fillCircle(checkX, checkY, checkSize / 2, TFT_GREEN);
+      tft.drawCircle(checkX, checkY, checkSize / 2, TFT_WHITE);
+    }
+
+    // Red X if the player failed
+    if (playerFailed) {
+      int failIndex = playerLevels[i];
+      int row = failIndex / maxPerRow;
+      int col = failIndex % maxPerRow;
+
+      int failX = nameX + col * (checkSize + checkSpacing);
+      int failY = nameY + nameHeight + 5 + row * (checkSize + 10);
+
+      tft.fillCircle(failX, failY, checkSize / 2, TFT_RED);
+      tft.drawCircle(failX, failY, checkSize / 2, TFT_WHITE);
+      tft.drawLine(failX - 3, failY - 3, failX + 3, failY + 3, TFT_WHITE);
+      tft.drawLine(failX - 3, failY + 3, failX + 3, failY - 3, TFT_WHITE);
     }
   }
 }

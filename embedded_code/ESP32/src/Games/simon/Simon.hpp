@@ -38,10 +38,17 @@ extern TFT_eSPI tft;
 extern HostBLEServer hostBLE;
 extern JpegDrawing drawing;
 
+// Assets paths
 extern const char *DISK_PATH;
+extern const char *UP_TRIANGLE;
+extern const char *DOWN_TRIANGLE;
+extern const char *LEFT_TRIANGLE;
+extern const char *RIGHT_TRIANGLE;
 
-extern NumPad simonPad;
+// Button mapping for Simon game & Numpad Mapping
 extern Button *simonButtons[];
+
+extern int diskX, diskY;
 
 extern int simonSequence[100];
 extern int simonSequenceLength;
@@ -71,10 +78,11 @@ void drawSimonGameScreen();
 void drawSimonGameOverScreen();
 void drawSimonLevelUpScreen();
 void drawSimonScore();
-void drawSimonButton(int buttonId, bool highlight);
 void highlightSimonButton(int buttonId);
 void drawSimonHomeSelection();
 void drawSimonGameOverSelect();
+void drawCenteredOverlay(const char *imagePath);
+void drawSimonTriangleOverlay(int buttonId);
 
 // ========== Logic ==========
 void simonGenerateSequence();
@@ -85,3 +93,4 @@ void simonStartNewGame();
 void simonGameOver();
 void simonLevelUp();
 void simonHandleInput();
+void drawPlayerStatusTable();

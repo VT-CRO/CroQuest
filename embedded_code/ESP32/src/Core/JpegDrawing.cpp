@@ -79,7 +79,7 @@ void JpegDrawing::jpegRender(int xpos, int ypos) {
       sprite.pushImage(mcu_x + xpos, mcu_y + ypos, win_w, win_h, pImg);
     }
   }
-  first = false;
+  // first = false;
 }
 
 JpegDrawing::JpegDrawing(TFT_eSPI &tft) : tft(tft), sprite(&tft) {
@@ -220,3 +220,20 @@ void JpegDrawing::drawJpegTile(const char *filename, int srcX, int srcY, int w,
   sprite.pushImage(dstX, dstY, w, h, (uint16_t *)tileSprite.getPointer());
   tileSprite.deleteSprite();
 }
+
+bool JpegDrawing::isWhiteOrNearWhite(uint16_t color) {
+  uint8_t r = (color >> 11) & 0x1F;
+  uint8_t g = (color >> 5) & 0x3F;
+  uint8_t b = color & 0x1F;
+
+  // Thresholds close to max (R=31, G=63, B=31)
+  return (r > 28 && g > 58 && b > 28);
+}
+
+void JpegDrawing::clearSprite(uint16_t color) {
+  if (buffer_created) {
+    sprite.fillSprite(color);
+  }
+}
+
+void JpegDrawing::setFirst(bool value) { first = value; } // IMPORTANT

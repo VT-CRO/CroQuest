@@ -71,13 +71,20 @@ extern const unsigned long moveDelay;
 void drawScoreboard();
 void drawWinnerMessage();
 void drawWinLine();
-void checkWinner();
-void clearCursor(int index);
-void highlightCursor(int index);
 void drawGrid();
 void drawAllPlaying();
 void drawEndScreen();
 void drawHomeScreen();
 void drawHomescreenSelect();
-int findBestMove(char aiSymbol, char playerSymbol);
 void drawHostGameScreen(const String &code);
+
+// ========== Sound ==========
+void playMoveSound();
+void playWinSound();
+void playErrorSound();
+
+// ========== Logic ==========
+void checkWinner();
+void clearCursor(int index);
+void highlightCursor(int index);
+int findBestMove(char aiSymbol, char playerSymbol);

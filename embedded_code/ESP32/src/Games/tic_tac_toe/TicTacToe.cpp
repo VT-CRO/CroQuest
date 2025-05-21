@@ -4,6 +4,8 @@
 
 // ======================== Global Definitions ========================
 
+#define SPEAKER_PIN 21
+
 const char *BOARD_PATH = "/tic_tac_toe_assets/board.jpg";
 const char *X_PATH = "/tic_tac_toe_assets/x.jpg";
 const char *O_PATH = "/tic_tac_toe_assets/o.jpg";
@@ -42,8 +44,13 @@ int oWins = 0;
 
 // ======================== Game Entry ========================
 void runTicTacToe() {
+
+  // Set position and color of the screen
   tft.setRotation(3);
   tft.fillScreen(orange_color);
+
+  // Initialize Speaker
+  pinMode(SPEAKER_PIN, OUTPUT);
 
   screen_width = tft.width();
   screen_height = tft.height();
@@ -153,6 +160,8 @@ void handleTicTacToeFrame() {
         moveCount = 5;
       }
 
+      playMoveSound();
+
       board[cursorIndex] = String(currentPlayer);
       moveQueue[moveCount].index = cursorIndex;
       moveQueue[moveCount].symbol = currentPlayer;
@@ -164,10 +173,14 @@ void handleTicTacToeFrame() {
       // Player's move render before AI thinks
       drawAllPlaying();
       drawWinLine();
-      if (roundEnded)
+      if (roundEnded) {
+        playWinSound();
         drawWinnerMessage();
-
+      }
       delay(400);
+    } else if (!roundEnded && selectPressed && !buttonPreviouslyPressed &&
+               board[cursorIndex] != "**") {
+      playErrorSound(); // Tried to press an occupied tile
     }
 
     if (currentPlayer == 'O' && !roundEnded) {
@@ -193,8 +206,11 @@ void handleTicTacToeFrame() {
 
         drawAllPlaying();
         drawWinLine();
-        if (roundEnded)
+        playWinSound();
+        if (roundEnded) {
+          playWinSound();
           drawWinnerMessage();
+        }
       }
     }
 
@@ -204,8 +220,10 @@ void handleTicTacToeFrame() {
     if (cursorIndex != lastCursor || selectPressed) {
       drawAllPlaying();
       drawWinLine();
-      if (roundEnded)
+      if (roundEnded) {
+        playWinSound();
         drawWinnerMessage();
+      }
       lastCursor = cursorIndex;
     }
     // Auto Restart
@@ -477,6 +495,8 @@ void drawGrid() {
       int x = col * cell_size + cell_size / 3 - 3;
       int y = row * cell_size + cell_size / 3 - 3;
 
+      drawing.setFirst(false); // Reset "First" before each symbol
+
       if (board[i] == "X") {
         if (moveCount >= 5 && moveQueue[0].index == i) {
           drawing.drawSdJpeg(DIS_X_PATH, x, y);
@@ -538,16 +558,24 @@ void drawWinLine() {
   int i1 = winCombo[0];
   int i3 = winCombo[2];
 
+  // Cell positions (row/col)
   int row1 = i1 / 3, col1 = i1 % 3;
   int row3 = i3 / 3, col3 = i3 % 3;
 
+  // Compute center points of the two winning cells
   int x1 = x_start + col1 * cell_size + cell_size / 2;
   int y1 = y_start + row1 * cell_size + cell_size / 2;
   int x3 = x_start + col3 * cell_size + cell_size / 2;
   int y3 = y_start + row3 * cell_size + cell_size / 2;
 
+  // Optional vertical nudge (if the line looks off)
+  int y_adjust = 10; // change to +6 if needed
+  y1 += y_adjust;
+  y3 += y_adjust;
+
   uint16_t color = (winner == 'X') ? TFT_RED : TFT_BLUE;
 
+  // Draw a thick line by offsetting in both directions
   for (int offset = -2; offset <= 2; offset++) {
     tft.drawLine(x1 + offset, y1, x3 + offset, y3, color);
     tft.drawLine(x1, y1 + offset, x3, y3 + offset, color);
@@ -555,19 +583,36 @@ void drawWinLine() {
 }
 
 void drawWinnerMessage() {
+  String msg;
+  uint16_t color = TFT_WHITE;
+  uint16_t bgColor = TFT_BLACK;
+
+  // Determine message and color
+  if (winner == 'X') {
+    msg = "X WINS!";
+    color = TFT_RED;
+  } else if (winner == 'O') {
+    msg = "O WINS!";
+    color = TFT_BLUE;
+  } else if (winner == 'D') {
+    msg = "DRAW!";
+    color = TFT_YELLOW;
+  }
+
+  // Draw rounded box
+  int boxWidth = 180;
+  int boxHeight = 50;
+  int x = (tft.width() - boxWidth) / 2;
+  int y = 20;
+
+  tft.fillRoundRect(x, y, boxWidth, boxHeight, 8, bgColor);
+  tft.drawRoundRect(x, y, boxWidth, boxHeight, 8, color);
+
+  // Draw glowing text in center
   tft.setTextDatum(MC_DATUM);
   tft.setTextSize(3);
-  tft.setTextColor(TFT_BLACK, TFT_WHITE);
-
-  String msg = "";
-  if (winner == 'X')
-    msg = "X Wins!";
-  else if (winner == 'O')
-    msg = "O Wins!";
-  else if (winner == 'D')
-    msg = "Draw!";
-
-  tft.drawString(msg, tft.width() / 2, 30); // above grid
+  tft.setTextColor(color, bgColor);
+  tft.drawString(msg, tft.width() / 2, y + boxHeight / 2);
 }
 
 void drawScoreboard() {
@@ -681,3 +726,15 @@ void drawHostGameScreen(const String &code) {
   tft.setTextSize(2);
   tft.drawString("Waiting for players...", tft.width() / 2, 240);
 }
+
+void playMoveSound() {
+  tone(SPEAKER_PIN, 660, 100); // Frequency, Duration
+}
+
+void playWinSound() {
+  tone(SPEAKER_PIN, 880, 300);
+  delay(100);
+  tone(SPEAKER_PIN, 990, 300);
+}
+
+void playErrorSound() { tone(SPEAKER_PIN, 300, 300); }
