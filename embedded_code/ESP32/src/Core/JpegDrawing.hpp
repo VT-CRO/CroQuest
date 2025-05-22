@@ -5,6 +5,8 @@
 #include <SD.h>
 #include <SPI.h>
 #include <TFT_eSPI.h>
+#include <map>
+#include <string>
 
 class JpegDrawing {
 private:
@@ -18,10 +20,14 @@ private:
   int y_pos;
   bool first = true;
 
+  bool using_cached_data = false;
+
+  //Cached Sprites
+  std::map<std::string, TFT_eSprite*> spriteCache;
+
   bool createBuffer(int width, int height);
   void jpegRender(int xpos, int ypos);
-  bool isWhiteOrNearWhite(uint16_t color);
-
+  
 public:
   // Constructor
   JpegDrawing(TFT_eSPI &tft);
@@ -47,6 +53,10 @@ public:
   void setFirst(bool value); // Cntrol sprite logic manually
 
   ImageInfo getJpegDimensions(const char *filename);
+
+  // Caching API
+  void addToCache(const char *path);
+  void clearCache();
 };
 
 #endif // JPEG_DRAWING_HPP

@@ -90,6 +90,23 @@ JpegDrawing::JpegDrawing(TFT_eSPI &tft) : tft(tft), sprite(&tft) {
 }
 
 void JpegDrawing::drawSdJpeg(const char *filename, int xpos, int ypos) {
+  std::string key(filename);
+  
+  if (spriteCache.count(key)) {
+    //Set cached sprite location
+    x_pos = xpos;
+    y_pos = ypos;
+
+    TFT_eSprite* cached = spriteCache[key];
+
+    // Reuse internal sprite buffer
+    createBuffer(cached->width(), cached->height());
+
+    //Replace w/ cached sprite - will then be able to call pushSprite(...)
+    cached->pushToSprite(&sprite, 0, 0);
+    return;
+  }
+
 
   // Open the named file (the Jpeg decoder library will close it)
   File jpegFile =
@@ -221,15 +238,6 @@ void JpegDrawing::drawJpegTile(const char *filename, int srcX, int srcY, int w,
   tileSprite.deleteSprite();
 }
 
-bool JpegDrawing::isWhiteOrNearWhite(uint16_t color) {
-  uint8_t r = (color >> 11) & 0x1F;
-  uint8_t g = (color >> 5) & 0x3F;
-  uint8_t b = color & 0x1F;
-
-  // Thresholds close to max (R=31, G=63, B=31)
-  return (r > 28 && g > 58 && b > 28);
-}
-
 void JpegDrawing::clearSprite(uint16_t color) {
   if (buffer_created) {
     sprite.fillSprite(color);
@@ -237,3 +245,28 @@ void JpegDrawing::clearSprite(uint16_t color) {
 }
 
 void JpegDrawing::setFirst(bool value) { first = value; } // IMPORTANT
+
+void JpegDrawing::addToCache(const char *path) {
+  std::string key(path);
+  if (spriteCache.count(key)) return;
+
+  TFT_eSprite* cached = new TFT_eSprite(&tft);
+  cached->setColorDepth(sprite.getColorDepth());
+  cached->createSprite(sprite.width(), sprite.height());
+  cached->setSwapBytes(sprite.getSwapBytes());
+
+  // Copy the pixel data
+  sprite.pushToSprite(cached, 0, 0);
+  spriteCache[key] = cached;
+}
+
+// Clears the cache
+void JpegDrawing::clearCache() {
+  for (auto it = spriteCache.begin(); it != spriteCache.end(); ++it) {
+    delete it->second;
+  }
+  spriteCache.clear();
+}
+
+
+

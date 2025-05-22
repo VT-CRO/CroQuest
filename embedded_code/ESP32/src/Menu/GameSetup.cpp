@@ -7,6 +7,7 @@
 #include "Games/breakout/Breakout.hpp"
 #include "Games/simon/Simon.hpp"
 #include "Games/tic_tac_toe/TicTacToe.hpp"
+#include "Games/snake/Snake.hpp"
 
 // Include games headers here
 // #include "Games/Tetris/Tetris.hpp"
@@ -18,7 +19,7 @@ void launchGameByName(const char *name) {
   Serial.println(name);
 
   if (strcmp(name, "Snake") == 0) {
-    // launchTetris();
+    runSnake();
   } else if (strcmp(name, "Pong") == 0) {
     // launchBreakout();
   } else if (strcmp(name, "Tic Tac Toe") == 0) {
