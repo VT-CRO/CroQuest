@@ -1,4 +1,4 @@
-#include "snake.hpp"
+#include "Snake.hpp"
 
 // Centering for the test
 #define CENTER MC_DATUM
@@ -27,8 +27,7 @@ int highScore = 0;
 enum Direction { UP, DOWN, LEFT, RIGHT };
 
 // A simple point struct
-struct Point 
-{
+struct Point {
   int x;
   int y;
   Direction direction;
@@ -36,7 +35,7 @@ struct Point
 
 // Snake storage
 Point snake[SNAKE_MAX_LENGTH];
-int snakeLength = 3; 
+int snakeLength = 3;
 Direction direction = RIGHT;
 Direction lastDirectionOnTick = RIGHT;
 Point food;
@@ -61,16 +60,15 @@ void showCreditsScreen();
 void waitForStartButton();
 
 // Method for drawing a single tile
-void drawTile(int x, int y, uint16_t color) 
-{
+void drawTile(int x, int y, uint16_t color) {
   tft.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE, color);
 }
 
 // Physically drawing the background to reduce latency
-void drawBackground() 
-{
+void drawBackground() {
   // Draw scoreboard background
-  tft.fillRect(0, 0, tft.width(), TILE_SIZE, tft.color565(50, 50, 50));  // Dark grey banner
+  tft.fillRect(0, 0, tft.width(), TILE_SIZE,
+               tft.color565(50, 50, 50)); // Dark grey banner
   tft.setTextColor(TFT_WHITE);
   tft.setTextSize(1);
   tft.setTextDatum(TL_DATUM);
@@ -78,31 +76,32 @@ void drawBackground()
   tft.drawString("High: " + String(highScore), tft.width() - 80, 2);
 
   // Draw the play field (starting from y = 1)
-  for (int x = 0; x < GRID_WIDTH; x++) 
-  {
-    for (int y = 1; y < GRID_HEIGHT + 1; y++) 
-    {
-      uint16_t color = (x + y) % 2 == 0 ? tft.color565(66, 176, 50) : tft.color565(111, 189, 99);
+  for (int x = 0; x < GRID_WIDTH; x++) {
+    for (int y = 1; y < GRID_HEIGHT + 1; y++) {
+      uint16_t color = (x + y) % 2 == 0 ? tft.color565(66, 176, 50)
+                                        : tft.color565(111, 189, 99);
       drawTile(x, y, color);
     }
   }
 
   // Draw border
-  tft.drawRect(0, TILE_SIZE, GRID_WIDTH * TILE_SIZE, GRID_HEIGHT * TILE_SIZE, tft.color565(0, 0, 0));
+  tft.drawRect(0, TILE_SIZE, GRID_WIDTH * TILE_SIZE, GRID_HEIGHT * TILE_SIZE,
+               tft.color565(0, 0, 0));
 }
 
 // Drawing the snake segments
-void drawSnake() 
-{
-  drawing.drawSdJpeg("/snake/assets/closed_right.jpg", snake[0].x * TILE_SIZE, snake[0].y * TILE_SIZE);
+void drawSnake() {
+  drawing.drawSdJpeg("/snake/assets/closed_right.jpg", snake[0].x * TILE_SIZE,
+                     snake[0].y * TILE_SIZE);
   drawing.addToCache("/snake/assets/closed_right.jpg");
   drawing.pushSprite(false, true, 0x1F);
 
-  for (int i = 1; i < snakeLength - 1; i++) 
-  {
-    drawTile(snake[i].x, snake[i].y, tft.color565(77, 134, 214));
+  for (int i = 1; i < snakeLength - 1; i++) {
+    drawTile(snake[i].x, snake[i].y, tft.color565(94, 163, 244));
   }
-  drawing.drawSdJpeg("/snake/assets/tail_right_light.jpg", snake[snakeLength - 1].x * TILE_SIZE, snake[snakeLength - 1].y * TILE_SIZE);
+  drawing.drawSdJpeg("/snake/assets/tail_right_light.jpg",
+                     snake[snakeLength - 1].x * TILE_SIZE,
+                     snake[snakeLength - 1].y * TILE_SIZE);
   drawing.addToCache("/snake/assets/tail_right_light.jpg");
   drawing.pushSprite();
 }
@@ -115,7 +114,8 @@ void drawFood() {
   // Draw the JPEG sprite at the food location
   drawing.drawSdJpeg("/snake/assets/apple.jpg", xpos, ypos);
   drawing.addToCache("/snake/assets/apple.jpg");
-  drawing.pushSprite(false, true, 0xFFFF);  // Push without using built-in transparency
+  drawing.pushSprite(false, true,
+                     0xFFFF); // Push without using built-in transparency
 
   // Manually clear near-black pixels to simulate transparency
   for (int y = 0; y < TILE_SIZE; y++) {
@@ -129,8 +129,8 @@ void drawFood() {
       if (r < 2 && g < 2 && b < 2) {
         // Use checkerboard background color
         uint16_t bgColor = ((food.x + food.y) % 2 == 0)
-          ? tft.color565(66, 176, 50)
-          : tft.color565(111, 189, 99);
+                               ? tft.color565(66, 176, 50)
+                               : tft.color565(111, 189, 99);
 
         tft.drawPixel(xpos + x, ypos + y, bgColor);
       }
@@ -138,76 +138,82 @@ void drawFood() {
   }
 }
 
-
 // Randomly spawning a food location
-void spawnFood() 
-{
-  while (true) 
-  {
+void spawnFood() {
+  while (true) {
     food.x = random(0, GRID_WIDTH);
     food.y = random(0, GRID_HEIGHT);
     food.y += 1;
 
     bool overlaps = false;
 
-    for (int i = 0; i < snakeLength; i++) 
-    {
-      if (snake[i].x == food.x && snake[i].y == food.y) 
-      {
+    for (int i = 0; i < snakeLength; i++) {
+      if (snake[i].x == food.x && snake[i].y == food.y) {
         overlaps = true;
         break;
       }
     }
-    if (!overlaps) break;
+    if (!overlaps)
+      break;
   }
   drawFood();
 }
 
 // Moving the snake
-void moveSnake()
-{
+void moveSnake() {
   bool ateFood = (snake[0].x == food.x && snake[0].y == food.y);
 
   // Checking if we collided with food
-  if (ateFood && snakeLength < SNAKE_MAX_LENGTH) 
-  {
-    for (int i = snakeLength; i > 1; --i) snake[i] = snake[i - 1];
+  if (ateFood && snakeLength < SNAKE_MAX_LENGTH) {
+    for (int i = snakeLength; i > 1; --i)
+      snake[i] = snake[i - 1];
     snake[1] = snake[0];
     snakeLength++;
     score++;
 
-    tft.fillRect(0, 0, tft.width(), TILE_SIZE, tft.color565(50, 50, 50));  // Clear top row
+    tft.fillRect(0, 0, tft.width(), TILE_SIZE,
+                 tft.color565(50, 50, 50)); // Clear top row
     tft.setTextColor(TFT_WHITE);
     tft.setTextSize(1);
     tft.setTextDatum(TL_DATUM);
     tft.drawString("Score: " + String(score), 5, 2);
     tft.drawString("High: " + String(highScore), tft.width() - 80, 2);
-  } 
+  }
 
-  else 
-  {
-    //Old tail position
+  else {
+    // Old tail position
     Point prev_tail = snake[snakeLength - 1];
-    uint16_t bg = (prev_tail.x + prev_tail.y) & 1 ? tft.color565(111,189,99) : tft.color565( 66,176,50);
-    for (int i = snakeLength - 1; i > 0; --i) snake[i] = snake[i - 1];
-    
-    //The new tail position
+    uint16_t bg = (prev_tail.x + prev_tail.y) & 1 ? tft.color565(111, 189, 99)
+                                                  : tft.color565(66, 176, 50);
+    for (int i = snakeLength - 1; i > 0; --i)
+      snake[i] = snake[i - 1];
+
+    // The new tail position
     Point new_tail = snake[snakeLength - 1];
 
     std::string tailPath;
 
-    //The second to last segment right above the tail
-    switch (snake[snakeLength - 2].direction) 
-    {
-        case UP: tailPath = "/snake/assets/tail_up"; break;
-        case DOWN: tailPath = "/snake/assets/tail_down"; break;
-        case LEFT: tailPath = "/snake/assets/tail_left"; break;
-        case RIGHT: tailPath = "/snake/assets/tail_right"; break;
+    // The second to last segment right above the tail
+    switch (snake[snakeLength - 2].direction) {
+    case UP:
+      tailPath = "/snake/assets/tail_up";
+      break;
+    case DOWN:
+      tailPath = "/snake/assets/tail_down";
+      break;
+    case LEFT:
+      tailPath = "/snake/assets/tail_left";
+      break;
+    case RIGHT:
+      tailPath = "/snake/assets/tail_right";
+      break;
     }
-    tailPath = (new_tail.x + new_tail.y) & 1 ? tailPath + "_light.jpg" : tailPath + "_dark.jpg";
+    tailPath = (new_tail.x + new_tail.y) & 1 ? tailPath + "_light.jpg"
+                                             : tailPath + "_dark.jpg";
 
     // Draw a new tail
-    drawing.drawSdJpeg(tailPath.c_str(), new_tail.x * TILE_SIZE, new_tail.y * TILE_SIZE);
+    drawing.drawSdJpeg(tailPath.c_str(), new_tail.x * TILE_SIZE,
+                       new_tail.y * TILE_SIZE);
     drawing.addToCache(tailPath.c_str());
     drawing.pushSprite();
 
@@ -219,81 +225,81 @@ void moveSnake()
   std::string headPath;
   bool foodAhead = false;
   const int sightRange = 3;
-  switch (direction) 
-  {
-    case UP:
-        for (int dy = 1; dy <= sightRange; dy++) {
-            if (snake[0].y - dy == food.y && snake[0].x == food.x) {
-                foodAhead = true;
-                break;
-            }
-        }
-        --snake[0].y;
-        snake[0].direction = UP;
-        headPath = foodAhead ? "/snake/assets/open_up.jpg" : "/snake/assets/closed_up.jpg";
+  switch (direction) {
+  case UP:
+    for (int dy = 1; dy <= sightRange; dy++) {
+      if (snake[0].y - dy == food.y && snake[0].x == food.x) {
+        foodAhead = true;
         break;
+      }
+    }
+    --snake[0].y;
+    snake[0].direction = UP;
+    headPath =
+        foodAhead ? "/snake/assets/open_up.jpg" : "/snake/assets/closed_up.jpg";
+    break;
 
-    case DOWN:
-        for (int dy = 1; dy <= sightRange; dy++) {
-            if (snake[0].y + dy == food.y && snake[0].x == food.x) {
-                foodAhead = true;
-                break;
-            }
-        }
-        ++snake[0].y;
-        snake[0].direction = DOWN;
-        headPath = foodAhead ? "/snake/assets/open_down.jpg" : "/snake/assets/closed_down.jpg";
+  case DOWN:
+    for (int dy = 1; dy <= sightRange; dy++) {
+      if (snake[0].y + dy == food.y && snake[0].x == food.x) {
+        foodAhead = true;
         break;
+      }
+    }
+    ++snake[0].y;
+    snake[0].direction = DOWN;
+    headPath = foodAhead ? "/snake/assets/open_down.jpg"
+                         : "/snake/assets/closed_down.jpg";
+    break;
 
-    case LEFT:
-        for (int dx = 1; dx <= sightRange; dx++) {
-            if (snake[0].x - dx == food.x && snake[0].y == food.y) {
-                foodAhead = true;
-                break;
-            }
-        }
-        --snake[0].x;
-        snake[0].direction = LEFT;
-        headPath = foodAhead ? "/snake/assets/open_left.jpg" : "/snake/assets/closed_left.jpg";
+  case LEFT:
+    for (int dx = 1; dx <= sightRange; dx++) {
+      if (snake[0].x - dx == food.x && snake[0].y == food.y) {
+        foodAhead = true;
         break;
+      }
+    }
+    --snake[0].x;
+    snake[0].direction = LEFT;
+    headPath = foodAhead ? "/snake/assets/open_left.jpg"
+                         : "/snake/assets/closed_left.jpg";
+    break;
 
-    case RIGHT:
-        for (int dx = 1; dx <= sightRange; dx++) {
-            if (snake[0].x + dx == food.x && snake[0].y == food.y) {
-                foodAhead = true;
-                break;
-            }
-        }
-        ++snake[0].x;
-        snake[0].direction = RIGHT;
-        headPath = foodAhead ? "/snake/assets/open_right.jpg" : "/snake/assets/closed_right.jpg";
+  case RIGHT:
+    for (int dx = 1; dx <= sightRange; dx++) {
+      if (snake[0].x + dx == food.x && snake[0].y == food.y) {
+        foodAhead = true;
         break;
+      }
+    }
+    ++snake[0].x;
+    snake[0].direction = RIGHT;
+    headPath = foodAhead ? "/snake/assets/open_right.jpg"
+                         : "/snake/assets/closed_right.jpg";
+    break;
   }
   lastDirectionOnTick = direction;
 
   // Checking for border hit
-  if (snake[0].x < 0 || snake[0].x >= GRID_WIDTH || snake[0].y < 1 || snake[0].y >= GRID_HEIGHT + 1) 
-  {
+  if (snake[0].x < 0 || snake[0].x >= GRID_WIDTH || snake[0].y < 1 ||
+      snake[0].y >= GRID_HEIGHT + 1) {
     gameOver = true;
   }
 
   // Self collision
-  for (int i = 1; !gameOver && i < snakeLength; i++) 
-  {
-    if (snake[0].x == snake[i].x && snake[0].y == snake[i].y) 
-    {
+  for (int i = 1; !gameOver && i < snakeLength; i++) {
+    if (snake[0].x == snake[i].x && snake[0].y == snake[i].y) {
       gameOver = true;
     }
   }
 
   // Calling game over if any collision occurs
-  if (gameOver) 
-  {
-    // if (score > highScore) 
+  if (gameOver) {
+    // if (score > highScore)
     // {
     //   highScore = score;
     //   File file = LittleFS.open("/highscore.txt", "w");
-    //   if (file) 
+    //   if (file)
     //   {
     //     file.println(highScore);
     //     file.close();
@@ -307,49 +313,60 @@ void moveSnake()
     tft.drawString("GAME OVER!", tft.width() / 2, tft.height() / 2);
 
     tft.setTextSize(2);
-    tft.drawString("Score: " + String(score), tft.width() / 2, tft.height() / 2 + 40);
-    //tft.drawString("High Score: " + String(highScore), tft.width() / 2, tft.height() / 2 + 80);
+    tft.drawString("Score: " + String(score), tft.width() / 2,
+                   tft.height() / 2 + 40);
+    // tft.drawString("High Score: " + String(highScore), tft.width() / 2,
+    // tft.height() / 2 + 80);
 
     delay(2000);
 
-    //waitForStartButton();
+    // waitForStartButton();
     resetGame();
     return;
   }
 
-  //Drawing new head
-  drawing.drawSdJpeg(headPath.c_str(), snake[0].x * TILE_SIZE, snake[0].y * TILE_SIZE);
+  // Drawing new head
+  drawing.drawSdJpeg(headPath.c_str(), snake[0].x * TILE_SIZE,
+                     snake[0].y * TILE_SIZE);
   drawing.addToCache(headPath.c_str());
   drawing.pushSprite(false, true, 0x1F);
 
-  //Draw Body part (previous location of the head)
-  // drawTile(snake[1].x, snake[1].y, tft.color565(77, 134, 214));
+  // Draw Body part (previous location of the head)
+  //  drawTile(snake[1].x, snake[1].y, tft.color565(77, 134, 214));
   Direction fromDir = snake[1].direction;
   Direction toDir = snake[0].direction;
   std::string turnPath;
-  if(fromDir != toDir){
+  if (fromDir != toDir) {
     if ((fromDir == UP && toDir == RIGHT) || (fromDir == LEFT && toDir == DOWN))
       turnPath = "/snake/assets/turn_up_right_or_left_down";
-    else if ((fromDir == UP && toDir == LEFT) || (fromDir == RIGHT && toDir == DOWN))
+    else if ((fromDir == UP && toDir == LEFT) ||
+             (fromDir == RIGHT && toDir == DOWN))
       turnPath = "/snake/assets/turn_up_left_or_right_down";
-    else if ((fromDir == DOWN && toDir == RIGHT) || (fromDir == LEFT && toDir == UP))
+    else if ((fromDir == DOWN && toDir == RIGHT) ||
+             (fromDir == LEFT && toDir == UP))
       turnPath = "/snake/assets/turn_left_up_or_down_right";
-    else if ((fromDir == DOWN && toDir == LEFT) || (fromDir == RIGHT && toDir == UP))
+    else if ((fromDir == DOWN && toDir == LEFT) ||
+             (fromDir == RIGHT && toDir == UP))
       turnPath = "/snake/assets/turn_right_up_or_down_left";
-    
-    turnPath = (snake[1].x + snake[1].y) & 1 ? turnPath + "_light.jpg" : turnPath + "_dark.jpg";
 
-    drawing.drawSdJpeg(turnPath.c_str(), snake[1].x * TILE_SIZE, snake[1].y * TILE_SIZE);
+    turnPath = (snake[1].x + snake[1].y) & 1 ? turnPath + "_light.jpg"
+                                             : turnPath + "_dark.jpg";
+
+    drawing.drawSdJpeg(turnPath.c_str(), snake[1].x * TILE_SIZE,
+                       snake[1].y * TILE_SIZE);
     drawing.addToCache(turnPath.c_str());
     drawing.pushSprite();
 
-  }else{
-    drawTile(snake[1].x, snake[1].y, tft.color565(77, 134, 214));
+  } else {
+    // drawTile(snake[1].x, snake[1].y, tft.color565(77, 134, 214));
+    drawing.drawSdJpeg("/snake/assets/body.jpg", snake[1].x * TILE_SIZE,
+                       snake[1].y * TILE_SIZE);
+    drawing.addToCache("/snake/assets/body.jpg");
+    drawing.pushSprite();
   }
 
   // if food was eaten, respawn it
-  if (ateFood)
-  {
+  if (ateFood) {
     spawnFood();
   }
 }
@@ -358,19 +375,21 @@ void moveSnake()
 void handleButtonInputs() {
 
   // ----------- (UP / RIGHT) ----------
-  if (right.isPressed()) {  // Tune this range for RIGHT
-    if (lastDirectionOnTick != LEFT) direction = RIGHT;
-  } 
-  else if (up.isPressed()) {  // Tune this range for UP
-    if (lastDirectionOnTick != DOWN) direction = UP;
+  if (right.isPressed()) { // Tune this range for RIGHT
+    if (lastDirectionOnTick != LEFT)
+      direction = RIGHT;
+  } else if (up.isPressed()) { // Tune this range for UP
+    if (lastDirectionOnTick != DOWN)
+      direction = UP;
   }
 
   // ----------- (DOWN / LEFT) ----------
-  if (down.isPressed()) {  // Tune this range for DOWN
-    if (lastDirectionOnTick != UP) direction = DOWN;
-  } 
-  else if (left.isPressed()) {  // Tune this range for LEFT
-    if (lastDirectionOnTick != RIGHT) direction = LEFT;
+  if (down.isPressed()) { // Tune this range for DOWN
+    if (lastDirectionOnTick != UP)
+      direction = DOWN;
+  } else if (left.isPressed()) { // Tune this range for LEFT
+    if (lastDirectionOnTick != RIGHT)
+      direction = LEFT;
   }
 
   // delay(20);
@@ -378,8 +397,7 @@ void handleButtonInputs() {
 
 // Resetting the game after death
 // Logic will be updated with buttons
-void resetGame() 
-{
+void resetGame() {
   gameOver = false;
   snakeLength = 3;
   score = 0;
@@ -395,15 +413,13 @@ void resetGame()
 }
 
 // Countdown screen
-void showGetReadyScreen() 
-{
+void showGetReadyScreen() {
   tft.fillScreen(TFT_BLACK);
   tft.setTextColor(TFT_WHITE);
   tft.setTextSize(5);
   tft.setTextDatum(CENTER);
 
-  for (int i = 3; i > 0; i--) 
-  {
+  for (int i = 3; i > 0; i--) {
     tft.fillScreen(TFT_BLACK);
     tft.drawString(String(i), tft.width() / 2, tft.height() / 2);
     delay(800);
@@ -419,8 +435,7 @@ void showGetReadyScreen()
 }
 
 // Startup screen
-void showCreditsScreen() 
-{
+void showCreditsScreen() {
   tft.fillScreen(TFT_BLACK);
   tft.setTextColor(TFT_WHITE);
   tft.setTextSize(3);
@@ -444,10 +459,10 @@ void showCreditsScreen()
   tft.setTextSize(2);
   String author = "Designed by CroQuest";
   int charSpacingAuthor = 14;
-  int authorXStart = (tft.width() / 2) - (author.length() * charSpacingAuthor) / 2;
+  int authorXStart =
+      (tft.width() / 2) - (author.length() * charSpacingAuthor) / 2;
 
-  for (int i = 0; i < author.length(); i++) 
-  {
+  for (int i = 0; i < author.length(); i++) {
     int x = authorXStart + i * charSpacingAuthor;
     int y = tft.height() / 2 + 30;
 
@@ -458,42 +473,39 @@ void showCreditsScreen()
   delay(1500);
 }
 
-void waitForStartButton() 
-{
+void waitForStartButton() {
   tft.fillScreen(TFT_BLACK);
   tft.setTextColor(TFT_WHITE);
   tft.setTextSize(2);
   tft.setTextDatum(CENTER);
-  tft.drawString("Press 'placeholder' to Start", tft.width() / 2, tft.height() / 2);
+  tft.drawString("Press 'placeholder' to Start", tft.width() / 2,
+                 tft.height() / 2);
 
-  while (A.wasJustPressed()) 
-  {
+  while (A.wasJustPressed()) {
     delay(10);
   }
 
-  while (A.wasJustPressed()) 
-  {
+  while (A.wasJustPressed()) {
     delay(10);
   }
 }
 
 // Initializing game
-void runSnake() 
-{
+void runSnake() {
   Serial.begin(115200);
   tft.init();
   tft.setRotation(3);
   tft.fillScreen(TFT_BLACK);
 
   // Mount LittleFS and read high score
-  // if (!LittleFS.begin()) 
+  // if (!LittleFS.begin())
   // {
   //   tft.drawString("FS Mount Failed", 10, 10);
-  // } 
-  // else 
+  // }
+  // else
   // {
   //   File file = LittleFS.open("/highscore.txt", "r");
-  //   if (file) 
+  //   if (file)
   //   {
   //     highScore = file.parseInt();
   //     file.close();
@@ -501,18 +513,16 @@ void runSnake()
   // }
 
   showCreditsScreen();
-  //waitForStartButton();
+  // waitForStartButton();
   resetGame();
-  
+
   // Loop through and play game
-  for(;;) 
-  {
+  for (;;) {
     unsigned long now = millis();
     handleButtonInputs();
-  
-    if (!gameOver && (now - lastMoveTime >= MOVE_INTERVAL)) 
-    {
-      moveSnake();  
+
+    if (!gameOver && (now - lastMoveTime >= MOVE_INTERVAL)) {
+      moveSnake();
       lastMoveTime = now;
     }
   }
