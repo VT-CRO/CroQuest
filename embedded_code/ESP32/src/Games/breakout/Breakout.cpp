@@ -36,6 +36,7 @@ static int lives = 3;
 static int score = 0;
 static int lastLives = -1;
 static int lastScore = -1;
+static float ballSpeed;
 
 unsigned long breakout_lastButtonPressTime = 0;
 unsigned long breakout_buttonDebounceDelay = 200;
@@ -512,6 +513,8 @@ void moveBallSafely() {
   float stepX = ballVX / (float)steps;
   float stepY = ballVY / (float)steps;
 
+  ballSpeed = sqrt(ballVX * ballVX + ballVY * ballVY);
+
   for (int i = 0; i < steps; ++i) {
     ballXf += stepX;
     ballYf += stepY;
@@ -531,11 +534,6 @@ bool checkBallCollisions() {
     ballXf = BALL_RADIUS + 1; // Push away from wall
     ballVX = abs(ballVX);     // Force rightward motion
     ballX = round(ballXf);
-
-    if (abs(ballVX) < 0.5f) {
-      ballVX = (ballVX < 0) ? -0.5f : 0.5f;
-    }
-
     return true;
   }
 
@@ -555,28 +553,23 @@ bool checkBallCollisions() {
   }
 
   // Paddle
-  // Paddle: detect if ball crossed the paddle line this frame
-  // Paddle bounce — constant speed with angle control
   if (ballVY > 0 && ballYf + BALL_RADIUS >= SCREEN_H - 20 &&
       ballYf - ballVY + BALL_RADIUS <= SCREEN_H - 20 && ballX >= paddleX &&
       ballX <= paddleX + PADDLE_WIDTH) {
 
-    // Correct Y position
     ballYf = SCREEN_H - 20 - BALL_RADIUS - 1;
     ballY = round(ballYf);
 
-    // Calculate paddle-relative offset [-1, 1]
     float paddleCenter = paddleX + PADDLE_WIDTH / 2;
-    float offset = (ballX - paddleCenter) / (PADDLE_WIDTH / 2.0);
+    float offset = (ballX - paddleCenter) / (PADDLE_WIDTH / 2.0); // -1 to +1
+    float angle = offset * PI / 3; // -60 to +60 degrees
 
-    // Maintain current speed
-    float speed = sqrt(ballVX * ballVX + ballVY * ballVY);
+    ballVX = ballSpeed * sin(angle);
+    ballVY = -abs(ballSpeed * cos(angle));
 
-    // Bounce angle (in radians): offset determines curve, max ~60°
-    float angle = offset * PI / 3;
-
-    ballVX = speed * sin(angle);
-    ballVY = -abs(speed * cos(angle)); // always bounce upward
+    // Avoid getting stuck with very small horizontal motion
+    if (abs(ballVX) < 0.5f)
+      ballVX = (ballVX < 0) ? -0.5f : 0.5f;
 
     return true;
   }
@@ -596,7 +589,21 @@ bool checkBallCollisions() {
                      BRICK_WIDTH - BRICK_SPACING_X,
                      BRICK_HEIGHT - BRICK_SPACING_Y, TFT_BLACK);
 
+        // Bounce
         ballVY *= -1;
+
+        // Increase speed slightly
+        float currentSpeed = sqrt(ballVX * ballVX + ballVY * ballVY);
+        float newSpeed = min(currentSpeed * 1.05f, 12.0f); // Cap at 12
+
+        // Normalize direction
+        float directionX = ballVX / currentSpeed;
+        float directionY = ballVY / currentSpeed;
+
+        // Apply new speed in same direction
+        ballVX = directionX * newSpeed;
+        ballVY = directionY * newSpeed;
+
         score += 10;
         return true;
       }
