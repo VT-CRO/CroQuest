@@ -8,6 +8,7 @@
 #include "Games/simon/Simon.hpp"
 #include "Games/tic_tac_toe/TicTacToe.hpp"
 #include "Games/snake/Snake.hpp"
+#include "Games/pong/Pong.hpp"
 
 // Include games headers here
 // #include "Games/Tetris/Tetris.hpp"
@@ -21,7 +22,7 @@ void launchGameByName(const char *name) {
   if (strcmp(name, "Snake") == 0) {
     runSnake();
   } else if (strcmp(name, "Pong") == 0) {
-    // launchBreakout();
+    runPong();
   } else if (strcmp(name, "Tic Tac Toe") == 0) {
     runTicTacToe();
   } else if (strcmp(name, "Simon") == 0) {
