@@ -2,6 +2,7 @@
 
 #include <Arduino.h>
 
+#include "Bluetooth/BluetoothCommon.hpp"
 #include "Boot/Boot.hpp"
 #include "Core/AppState.hpp"
 #include "Core/Buttons.hpp"
@@ -23,6 +24,8 @@ void setup() {
   speaker();  // Speaker Start UP
   initBoot(); // Initializes SD + TFT
 
+  initializeBluetoothIdentifiers(); // Generate BLE name + UUIDs based on MAC
+
   randomSeed(analogRead(0)); // Initialize random seed (happens once)
   delay(100);
 
@@ -33,9 +36,4 @@ void setup() {
 // ####################################################################################################
 //  Loop
 // ####################################################################################################
-void loop() {
-
-  // Keep checking for Input
-  // updateAllButtons();
-  menu.handleInput();
-}
+void loop() { menu.handleInput(); }

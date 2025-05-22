@@ -4,6 +4,8 @@
 #include <JPEGDecoder.h>
 #include <SD.h>
 
+#include "Bluetooth/BluetoothManager.hpp"
+#include "Core/AppState.hpp"
 #include "Core/Buttons.hpp"
 #include "Core/JpegDrawing.hpp"
 #include "Menu/GameSetup.hpp"
@@ -182,6 +184,14 @@ void GameMenu::handleInput() {
 }
 
 // ###################### Launch Games by Name ######################
+// ###################### Launch Games by Name ######################
 void GameMenu::launchGameByName(const char *name) {
-  ::launchGameByName(name); // Calls the centralized version
+
+  // Stop scanning before launching game
+  BluetoothManager::stopScan();
+
+  // // Update state if you use it for gameplay tracking
+  // currentMenuState = STATE_GAME_RUNNING;
+
+  ::launchGameByName(name); // Calls the centralized version (launch the game)
 }

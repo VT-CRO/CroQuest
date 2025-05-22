@@ -1,11 +1,6 @@
 // TicTacToe.hpp
 #pragma once
 
-#include "Bluetooth/BluetoothHost.hpp"
-#include "Bluetooth/BluetoothSlave.hpp"
-// #include "Bluetooth/CodeGenerator.cpp"
-#include "Bluetooth/ConnectionScreen.hpp"
-#include "Bluetooth/UUIDs.hpp"
 #include "Core/Buttons.hpp"
 #include "Core/JpegDrawing.hpp"
 #include "NumPad/NumPad.hpp"
@@ -31,7 +26,6 @@ enum State {
 
 // ========== Globals ==========
 extern TFT_eSPI tft;
-extern HostBLEServer hostBLE;
 extern JpegDrawing drawing;
 extern Button A, B, up, down, left, right;
 

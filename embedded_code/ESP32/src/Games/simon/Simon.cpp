@@ -76,8 +76,10 @@ int simonSelection = 0;
 int simonsubselection = 0;
 bool start = true;
 
-// Numpad 
-static NumPad<SimonState> pad(drawSimonHomeScreen, simonStartNewGame, &simon_game_state, SIMON_HOMESCREEN, SIMON_STATE_WATCH);
+// Numpad
+static NumPad<SimonState> pad(drawSimonHomeScreen, simonStartNewGame,
+                              &simon_game_state, SIMON_HOMESCREEN,
+                              SIMON_STATE_WATCH);
 
 // ======================== Game Entry ========================
 void runSimon() {
@@ -127,7 +129,7 @@ void handleSimonFrame() {
 
   // === State machine for Simon ===
   switch (simon_game_state) {
-  
+
   case SIMON_HOMESCREEN:
     if (start) {
       drawSimonHomeScreen();
@@ -180,7 +182,7 @@ void handleSimonFrame() {
           simon_game_state = SIMON_BLUETOOTH_NUMPAD;
           break;
         }
-      }else if (up.wasJustPressed()) {
+      } else if (up.wasJustPressed()) {
         simon_game_state = SIMON_HOMESCREEN;
         simonsubselection = 0;
         simonSelection = 1;
@@ -241,7 +243,7 @@ void handleSimonFrame() {
     break;
 
   case SIMON_BLUETOOTH_NUMPAD:
-    pad.handleButtonInput(&lastButtonPressTime, buttonDebounceDelay/2);
+    pad.handleButtonInput(&lastButtonPressTime, buttonDebounceDelay / 2);
     break;
   }
 }

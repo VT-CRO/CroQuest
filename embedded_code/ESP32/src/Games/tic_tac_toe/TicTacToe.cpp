@@ -62,8 +62,10 @@ uint16_t orange_color = tft.color565(0xFF, 0x70, 0x00);
 int xWins = 0;
 int oWins = 0;
 
-// Numpad w/ pointers to functions (drawAllPlaying and SINGLE_PLAYER arguments are temporary)
-static NumPad<State> pad(drawHomeScreen, drawAllPlaying, &game_state, HOMESCREEN, SINGLE_PLAYER);
+// Numpad w/ pointers to functions (drawAllPlaying and SINGLE_PLAYER arguments
+// are temporary)
+static NumPad<State> pad(drawHomeScreen, drawAllPlaying, &game_state,
+                         HOMESCREEN, SINGLE_PLAYER);
 
 // ======================== Game Entry ========================
 void runTicTacToe() {
@@ -131,7 +133,7 @@ void handleTicTacToeFrame() {
           game_state = HOST_SCREEN;
           // String code = generateRandomCode();
           // drawHostGameScreen(code);
-          HostBLEServer hostBLE(tft);
+
         } else {
           game_state = BLUETOOTH_NUMPAD;
           pad.numPadSetup();

@@ -1,3 +1,16 @@
-#define SERVICE_UUID "12345678-1234-1234-1234-123456789abc"
-#define CHARACTERISTIC_UUID "abcdefab-1234-1234-1234-abcdefabcdef"
-#define BLE_NAME_PREFIX "CroQuest_ESP"
+// BluetoothCommon.hpp
+
+#pragma once
+
+#include <Arduino.h>
+#include <NimBLEUUID.h>
+#include <esp_system.h>
+#include <string>
+
+// ###################### Global Declarations #####################
+extern std::string BLE_NAME_PREFIX;
+extern NimBLEUUID SERVICE_UUID;
+extern NimBLEUUID CHARACTERISTIC_UUID;
+
+// ###################### Makes Unique Identifier(UUID) ######################
+void initializeBluetoothIdentifiers();

@@ -1,9 +1,5 @@
 #pragma once
 
-#include "Bluetooth/BluetoothHost.hpp"
-#include "Bluetooth/BluetoothSlave.hpp"
-#include "Bluetooth/ConnectionScreen.hpp"
-#include "Bluetooth/UUIDs.hpp"
 #include "Core/Buttons.hpp"
 #include "Core/JpegDrawing.hpp"
 #include "NumPad/NumPad.hpp"
@@ -35,5 +31,4 @@ enum ButtonID {
 
 // ========== Globals ==========
 extern TFT_eSPI tft;
-extern HostBLEServer hostBLE;
 extern JpegDrawing drawing;

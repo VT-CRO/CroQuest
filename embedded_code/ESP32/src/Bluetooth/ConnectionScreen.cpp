@@ -1,13 +1,18 @@
-// ConnectionScreen.cpp
-#include "ConnectionScreen.hpp"
-#include <TFT_eSPI.h>
+// /src/Bluetooth/ConnectionScreen.cpp
 
-extern TFT_eSPI tft;
+#include "ConnectionScreen.hpp"
+
+static TFT_eSPI *screen = nullptr;
+
+void ConnectionScreen::init(TFT_eSPI &display) { screen = &display; }
 
 void ConnectionScreen::showMessage(const String &msg) {
-  tft.fillScreen(TFT_BLACK);
-  tft.setTextColor(TFT_WHITE, TFT_BLACK);
-  tft.setTextSize(2);
-  tft.setCursor(10, 140);
-  tft.println(msg);
+  if (!screen)
+    return;
+
+  screen->fillScreen(TFT_BLACK);
+  screen->setTextColor(TFT_WHITE, TFT_BLACK);
+  screen->setTextSize(2);
+  screen->setCursor(10, 140);
+  screen->println(msg);
 }
