@@ -372,6 +372,7 @@ void drawBreakoutHomeScreen() {
 }
 
 void resetBall() {
+  ballSpeed = 5;
   ballX = paddleX + PADDLE_WIDTH / 2;
   ballY = SCREEN_H - 30;
   ballXf = ballX;
@@ -509,11 +510,9 @@ void drawBreakoutFrame() {
 }
 
 void moveBallSafely() {
-  int steps = max(abs(ballVX), abs(ballVY));
+  int steps = ceil(ballSpeed);
   float stepX = ballVX / (float)steps;
   float stepY = ballVY / (float)steps;
-
-  ballSpeed = sqrt(ballVX * ballVX + ballVY * ballVY);
 
   for (int i = 0; i < steps; ++i) {
     ballXf += stepX;
@@ -528,11 +527,15 @@ void moveBallSafely() {
 }
 
 bool checkBallCollisions() {
-  // Wall
   // Bounce off left wall
   if (ballXf - BALL_RADIUS <= 0) {
-    ballXf = BALL_RADIUS + 1; // Push away from wall
-    ballVX = abs(ballVX);     // Force rightward motion
+    ballXf = BALL_RADIUS + 1;
+    ballVX = abs(ballVX);
+
+    float mag = sqrt(ballVX * ballVX + ballVY * ballVY);
+    ballVX = (ballVX / mag) * ballSpeed;
+    ballVY = (ballVY / mag) * ballSpeed;
+
     ballX = round(ballXf);
     return true;
   }
@@ -540,15 +543,26 @@ bool checkBallCollisions() {
   // Bounce off right wall
   if (ballXf + BALL_RADIUS >= SCREEN_W) {
     ballXf = SCREEN_W - BALL_RADIUS - 1;
-    ballVX = -abs(ballVX); // Force leftward motion
+    ballVX = -abs(ballVX);
+
+    float mag = sqrt(ballVX * ballVX + ballVY * ballVY);
+    ballVX = (ballVX / mag) * ballSpeed;
+    ballVY = (ballVY / mag) * ballSpeed;
+
     ballX = round(ballXf);
     return true;
   }
 
   // Bounce off top wall
-  if (ballY <= 0) {
-    ballYf = 1;
-    ballVY *= -1;
+  if (ballYf - BALL_RADIUS <= 0) {
+    ballYf = BALL_RADIUS + 1;
+    ballVY = abs(ballVY);
+
+    float mag = sqrt(ballVX * ballVX + ballVY * ballVY);
+    ballVX = (ballVX / mag) * ballSpeed;
+    ballVY = (ballVY / mag) * ballSpeed;
+
+    ballY = round(ballYf);
     return true;
   }
 
@@ -560,16 +574,15 @@ bool checkBallCollisions() {
     ballYf = SCREEN_H - 20 - BALL_RADIUS - 1;
     ballY = round(ballYf);
 
-    float paddleCenter = paddleX + PADDLE_WIDTH / 2;
-    float offset = (ballX - paddleCenter) / (PADDLE_WIDTH / 2.0); // -1 to +1
-    float angle = offset * PI / 3; // -60 to +60 degrees
-
-    ballVX = ballSpeed * sin(angle);
-    ballVY = -abs(ballSpeed * cos(angle));
+    ballVY = -abs(ballVY);
 
     // Avoid getting stuck with very small horizontal motion
     if (abs(ballVX) < 0.5f)
       ballVX = (ballVX < 0) ? -0.5f : 0.5f;
+
+    float mag = sqrt(ballVX * ballVX + ballVY * ballVY);
+    ballVX = (ballVX / mag) * ballSpeed;
+    ballVY = (ballVY / mag) * ballSpeed;
 
     return true;
   }
@@ -592,19 +605,18 @@ bool checkBallCollisions() {
         // Bounce
         ballVY *= -1;
 
-        // Increase speed slightly
         float currentSpeed = sqrt(ballVX * ballVX + ballVY * ballVY);
-        float newSpeed = min(currentSpeed * 1.05f, 12.0f); // Cap at 12
+        float newSpeed = min(currentSpeed + 0.5f, 12.0f);
 
-        // Normalize direction
         float directionX = ballVX / currentSpeed;
         float directionY = ballVY / currentSpeed;
 
-        // Apply new speed in same direction
         ballVX = directionX * newSpeed;
         ballVY = directionY * newSpeed;
 
+        ballSpeed = newSpeed;
         score += 10;
+
         return true;
       }
     }
