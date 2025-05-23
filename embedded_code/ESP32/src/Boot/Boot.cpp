@@ -200,10 +200,14 @@ void jpegRender(int xpos, int ypos) {
 
 // ======================== Speaker Start up noise ========================
 void speaker() {
-  // Set PWM channel 0 for speaker output
-  ledcAttachPin(SPEAKER_PIN, 0); // GPIO 21 to channel 0
-  ledcWriteTone(0, 1000);        // 1000 Hz tone
+  ledcAttachPin(SPEAKER_PIN, 0); // Attach speaker pin to PWM channel 0
 
-  delay(500);          // Play for 500ms
+  int melody[] = { 440, 554, 659, 880 }; // A4, C#5, E5, A5 - simple ascending notes
+  int noteDurations[] = { 150, 150, 150, 300 }; // durations in ms
+
+  for (int i = 0; i < 4; i++) {
+    ledcWriteTone(0, melody[i]);
+    delay(noteDurations[i]);
+  }
   ledcWriteTone(0, 0); // Stop tone
 }

@@ -21,8 +21,9 @@ AppState currentMenuState = STATE_MENU; // Start in menu for now
 void setup() {
 
   // Starts Boot + Speaker
-  speaker();  // Speaker Start UP
   initBoot(); // Initializes SD + TFT
+  tft.fillScreen(TFT_BLACK); // fills screen so sound doesn't start w/ white background
+  speaker();  // Speaker Start UP
 
   initializeBluetoothIdentifiers(); // Generate BLE name + UUIDs based on MAC
 

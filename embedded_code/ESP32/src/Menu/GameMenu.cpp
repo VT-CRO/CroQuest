@@ -108,6 +108,49 @@ void GameMenu::drawPage() {
   }
 }
 
+#define SPEAKER_PIN 21
+const int freq = 5000; 
+const int resolution = 8;
+const int channel = 0;
+
+void setupSpeaker() {
+  ledcSetup(channel, freq, resolution);
+  ledcAttachPin(SPEAKER_PIN, channel);
+}
+
+// Play tone with adjustable volume (0 to 255)
+void playTone(int toneFreq, int volume) {
+  if (toneFreq == 0) {
+    ledcWriteTone(channel, 0);  // stop tone
+    return;
+  }
+
+  ledcWriteTone(channel, toneFreq);
+  ledcWrite(channel, volume);   // adjust duty cycle = volume
+}
+
+void playSelectBeep() {
+  ledcAttachPin(SPEAKER_PIN, 0);
+  playTone(1000, 5); // 1kHz tone
+  delay(50);              // very short beep
+  playTone(0, 0);    // stop tone
+}
+
+void playGameLaunchSound() {
+  ledcAttachPin(SPEAKER_PIN, 0);
+
+  // Descending press sound: quick drop from 1200Hz to 800Hz
+  int tones[] = { 1200, 800 };
+  int durations[] = { 40, 60 };
+
+  for (int i = 0; i < 2; i++) {
+    playTone(tones[i], 5);
+    delay(durations[i]);
+  }
+
+  ledcWriteTone(0, 0); // stop tone
+}
+
 // ###################### Handle Input User ######################
 void GameMenu::handleInput() {
   static unsigned long lastInput = 0;
@@ -149,6 +192,7 @@ void GameMenu::handleInput() {
 
   // Checks what button was pressed and executes movement (DIGITAL)
   if (A.wasJustPressed()) {
+    playGameLaunchSound();
     launchGameByName(gameBoxes[selectedIndex].name);
     lastInput = millis();
     return;
@@ -180,6 +224,7 @@ void GameMenu::handleInput() {
 
     previousIndex = selectedIndex;
     lastInput = millis();
+    playSelectBeep();
   }
 }
 

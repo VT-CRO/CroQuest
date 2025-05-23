@@ -6,6 +6,8 @@
 #include "pong_logic.hpp"
 #include <Arduino.h>
 
+#define SPEAKER_PIN 21 
+
 //Screen dimensions
 const int SCREEN_HEIGHT = 320;
 const int SCREEN_WIDTH = 480;
@@ -30,6 +32,43 @@ enum paddle_walls {
     BOTTOM, 
     INSIDE,
 };
+
+// ============ SOUNDS ============= //
+
+void playPaddleHitSound() {
+  const int channel = 0;
+  const int freq = 900;     // Sharp "blip"
+  const int duration = 20;  // Very quick
+
+  ledcAttachPin(SPEAKER_PIN, channel);
+  ledcWriteTone(channel, freq);
+  delay(duration);
+  ledcWriteTone(channel, 0);
+}
+
+void playWallBounceSound() {
+  const int channel = 0;
+  const int freq = 700;     // Slightly lower pitch
+  const int duration = 20;
+
+  ledcAttachPin(SPEAKER_PIN, channel);
+  ledcWriteTone(channel, freq);
+  delay(duration);
+  ledcWriteTone(channel, 0);
+}
+
+void playMissSound() {
+  const int channel = 0;
+  ledcAttachPin(SPEAKER_PIN, channel);
+
+  // Rising tone: 400 Hz → 700 Hz
+  for (int freq = 400; freq <= 700; freq += 30) {
+    ledcWriteTone(channel, freq);
+    delay(15); // Smooth upward sweep
+  }
+
+  ledcWriteTone(channel, 0); // Turn off sound
+}
 
 
 /*
@@ -197,6 +236,8 @@ static void check_paddle_collision(Ball *ball, Paddle *paddles, int *level)
         if (fabs(ball->dy) > max_y_speed) {
             ball->dy = (ball->dy > 0 ? max_y_speed : -max_y_speed);
         }
+
+        playPaddleHitSound();
         
         // We've handled a collision, no need to check the other paddle
         return;
@@ -211,6 +252,7 @@ static void ball_collision(Ball * ball, Paddle * paddles, int * level, int * sco
     
     //Check if a point was scored
     if(ball->x <= 0 || ball->x + ball->w >= SCREEN_WIDTH){
+        playMissSound();
         if(ball->x <= 0){
             (*score1)++;
         }else{
@@ -223,9 +265,11 @@ static void ball_collision(Ball * ball, Paddle * paddles, int * level, int * sco
     
     //Hits top or bottom of screen
     if(ball->y <= 0){
+        playWallBounceSound();
         ball->y = 0;
         ball->dy = -ball->dy;
     }else if(ball->y + ball->h >= SCREEN_HEIGHT){
+        playWallBounceSound();
         ball->y = SCREEN_HEIGHT - ball->h;
         ball->dy = -ball->dy;
     }
