@@ -25,3 +25,10 @@ void initializeBluetoothIdentifiers() {
       NimBLEUUID("abcdefab-1234-1234-" + std::string(suffix).substr(0, 4) +
                  "-" + std::string(suffix).substr(4, 12));
 }
+
+std::string generate6DigitCode() {
+  int code = random(0, 1000000);                  // range: 0 to 999999
+  char buffer[7];                                 // 6 digits + null terminator
+  snprintf(buffer, sizeof(buffer), "%06d", code); // pad with leading zeros
+  return std::string(buffer);
+}

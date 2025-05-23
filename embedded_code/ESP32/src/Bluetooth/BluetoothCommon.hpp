@@ -14,3 +14,4 @@ extern NimBLEUUID CHARACTERISTIC_UUID;
 
 // ###################### Makes Unique Identifier(UUID) ######################
 void initializeBluetoothIdentifiers();
+std::string generate6DigitCode();

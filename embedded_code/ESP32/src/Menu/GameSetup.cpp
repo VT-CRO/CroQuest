@@ -5,10 +5,10 @@
 
 // Include Games
 #include "Games/breakout/Breakout.hpp"
-#include "Games/simon/Simon.hpp"
-#include "Games/tic_tac_toe/TicTacToe.hpp"
-#include "Games/snake/Snake.hpp"
 #include "Games/pong/Pong.hpp"
+#include "Games/simon/Simon.hpp"
+#include "Games/snake/Snake.hpp"
+#include "Games/tic_tac_toe/TicTacToe.hpp"
 
 // Include games headers here
 // #include "Games/Tetris/Tetris.hpp"

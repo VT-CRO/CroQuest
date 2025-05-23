@@ -372,13 +372,18 @@ void drawBreakoutHomeScreen() {
 }
 
 void resetBall() {
-  ballSpeed = 5;
+  ballSpeed = 8.0f; // Reasonable fast starting speed
+
   ballX = paddleX + PADDLE_WIDTH / 2;
   ballY = SCREEN_H - 30;
   ballXf = ballX;
   ballYf = ballY;
-  ballVX = 2;
-  ballVY = -2;
+
+  // Set direction and scale to match ballSpeed
+  float angle = -PI / 4; // 45° upward
+  ballVX = cos(angle) * ballSpeed;
+  ballVY = sin(angle) * ballSpeed;
+
   ballMoving = false;
 }
 
@@ -415,8 +420,17 @@ void drawHUD() {
   if (lives != lastLives || score != lastScore) {
     tft.setTextColor(TFT_WHITE, TFT_BLACK);
     tft.setTextSize(2);
-    tft.fillRect(0, 0, SCREEN_W, 20, TFT_BLACK);       // Clear top bar
-    tft.drawString("Lives: " + String(lives), 70, 20); // Top left
+    tft.fillRect(0, 0, SCREEN_W, 20, TFT_BLACK); // Clear top bar
+
+    // Draw a single ball icon
+    int ballX = 20;
+    int ballY = 20;
+    tft.fillCircle(ballX, ballY, BALL_RADIUS, TFT_WHITE);
+
+    // Draw " x N" next to it
+    tft.drawString(" x " + String(lives), ballX + BALL_RADIUS * 2 + 20, 20);
+
+    // Draw score
     tft.drawString("Score: " + String(score), SCREEN_W - 80, 20); // Top right
     lastLives = lives;
     lastScore = score;

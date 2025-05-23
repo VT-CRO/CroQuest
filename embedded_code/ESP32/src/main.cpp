@@ -5,8 +5,10 @@
 #include "Bluetooth/BluetoothCommon.hpp"
 #include "Boot/Boot.hpp"
 #include "Core/AppState.hpp"
+#include "Core/BrightnessControl.hpp"
 #include "Core/Buttons.hpp"
 #include "Menu/GameMenu.hpp"
+#include "SettingsMenu/Settings/Settings.hpp" // for `settings.brightness`
 
 // Include Games
 #include "Games/simon/Simon.hpp"
@@ -22,8 +24,14 @@ void setup() {
 
   // Starts Boot + Speaker
   initBoot(); // Initializes SD + TFT
-  tft.fillScreen(TFT_BLACK); // fills screen so sound doesn't start w/ white background
-  speaker();  // Speaker Start UP
+
+  // initBacklightPWM(); // Set up PWM on backlight pin
+  // applyBrightness(settings.brightness); // Apply saved brightness level
+
+  // fills screen so sound doesn't start w/ white background
+  tft.fillScreen(TFT_BLACK);
+
+  speaker(); // Speaker Start UP
 
   initializeBluetoothIdentifiers(); // Generate BLE name + UUIDs based on MAC
 

@@ -8,10 +8,6 @@ BluetoothPeripheral::BluetoothPeripheral(TFT_eSPI &display) : tft(display) {}
 void BluetoothPeripheral::beginAdvertising(const std::string &code) {
   accessCode = code;
 
-  Serial.begin(115200);
-  tft.init();
-  tft.setRotation(3);
-
   ConnectionScreen::showMessage("Starting BLE advertiser...");
   delay(1000);
 

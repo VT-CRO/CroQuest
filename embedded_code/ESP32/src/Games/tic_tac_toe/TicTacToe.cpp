@@ -11,7 +11,6 @@ void drawAllPlaying();
 void drawEndScreen();
 void drawHomeScreen();
 void drawHomescreenSelect();
-void drawHostGameScreen(const String &code);
 
 // ========== Sound ==========
 void playMoveSound();
@@ -131,12 +130,37 @@ void handleTicTacToeFrame() {
       if (A.wasJustPressed()) {
         if (subselection == 0) {
           game_state = HOST_SCREEN;
-          // String code = generateRandomCode();
-          // drawHostGameScreen(code);
 
+          BluetoothManager::initPeripheral(tft);
+          BluetoothPeripheral &peripheral = BluetoothManager::getPeripheral();
+
+          std::string code = generate6DigitCode();
+          peripheral.beginAdvertising(code);
+
+          // Set the screen for JoinHost
+          JoinHost::init(tft);
+
+          // Now safely show code
+          JoinHost::showCode(String(code.c_str()));
+
+          // drawHostGameScreen(String(code.c_str()));
         } else {
           game_state = BLUETOOTH_NUMPAD;
           pad.numPadSetup();
+
+          // TODO
+          // if (pad.hasCompleteCode()) {
+          //   std::string enteredCode = pad.getEnteredCode();
+          //   BluetoothManager::initCentral(tft);
+          //   BluetoothCentral &central = BluetoothManager::getCentral();
+
+          //   central.beginScan(enteredCode);
+          //   delay(5000); // allow scanning to complete
+          //   central.connectToDevices();
+
+          //   game_state = MULTIPLAYER_PLAYING; // or your multiplayer game
+          //   state
+          // }
         }
       }
       if (up.isPressed()) {
@@ -732,24 +756,6 @@ int findBestMove(char aiSymbol, char playerSymbol) {
 
   // If somehow none of these work
   return -1;
-}
-
-void drawHostGameScreen(const String &code) {
-  tft.fillScreen(TFT_BLACK);
-  tft.setTextColor(TFT_WHITE);
-  tft.setTextDatum(MC_DATUM);
-
-  tft.setTextSize(3);
-  tft.drawString("Hosting Game", tft.width() / 2, 60);
-
-  tft.setTextSize(2);
-  tft.drawString("Your Code:", tft.width() / 2, 120);
-
-  tft.setTextSize(5);
-  tft.drawString(code, tft.width() / 2, 170);
-
-  tft.setTextSize(2);
-  tft.drawString("Waiting for players...", tft.width() / 2, 240);
 }
 
 void playMoveSound() {

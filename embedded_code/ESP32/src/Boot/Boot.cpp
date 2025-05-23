@@ -202,8 +202,9 @@ void jpegRender(int xpos, int ypos) {
 void speaker() {
   ledcAttachPin(SPEAKER_PIN, 0); // Attach speaker pin to PWM channel 0
 
-  int melody[] = { 440, 554, 659, 880 }; // A4, C#5, E5, A5 - simple ascending notes
-  int noteDurations[] = { 150, 150, 150, 300 }; // durations in ms
+  int melody[] = {440, 554, 659,
+                  880}; // A4, C#5, E5, A5 - simple ascending notes
+  int noteDurations[] = {150, 150, 150, 300}; // durations in ms
 
   for (int i = 0; i < 4; i++) {
     ledcWriteTone(0, melody[i]);

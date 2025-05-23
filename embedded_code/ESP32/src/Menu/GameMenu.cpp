@@ -9,11 +9,15 @@
 #include "Core/Buttons.hpp"
 #include "Core/JpegDrawing.hpp"
 #include "Menu/GameSetup.hpp"
+#include "SettingsMenu/Settings/Settings.hpp"
 
 using namespace MenuLayout; // Use layout constants
+static bool inSettingsMode = false;
 
 // ###################### Initialize Buttons ######################
 GameMenu::GameMenu(TFT_eSPI *tft) : tft(tft), selectedIndex(0), drawer(*tft) {
+  initSettings(tft);
+  initBrightness(tft);
 
   // ###################### Lists Games ######################
   gameBoxes[0] = {"Snake", 0, 0};
@@ -109,7 +113,7 @@ void GameMenu::drawPage() {
 }
 
 #define SPEAKER_PIN 21
-const int freq = 5000; 
+const int freq = 5000;
 const int resolution = 8;
 const int channel = 0;
 
@@ -121,18 +125,18 @@ void setupSpeaker() {
 // Play tone with adjustable volume (0 to 255)
 void playTone(int toneFreq, int volume) {
   if (toneFreq == 0) {
-    ledcWriteTone(channel, 0);  // stop tone
+    ledcWriteTone(channel, 0); // stop tone
     return;
   }
 
   ledcWriteTone(channel, toneFreq);
-  ledcWrite(channel, volume);   // adjust duty cycle = volume
+  ledcWrite(channel, volume); // adjust duty cycle = volume
 }
 
 void playSelectBeep() {
   ledcAttachPin(SPEAKER_PIN, 0);
   playTone(1000, 5); // 1kHz tone
-  delay(50);              // very short beep
+  delay(50);         // very short beep
   playTone(0, 0);    // stop tone
 }
 
@@ -140,8 +144,8 @@ void playGameLaunchSound() {
   ledcAttachPin(SPEAKER_PIN, 0);
 
   // Descending press sound: quick drop from 1200Hz to 800Hz
-  int tones[] = { 1200, 800 };
-  int durations[] = { 40, 60 };
+  int tones[] = {1200, 800};
+  int durations[] = {40, 60};
 
   for (int i = 0; i < 2; i++) {
     playTone(tones[i], 5);
@@ -155,80 +159,143 @@ void playGameLaunchSound() {
 void GameMenu::handleInput() {
   static unsigned long lastInput = 0;
   static int previousIndex = 0;
+  static bool inSettingsMode = false;
+  static int lastIndexBeforeSettings = 0;
+
   if (millis() - lastInput < 200)
     return;
 
   bool moved = false;
 
-  // Checks what button was pressed and executes movement (ANALOG)
-  if (up.isPressed()) {
-    if (selectedIndex >= ITEMS_PER_ROW) {
-      selectedIndex -= ITEMS_PER_ROW;
-      moved = true;
-    }
-  } else if (down.isPressed()) {
-    if (selectedIndex + ITEMS_PER_ROW < ITEM_COUNT) {
-      selectedIndex += ITEMS_PER_ROW;
-      moved = true;
-    }
-  } else if (left.isPressed()) {
-    if (selectedIndex == 0) {
-      selectedIndex = ITEM_COUNT - 1;
-    } else {
-      selectedIndex--;
-    }
-    moved = true;
-  } else if (right.isPressed()) {
-    if (selectedIndex == ITEM_COUNT - 1) {
-      selectedIndex = 0;
-    } else {
-      int nextIndex = selectedIndex + 1;
-      if (nextIndex < ITEM_COUNT) {
-        selectedIndex = nextIndex;
+  // ========== Handle Gear Mode ==========
+  if (inSettingsMode) {
+    if (down.isPressed()) {
+      // Clear selector from gear
+      int gx = tft->width() - 32 - 15;
+      int gy = 10; // slightly higher for visual alignment
+
+      for (int i = 0; i < SELECTOR_THICKNESS; i++) {
+        tft->drawRoundRect(gx - i, gy - i, 32 + 2 * i, 32 + 2 * i,
+                           SELECTOR_RADIUS, BACKGROUND_COLOR);
       }
+
+      // Exit gear mode
+      selectedIndex = lastIndexBeforeSettings;
+      inSettingsMode = false;
+      moved = true;
     }
-    moved = true;
+
+    if (A.wasJustPressed()) {
+      playGameLaunchSound();
+      runSettings();
+      // Redraw menu after returning
+      drawPage();
+      selectedIndex = lastIndexBeforeSettings;
+      inSettingsMode = false;
+      moved = true;
+      lastInput = millis();
+      return;
+    }
   }
 
-  // Checks what button was pressed and executes movement (DIGITAL)
-  if (A.wasJustPressed()) {
-    playGameLaunchSound();
-    launchGameByName(gameBoxes[selectedIndex].name);
-    lastInput = millis();
-    return;
+  // ========== Handle Icon Navigation ==========
+  else {
+    if (up.isPressed()) {
+      if (selectedIndex < ITEMS_PER_ROW) {
+        // Going into gear
+        lastIndexBeforeSettings = selectedIndex;
+        inSettingsMode = true;
+        moved = true;
+
+        // Clear selector from icon
+        int prevRow = selectedIndex / ITEMS_PER_ROW;
+        int prevCol = selectedIndex % ITEMS_PER_ROW;
+        int px = LEFT_MARGIN + prevCol * (ICON_SIZE + H_SPACING);
+        int py = TOP_MARGIN + prevRow * (ICON_SIZE + MARGIN_Y);
+
+        for (int i = 0; i < SELECTOR_THICKNESS; i++) {
+          tft->drawRoundRect(px - i, py - i, ICON_SIZE + 2 * i,
+                             ICON_SIZE + 2 * i, SELECTOR_RADIUS,
+                             BACKGROUND_COLOR);
+        }
+      } else {
+        selectedIndex -= ITEMS_PER_ROW;
+        moved = true;
+      }
+    } else if (down.isPressed()) {
+      if (selectedIndex + ITEMS_PER_ROW < ITEM_COUNT) {
+        selectedIndex += ITEMS_PER_ROW;
+        moved = true;
+      }
+    } else if (left.isPressed()) {
+      if (selectedIndex == 0) {
+        selectedIndex = ITEM_COUNT - 1;
+      } else {
+        selectedIndex--;
+      }
+      moved = true;
+    } else if (right.isPressed()) {
+      if (selectedIndex == ITEM_COUNT - 1) {
+        selectedIndex = 0;
+      } else {
+        int nextIndex = selectedIndex + 1;
+        if (nextIndex < ITEM_COUNT) {
+          selectedIndex = nextIndex;
+        }
+      }
+      moved = true;
+    }
+
+    if (A.wasJustPressed()) {
+      playGameLaunchSound();
+      launchGameByName(gameBoxes[selectedIndex].name);
+      lastInput = millis();
+      return;
+    }
   }
 
-  // Selector Movement
+  // ========== Draw Selector ==========
   if (moved) {
-    // Clear old selector
-    int prevRow = previousIndex / ITEMS_PER_ROW;
-    int prevCol = previousIndex % ITEMS_PER_ROW;
-    int px = LEFT_MARGIN + prevCol * (ICON_SIZE + H_SPACING);
-    int py = TOP_MARGIN + prevRow * (ICON_SIZE + MARGIN_Y);
+    if (inSettingsMode) {
+      // Draw selector around gear
+      int gx = tft->width() - 32 - 15;
+      int gy = 10; // higher for alignment
 
-    for (int i = 0; i < SELECTOR_THICKNESS; i++) {
-      tft->drawRoundRect(px - i, py - i, ICON_SIZE + 2 * i, ICON_SIZE + 2 * i,
-                         SELECTOR_RADIUS, BACKGROUND_COLOR);
+      for (int i = 0; i < SELECTOR_THICKNESS; i++) {
+        tft->drawRoundRect(gx - i, gy - i, 32 + 2 * i, 32 + 2 * i,
+                           SELECTOR_RADIUS, TFT_WHITE);
+      }
+    } else {
+      // Clear previous selector
+      int prevRow = previousIndex / ITEMS_PER_ROW;
+      int prevCol = previousIndex % ITEMS_PER_ROW;
+      int px = LEFT_MARGIN + prevCol * (ICON_SIZE + H_SPACING);
+      int py = TOP_MARGIN + prevRow * (ICON_SIZE + MARGIN_Y);
+
+      for (int i = 0; i < SELECTOR_THICKNESS; i++) {
+        tft->drawRoundRect(px - i, py - i, ICON_SIZE + 2 * i, ICON_SIZE + 2 * i,
+                           SELECTOR_RADIUS, BACKGROUND_COLOR);
+      }
+
+      // Draw new selector
+      int row = selectedIndex / ITEMS_PER_ROW;
+      int col = selectedIndex % ITEMS_PER_ROW;
+      int x = LEFT_MARGIN + col * (ICON_SIZE + H_SPACING);
+      int y = TOP_MARGIN + row * (ICON_SIZE + MARGIN_Y);
+
+      for (int i = 0; i < SELECTOR_THICKNESS; i++) {
+        tft->drawRoundRect(x - i, y - i, ICON_SIZE + 2 * i, ICON_SIZE + 2 * i,
+                           SELECTOR_RADIUS, TFT_WHITE);
+      }
+
+      previousIndex = selectedIndex;
     }
 
-    // Draw new selector
-    int row = selectedIndex / ITEMS_PER_ROW;
-    int col = selectedIndex % ITEMS_PER_ROW;
-    int x = LEFT_MARGIN + col * (ICON_SIZE + H_SPACING);
-    int y = TOP_MARGIN + row * (ICON_SIZE + MARGIN_Y);
-
-    for (int i = 0; i < SELECTOR_THICKNESS; i++) {
-      tft->drawRoundRect(x - i, y - i, ICON_SIZE + 2 * i, ICON_SIZE + 2 * i,
-                         SELECTOR_RADIUS, TFT_WHITE);
-    }
-
-    previousIndex = selectedIndex;
     lastInput = millis();
     playSelectBeep();
   }
 }
 
-// ###################### Launch Games by Name ######################
 // ###################### Launch Games by Name ######################
 void GameMenu::launchGameByName(const char *name) {
 

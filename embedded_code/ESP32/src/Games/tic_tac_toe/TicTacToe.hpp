@@ -1,8 +1,10 @@
 // TicTacToe.hpp
 #pragma once
 
+#include "Bluetooth/BluetoothManager.hpp"
 #include "Core/Buttons.hpp"
 #include "Core/JpegDrawing.hpp"
+#include "JoinHost/JoinHost.hpp"
 #include "NumPad/NumPad.hpp"
 #include <TFT_eSPI.h>
 
@@ -18,6 +20,7 @@ enum State {
   GAMEOVER_SCREEN,
   BLUETOOTH_NUMPAD,
   MULTIPLAYER_SELECTION,
+  MULTIPLAYER_PLAYING,
   JOIN_SCREEN,
   HOST_SCREEN,
 };

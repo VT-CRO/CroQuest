@@ -2,9 +2,16 @@
 
 #pragma once
 
+#include <JPEGDecoder.h>
+#include <SD.h>
+
+#include "Bluetooth/BluetoothManager.hpp"
+#include "Core/AppState.hpp"
 #include "Core/Buttons.hpp"
 #include "Core/JpegDrawing.hpp"
-#include <TFT_eSPI.h>
+#include "Menu/GameSetup.hpp"
+// #include "SettingsMenu/BrightnessMenu/Brightness.hpp"
+#include "SettingsMenu/Settings/Settings.hpp"
 
 // === Game Data Structure ===
 struct GameBox {
