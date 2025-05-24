@@ -206,6 +206,7 @@ void GameMenu::handleInput() {
     if (A.wasJustPressed()) {
       playPressSound();
       launchGameByName(gameBoxes[selectedIndex].name);
+      drawPage();
       lastInput = millis();
       return;
     }
