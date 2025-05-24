@@ -8,7 +8,6 @@
 #define DELAY_MS 150     // delay between fade frames
 #define CIRCLE_RADIUS 45 // circle radius for boot animation
 #define SPACING 97       // spacing between circles
-#define SPEAKER_PIN 21   // Speaker GPIO pin
 
 // ======================== Display ==========================
 extern TFT_eSPI tft; // Declare shared display instance

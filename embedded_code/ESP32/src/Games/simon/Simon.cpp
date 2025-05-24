@@ -1,4 +1,5 @@
 #include "Simon.hpp"
+#include "SettingsMenu/AudioMenu/Audio.hpp"
 
 // ========== Drawing ==========
 void drawSimonHomeScreen();
@@ -461,7 +462,9 @@ void highlightSimonButton(int buttonId) {
   drawSimonTriangleOverlay(buttonId);
 
   // Play tone
-  tone(21, 440 + buttonId * 100, 150);
+  playTone(440 + buttonId * 100, volume);
+  delay(150);
+  playTone(0, 0); // Turn tone off
 
   // Keep highlight visible briefly
   delay(200);

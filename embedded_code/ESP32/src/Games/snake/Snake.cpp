@@ -1,4 +1,5 @@
 #include "Snake.hpp"
+#include "SettingsMenu/AudioMenu/Audio.hpp"
 
 // Centering for the test
 #define CENTER MC_DATUM
@@ -47,6 +48,7 @@ void jpegRender(int xpos, int ypos);
 void drawBackground();
 void drawSnake();
 void drawFood();
+void drawScores();
 
 // Snake logic
 void spawnFood();
@@ -57,7 +59,16 @@ void resetGame();
 // Screens and transitions
 void showGetReadyScreen();
 void showCreditsScreen();
-void waitForStartButton();
+void gameOverScreen();
+void showHomeScreen();
+
+//Sounds
+void playGameOverSound();
+void playEatSound();
+
+//GAME STATE
+enum GameState {HOMESCREEN, PLAYING, GAMEOVERSCREEN};
+static enum GameState gameState = HOMESCREEN;
 
 // Method for drawing a single tile
 void drawTile(int x, int y, uint16_t color) {
@@ -67,26 +78,55 @@ void drawTile(int x, int y, uint16_t color) {
 // Physically drawing the background to reduce latency
 void drawBackground() {
   // Draw scoreboard background
-  tft.fillRect(0, 0, tft.width(), TILE_SIZE,
+  tft.fillRect(0, 0, tft.width(), TILE_SIZE * 2,
                tft.color565(50, 50, 50)); // Dark grey banner
-  tft.setTextColor(TFT_WHITE);
-  tft.setTextSize(1);
-  tft.setTextDatum(TL_DATUM);
-  tft.drawString("Score: " + String(score), 5, 2);
-  tft.drawString("High: " + String(highScore), tft.width() - 80, 2);
 
-  // Draw the play field (starting from y = 1)
-  for (int x = 0; x < GRID_WIDTH; x++) {
-    for (int y = 1; y < GRID_HEIGHT + 1; y++) {
+  // Draw the rest of the border
+
+  // Left border
+  tft.fillRect(0,0, TILE_SIZE, tft.height(), tft.color565(50, 50, 50));
+  // Right border
+  tft.fillRect((GRID_WIDTH - 1) * TILE_SIZE, 0, TILE_SIZE, tft.height(), tft.color565(50, 50, 50));
+  // Bottom border
+  tft.fillRect(0, (GRID_HEIGHT) * TILE_SIZE, tft.width(), TILE_SIZE, tft.color565(50, 50, 50));
+
+
+  //Draw SCORE and HIGHSCORE
+  drawScores();
+
+  // Draw the play field (starting from y = 2)
+  for (int x = 1; x < GRID_WIDTH - 1; x++) {
+    for (int y = 2; y < GRID_HEIGHT; y++) {
       uint16_t color = (x + y) % 2 == 0 ? tft.color565(66, 176, 50)
                                         : tft.color565(111, 189, 99);
       drawTile(x, y, color);
     }
   }
 
+  //38 width 17 Height
   // Draw border
-  tft.drawRect(0, TILE_SIZE, GRID_WIDTH * TILE_SIZE, GRID_HEIGHT * TILE_SIZE,
-               tft.color565(0, 0, 0));
+  uint16_t borderColor = tft.color565(30, 30, 30);
+  int borderThickness = 4;
+
+  // Top border
+  tft.fillRect(TILE_SIZE - borderThickness, TILE_SIZE * 2 - borderThickness,
+              (GRID_WIDTH - 2) * TILE_SIZE + 2 * borderThickness, borderThickness,
+              borderColor);
+
+  // Bottom border
+  tft.fillRect(TILE_SIZE - borderThickness, TILE_SIZE * (GRID_HEIGHT),
+              (GRID_WIDTH - 2) * TILE_SIZE + 2 * borderThickness, borderThickness,
+              borderColor);
+
+  // Left border
+  tft.fillRect(TILE_SIZE - borderThickness, TILE_SIZE * 2,
+              borderThickness, (GRID_HEIGHT - 2) * TILE_SIZE,
+              borderColor);
+
+  // Right border
+  tft.fillRect(TILE_SIZE * (GRID_WIDTH - 1), TILE_SIZE * 2,
+              borderThickness, (GRID_HEIGHT - 2) * TILE_SIZE,
+              borderColor);
 }
 
 // Drawing the snake segments
@@ -141,9 +181,8 @@ void drawFood() {
 // Randomly spawning a food location
 void spawnFood() {
   while (true) {
-    food.x = random(0, GRID_WIDTH);
-    food.y = random(0, GRID_HEIGHT);
-    food.y += 1;
+    food.x = random(1, GRID_WIDTH - 1);
+    food.y = random(2, GRID_HEIGHT - 1);
 
     bool overlaps = false;
 
@@ -165,19 +204,16 @@ void moveSnake() {
 
   // Checking if we collided with food
   if (ateFood && snakeLength < SNAKE_MAX_LENGTH) {
+    playEatSound();
     for (int i = snakeLength; i > 1; --i)
       snake[i] = snake[i - 1];
     snake[1] = snake[0];
     snakeLength++;
     score++;
 
-    tft.fillRect(0, 0, tft.width(), TILE_SIZE,
+    tft.fillRect(0, 0, tft.width(), TILE_SIZE * 2 - 4,
                  tft.color565(50, 50, 50)); // Clear top row
-    tft.setTextColor(TFT_WHITE);
-    tft.setTextSize(1);
-    tft.setTextDatum(TL_DATUM);
-    tft.drawString("Score: " + String(score), 5, 2);
-    tft.drawString("High: " + String(highScore), tft.width() - 80, 2);
+    drawScores();
   }
 
   else {
@@ -280,9 +316,9 @@ void moveSnake() {
   }
   lastDirectionOnTick = direction;
 
-  // Checking for border hit
-  if (snake[0].x < 0 || snake[0].x >= GRID_WIDTH || snake[0].y < 1 ||
-      snake[0].y >= GRID_HEIGHT + 1) {
+  // Checking for border hit (snake[0].y < 2  to account for larger header)
+  if (snake[0].x < 1 || snake[0].x >= GRID_WIDTH - 1 || snake[0].y < 2 ||
+      snake[0].y >= GRID_HEIGHT) {
     gameOver = true;
   }
 
@@ -295,33 +331,21 @@ void moveSnake() {
 
   // Calling game over if any collision occurs
   if (gameOver) {
-    // if (score > highScore)
-    // {
-    //   highScore = score;
-    //   File file = LittleFS.open("/highscore.txt", "w");
-    //   if (file)
-    //   {
-    //     file.println(highScore);
-    //     file.close();
-    //   }
-    // }
+    //plays gameover sound
+    playGameOverSound();
+    if (score > highScore)
+    {
+      highScore = score;
+      File file = SD.open("/snake/highscore.txt", FILE_WRITE);
+      if (file)
+      {
+        file.println(highScore);
+        file.close();
+      }
+    }
+    gameState = GAMEOVERSCREEN;
+    gameOverScreen();
 
-    tft.fillScreen(TFT_BLACK);
-    tft.setTextColor(TFT_WHITE);
-    tft.setTextSize(3);
-    tft.setTextDatum(CENTER);
-    tft.drawString("GAME OVER!", tft.width() / 2, tft.height() / 2);
-
-    tft.setTextSize(2);
-    tft.drawString("Score: " + String(score), tft.width() / 2,
-                   tft.height() / 2 + 40);
-    // tft.drawString("High Score: " + String(highScore), tft.width() / 2,
-    // tft.height() / 2 + 80);
-
-    delay(2000);
-
-    // waitForStartButton();
-    resetGame();
     return;
   }
 
@@ -434,60 +458,48 @@ void showGetReadyScreen() {
   drawFood();
 }
 
-// Startup screen
 void showCreditsScreen() {
   tft.fillScreen(TFT_BLACK);
-  tft.setTextColor(TFT_WHITE);
-  tft.setTextSize(3);
   tft.setTextDatum(MC_DATUM);
 
+  // --- Animate Title ---
   String title = "Snake";
-  int charSpacingTitle = 18;
+  tft.setTextColor(TFT_GREEN);
+  tft.setTextSize(4);
+  int charSpacingTitle = 26; // Slightly wider spacing for larger text
   int titleXStart = (tft.width() / 2) - (title.length() * charSpacingTitle) / 2;
 
   for (int i = 0; i < title.length(); i++) {
     int x = titleXStart + i * charSpacingTitle;
-    int y = tft.height() / 2 - 20;
-
+    int y = tft.height() / 2 - 60;
     tft.setCursor(x, y);
     tft.print(title[i]);
-    delay(80);
+    delay(100);
   }
 
-  delay(400);
+  delay(500);
 
-  tft.setTextSize(2);
+  // --- Animate Author ---
   String author = "Designed by CroQuest";
+  tft.setTextColor(TFT_YELLOW);
+  tft.setTextSize(2);
   int charSpacingAuthor = 14;
-  int authorXStart =
-      (tft.width() / 2) - (author.length() * charSpacingAuthor) / 2;
+  int authorXStart = (tft.width() / 2) - (author.length() * charSpacingAuthor) / 2;
 
   for (int i = 0; i < author.length(); i++) {
     int x = authorXStart + i * charSpacingAuthor;
-    int y = tft.height() / 2 + 30;
-
+    int y = tft.height() / 2;
     tft.setCursor(x, y);
     tft.print(author[i]);
     delay(60);
   }
-  delay(1500);
-}
 
-void waitForStartButton() {
-  tft.fillScreen(TFT_BLACK);
+  delay(1000);
+
+  // --- Press A to start ---
   tft.setTextColor(TFT_WHITE);
   tft.setTextSize(2);
-  tft.setTextDatum(CENTER);
-  tft.drawString("Press 'placeholder' to Start", tft.width() / 2,
-                 tft.height() / 2);
-
-  while (A.wasJustPressed()) {
-    delay(10);
-  }
-
-  while (A.wasJustPressed()) {
-    delay(10);
-  }
+  tft.drawString("Press A to start", tft.width() / 2, tft.height() - 50);
 }
 
 // Initializing game
@@ -497,33 +509,137 @@ void runSnake() {
   tft.setRotation(3);
   tft.fillScreen(TFT_BLACK);
 
-  // Mount LittleFS and read high score
-  // if (!LittleFS.begin())
-  // {
-  //   tft.drawString("FS Mount Failed", 10, 10);
-  // }
-  // else
-  // {
-  //   File file = LittleFS.open("/highscore.txt", "r");
-  //   if (file)
-  //   {
-  //     highScore = file.parseInt();
-  //     file.close();
-  //   }
-  // }
+  // read high score
+  File file = SD.open("/snake/highscore.txt", "r");
+  if (file)
+  {
+    highScore = file.parseInt();
+    file.close();
+  }
 
   showCreditsScreen();
-  // waitForStartButton();
-  resetGame();
 
   // Loop through and play game
   for (;;) {
     unsigned long now = millis();
-    handleButtonInputs();
 
-    if (!gameOver && (now - lastMoveTime >= MOVE_INTERVAL)) {
-      moveSnake();
-      lastMoveTime = now;
+    if(gameState == HOMESCREEN){
+      //Start game
+      if(A.wasJustPressed()){
+        gameState = PLAYING;
+        playPressSound();
+        resetGame();
+      }else if(left.isPressed()){
+        backAudio();
+        break;
+      }
+    }else if(gameState == PLAYING){
+      //Playing game
+      handleButtonInputs();
+
+      if (!gameOver && (now - lastMoveTime >= MOVE_INTERVAL)) {
+        moveSnake();
+        lastMoveTime = now;
+      }
+    }else if(gameState == GAMEOVERSCREEN){
+      // Go to game menu
+      if(left.isPressed()){
+        gameState = HOMESCREEN;
+        backAudio();
+        tft.fillScreen(TFT_BLACK);
+        showHomeScreen();
+      }
+      //restart game
+      else if(A.wasJustPressed()){
+        gameState = PLAYING;
+        playPressSound();
+        resetGame();
+      }
     }
   }
+}
+
+
+// ==================== DRAWING ==================== //
+
+//Draws highscore and current score
+void drawScores(){
+  tft.setTextSize(2);  // or 3 for larger text
+  tft.setTextColor(TFT_WHITE, tft.color565(50, 50, 50));  // white on dark gray
+
+  // Align to top-left (default)
+  tft.setTextDatum(TL_DATUM);
+  tft.drawString("Score: " + String(score), TILE_SIZE, 5);
+
+  // Align high score to top-right
+  tft.setTextDatum(TR_DATUM);
+  tft.drawString("Highscore: " + String(highScore), tft.width() - TILE_SIZE, 5);
+}
+
+// Drawing homescreen without animation
+void showHomeScreen() {
+  tft.setTextDatum(MC_DATUM);
+
+  // Draw the game title in large font
+  tft.setTextColor(TFT_GREEN);
+  tft.setTextSize(4);
+  tft.drawString("Snake", tft.width() / 2, tft.height() / 2 - 50);
+
+  // Draw the author name
+  tft.setTextColor(TFT_YELLOW);
+  tft.setTextSize(2);
+  tft.drawString("Designed by CroQuest", tft.width() / 2, tft.height() / 2 + 10);
+
+  // Draw the "Press A to start" prompt
+  tft.setTextColor(TFT_WHITE);
+  tft.setTextSize(2);
+  tft.drawString("Press A to start", tft.width() / 2, tft.height() - 50);
+}
+
+void gameOverScreen() {
+  tft.fillScreen(TFT_BLACK);
+  tft.setTextDatum(MC_DATUM); // Center both X and Y
+
+  // GAME OVER! in red, large and higher on screen
+  tft.setTextColor(TFT_RED);
+  tft.setTextSize(4);
+  tft.drawString("GAME OVER!", tft.width() / 2, 60); // Higher position
+
+  // Score and High Score in yellow
+  tft.setTextColor(TFT_YELLOW);
+  tft.setTextSize(2);
+  tft.drawString("Score: " + String(score), tft.width() / 2, tft.height() / 2 - 10);
+  tft.drawString("High Score: " + String(highScore), tft.width() / 2, tft.height() / 2 + 20);
+
+  // Action prompts in white, lower on the screen
+  tft.setTextColor(TFT_WHITE);
+  tft.setTextSize(2);
+  tft.drawString("Press A to restart", tft.width() / 2, tft.height() - 60);
+  tft.drawString("Press B to return to menu", tft.width() / 2, tft.height() - 30);
+}
+
+// ================ AUDIO ================= //
+
+void playGameOverSound() {
+  int notes[] = { 1000, 900, 800, 700, 600, 500 };
+  int noteDuration = 150;  // ms
+  int volume = 80;          // volume in percent (0–100)
+
+  for (int i = 0; i < 6; i++) {
+    playTone(notes[i], volume);
+    delay(noteDuration);
+    playTone(0, 0);  // stop tone
+    delay(50);
+  }
+
+  // Final long low note
+  playTone(300, volume);
+  delay(500);
+  playTone(0, 0);
+}
+
+void playEatSound() {
+  playTone(1000, 90);  // quick blip at 1kHz
+  delay(30);           // very short duration
+  playTone(0, 0);      // stop sound
 }
