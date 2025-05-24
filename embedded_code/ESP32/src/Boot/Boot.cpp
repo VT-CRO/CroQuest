@@ -30,6 +30,10 @@ void initBoot() {
 
   if (!SD.begin(5)) {
     Serial.println("Card Mount Failed");
+    tft.fillScreen(TFT_RED);
+    tft.setTextColor(TFT_WHITE, TFT_RED);
+    tft.setTextSize(2);
+    tft.drawString("SD Card Mount Failed", 10, 10, 2);
   }
 }
 

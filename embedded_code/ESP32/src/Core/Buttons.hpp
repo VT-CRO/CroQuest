@@ -14,6 +14,8 @@ private:
   int lastState;
   int thresholdLow;
   int thresholdHigh;
+  bool currentState = false;
+  bool justPressed = false;
 
 public:
   Button(int pin, const char *label, ButtonType type = DIGITAL,
@@ -27,6 +29,18 @@ public:
     } else {
       pinMode(pin, INPUT);
     }
+  }
+
+  void update() {
+    if (type == DIGITAL) {
+      currentState = digitalRead(pin);
+    } else if (type == ANALOG_INPUT) {
+      int value = analogRead(pin);
+      currentState = (value >= thresholdLow && value <= thresholdHigh);
+    }
+
+    justPressed = (currentState && !lastState);
+    lastState = currentState;
   }
 
   bool isPressed() const {

@@ -2,44 +2,45 @@
 
 #pragma once
 
+#include "BackButton/BackButton.hpp"
 #include "Core/Buttons.hpp"
 #include "Core/JpegDrawing.hpp"
 #include <TFT_eSPI.h>
 #include <string>
-#include "BackButton/BackButton.hpp"
 
 extern TFT_eSPI tft;
 extern JpegDrawing drawing;
 extern Button A, up, down, left, right;
 
-//Similar to Java's generic classes
-template<typename EnumType>
-class NumPad {
+// Similar to Java's generic classes
+template <typename EnumType> class NumPad {
 public:
   enum direction { UP, DOWN, LEFT, RIGHT, NONE };
   enum button_state { PRESSED, BASIC, SELECTED };
   enum button_type { DEL = 10, ENTER = 11 };
 
   // Constructor
-  NumPad(void (*backScreen)(), void (*forwardScreen)(), 
-          EnumType * gameState, EnumType prevState, EnumType nextState);
+  NumPad(void (*backScreen)(), void (*forwardScreen)(), EnumType *gameState,
+         EnumType prevState, EnumType nextState);
 
   void drawAllButtons();
-  void handleButtonInput(unsigned long *lastMoveTime,
-                               const long moveDelay);
+  void handleButtonInput(unsigned long *lastMoveTime, const long moveDelay);
   void modButtonState(direction dir, button_state state);
   void numPadSetup();
+
+  bool wasEnterPressed();
 
   std::string getCode() const { return code; }
   void clearCode() { code.clear(); }
 
 private:
-
   void (*backScreen)();
   void (*forwardScreen)();
 
-  //pointer to the gameState
-  EnumType * gameState;
+  bool enterWasPressed = false; // Check for enter button press
+
+  // pointer to the gameState
+  EnumType *gameState;
 
   // The two states that the numpad can jump to
   EnumType prevState;
@@ -82,12 +83,13 @@ static const int globalYOffset =
     30; // or however far down you want to shift the entire pad
 
 static JpegDrawing::ImageInfo numpad_dim =
-drawing.getJpegDimensions("/numpad/numpad.jpg");
+    drawing.getJpegDimensions("/numpad/numpad.jpg");
 
-template<typename EnumType>
-NumPad<EnumType>::NumPad(void (*backScreen)(), void (*forwardScreen)(), 
-              EnumType * gameState, EnumType prevState, EnumType nextState)
-              : backScreen(backScreen), forwardScreen(forwardScreen){
+template <typename EnumType>
+NumPad<EnumType>::NumPad(void (*backScreen)(), void (*forwardScreen)(),
+                         EnumType *gameState, EnumType prevState,
+                         EnumType nextState)
+    : backScreen(backScreen), forwardScreen(forwardScreen) {
   this->gameState = gameState;
   this->prevState = prevState;
   this->nextState = nextState;
@@ -99,8 +101,10 @@ NumPad<EnumType>::NumPad(void (*backScreen)(), void (*forwardScreen)(),
   for (int row = 0; row < 4; row++) {
     for (int col = 0; col < 3; col++) {
       // The image is 195 x 195
-      buttonPos[row][col].x = ((480 - 195) / 2 + 14) + col * (buttonWidth + spacingX);
-      buttonPos[row][col].y = ((320 - 195) / 2 + 16) + globalYOffset + row * (buttonHeight + spacingY);
+      buttonPos[row][col].x =
+          ((480 - 195) / 2 + 14) + col * (buttonWidth + spacingX);
+      buttonPos[row][col].y = ((320 - 195) / 2 + 16) + globalYOffset +
+                              row * (buttonHeight + spacingY);
     }
   }
 
@@ -110,8 +114,9 @@ NumPad<EnumType>::NumPad(void (*backScreen)(), void (*forwardScreen)(),
 }
 
 // modify button position and state, also redraws the button
-template<typename EnumType>
-void NumPad<EnumType>::modButtonState(enum direction direction, enum button_state state) {
+template <typename EnumType>
+void NumPad<EnumType>::modButtonState(enum direction direction,
+                                      enum button_state state) {
 
   int prev_row = row;
   int prev_col = column;
@@ -132,7 +137,7 @@ void NumPad<EnumType>::modButtonState(enum direction direction, enum button_stat
     if (column > 0)
       column--;
     break;
-    
+
   case RIGHT:
     if (column < 2)
       column++;
@@ -175,22 +180,15 @@ void NumPad<EnumType>::modButtonState(enum direction direction, enum button_stat
       }
 
     } else if (pad[row][column] == ENTER) {
-      //////// TO-DO /////////////
-      /// BLUETOOTH LOGIC //////////
-      
-      // Temp logic, simply changes state and draws to the screen
-      (*gameState) = nextState;
-      forwardScreen();
+      enterWasPressed = true;
+    } else if (selected == 0) {
+      // Back Button Selected - returns to previous screen,
+      // resetting the gamestate and selected number
+      (*gameState) = prevState;
+      backScreen();
+      selected = 1;
       return;
-    } else if(selected == 0){
-        // Back Button Selected - returns to previous screen,
-        // resetting the gamestate and selected number
-        (*gameState) = prevState;
-        backScreen();
-        selected = 1;
-        return;
-    }
-    else {
+    } else {
       if (code.length() < max_length) {
         std::string button = std::to_string(pad[row][column]);
         code += button;
@@ -203,8 +201,7 @@ void NumPad<EnumType>::modButtonState(enum direction direction, enum button_stat
   drawButton(state, row, column);
 }
 
-template<typename EnumType>
-void NumPad<EnumType>::drawAllButtons() {
+template <typename EnumType> void NumPad<EnumType>::drawAllButtons() {
   JpegDrawing::ImageInfo dim = drawing.getJpegDimensions("/numpad/numpad.jpg");
   int x = (480 - dim.width) / 2;
   int y = (320 - dim.height) / 2 + globalYOffset;
@@ -215,9 +212,9 @@ void NumPad<EnumType>::drawAllButtons() {
 }
 
 // Draw a button
-template<typename EnumType>
+template <typename EnumType>
 void NumPad<EnumType>::drawButton(enum button_state state, int row_button,
-                        int column_button) {
+                                  int column_button) {
   const Position &position = buttonPos[row_button][column_button];
 
   std::string basePath;
@@ -250,8 +247,7 @@ void NumPad<EnumType>::drawButton(enum button_state state, int row_button,
 }
 
 // Draw Code
-template<typename EnumType>
-void NumPad<EnumType>::drawCode() {
+template <typename EnumType> void NumPad<EnumType>::drawCode() {
   // --- Draw Label ---
   tft.setTextDatum(TL_DATUM); // Top-left corner for label
   tft.setTextSize(2);
@@ -276,14 +272,14 @@ void NumPad<EnumType>::drawCode() {
   tft.drawString(code.c_str(), SCREEN_WIDTH / 2, codeY);
 }
 
-template<typename EnumType>
+template <typename EnumType>
 void NumPad<EnumType>::handleButtonInput(unsigned long *lastMoveTime,
-                               const long moveDelay) {
+                                         const long moveDelay) {
   if (millis() - *lastMoveTime > moveDelay) {
     // Press Logic
     if (!A.isPressed() && !pressed) {
-        modButtonState(NumPad::NONE, NumPad::PRESSED);
-        pressed = true;
+      modButtonState(NumPad::NONE, NumPad::PRESSED);
+      pressed = true;
       *lastMoveTime = millis();
     } else if (A.isPressed() && pressed) {
       modButtonState(NumPad::NONE, NumPad::SELECTED);
@@ -292,22 +288,22 @@ void NumPad<EnumType>::handleButtonInput(unsigned long *lastMoveTime,
     if (up.isPressed()) {
       // Back button selection logic to
       // highlight the back button
-      if(row <= 0 && selected == 1){
+      if (row <= 0 && selected == 1) {
         selected = 0;
         modButtonState(NumPad::NONE, NumPad::BASIC);
         back(selected, TFT_BLACK);
-      }else{
+      } else {
         modButtonState(NumPad::UP, NumPad::SELECTED);
       }
       *lastMoveTime = millis();
     } else if (down.isPressed()) {
-      // Back button selection logic to 
+      // Back button selection logic to
       // de-select the button
-      if(row <= 0 && selected == 0){
+      if (row <= 0 && selected == 0) {
         selected = 1;
         back(selected, TFT_BLACK);
         modButtonState(NumPad::NONE, NumPad::SELECTED);
-      }else{
+      } else {
         modButtonState(NumPad::DOWN, NumPad::SELECTED);
       }
       *lastMoveTime = millis();
@@ -321,13 +317,18 @@ void NumPad<EnumType>::handleButtonInput(unsigned long *lastMoveTime,
   }
 }
 
-template<typename EnumType>
-void NumPad<EnumType>::numPadSetup() {
+template <typename EnumType> void NumPad<EnumType>::numPadSetup() {
   tft.fillScreen(TFT_BLACK);
 
-  //Deletes any sprite that drawing may contain
+  // Deletes any sprite that drawing may contain
   drawing.deleteSprite();
-  
+
   drawAllButtons();
   modButtonState(NumPad::NONE, NumPad::SELECTED);
+}
+
+template <typename EnumType> bool NumPad<EnumType>::wasEnterPressed() {
+  bool pressed = enterWasPressed;
+  enterWasPressed = false;
+  return pressed;
 }

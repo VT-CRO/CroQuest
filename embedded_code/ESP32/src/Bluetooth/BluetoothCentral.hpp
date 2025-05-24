@@ -10,6 +10,7 @@
 #include "BluetoothCommon.hpp"
 #include "BluetoothManager.hpp"
 #include "ConnectionScreen.hpp"
+#include "Core/Buttons.hpp"
 
 class BluetoothCentral {
 public:
@@ -19,7 +20,7 @@ public:
   void beginScan(const std::string &accessCode);
 
   // ###################### Keep Scanning for more Players #####################
-  void scanAndConnectLoop();
+  void scanAndConnectLoop(const std::string &accessCode);
 
   // ###################### Connect to All Devices #####################
   void connectToDevices();
@@ -32,6 +33,9 @@ public:
 
   // ###################### Disconnect from ALL Devices #####################
   void disconnectAll();
+
+  // ###################### Get Connected Clients #####################
+  const std::vector<NimBLEClient *> &getConnectedClients() const;
 
 private:
   TFT_eSPI &tft;

@@ -1,9 +1,12 @@
-#pragma once
-#include <Arduino.h>
+// /src/JoinHost/JoinHost.hpp#pragma once
 #include <TFT_eSPI.h>
+#include <string>
+#include <type_traits>
+
+#include "Bluetooth/BluetoothCentral.hpp"
+#include "Bluetooth/BluetoothManager.hpp"
+#include "Bluetooth/ConnectionScreen.hpp"
 
 namespace JoinHost {
-void init(TFT_eSPI &display);
-void showCode(const String &code);
-void showStatus(const String &msg); // Optional line under code
-} // namespace JoinHost
+bool attemptJoinGame(const std::string &code);
+}

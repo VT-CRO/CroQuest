@@ -4,6 +4,7 @@
 #include "Bluetooth/BluetoothManager.hpp"
 #include "Core/Buttons.hpp"
 #include "Core/JpegDrawing.hpp"
+#include "HostGame/HostGame.hpp"
 #include "JoinHost/JoinHost.hpp"
 #include "NumPad/NumPad.hpp"
 #include <TFT_eSPI.h>

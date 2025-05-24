@@ -1,6 +1,7 @@
 // main.cpp
 
 #include <Arduino.h>
+#include <esp_system.h>
 
 #include "Bluetooth/BluetoothCommon.hpp"
 #include "Boot/Boot.hpp"
@@ -25,9 +26,6 @@ void setup() {
   // Starts Boot + Speaker
   initBoot(); // Initializes SD + TFT
 
-  // initBacklightPWM(); // Set up PWM on backlight pin
-  // applyBrightness(settings.brightness); // Apply saved brightness level
-
   // fills screen so sound doesn't start w/ white background
   tft.fillScreen(TFT_BLACK);
 
@@ -35,8 +33,7 @@ void setup() {
 
   initializeBluetoothIdentifiers(); // Generate BLE name + UUIDs based on MAC
 
-  randomSeed(analogRead(0)); // Initialize random seed (happens once)
-  delay(100);
+  randomSeed(esp_random());
 
   showBootWithLoading("/boot/assets/boot.jpg"); // Show Splash + animation
   menu.draw();                                  // Draw menu page
@@ -45,4 +42,7 @@ void setup() {
 // ####################################################################################################
 //  Loop
 // ####################################################################################################
-void loop() { menu.handleInput(); }
+void loop() {
+  updateAllButtons();
+  menu.handleInput();
+}

@@ -2,16 +2,31 @@
 
 #include "BluetoothPeripheral.hpp"
 
+static bool bleInitialized = false;
+
 BluetoothPeripheral::BluetoothPeripheral(TFT_eSPI &display) : tft(display) {}
 
 // ###################### Start Advertising #####################
 void BluetoothPeripheral::beginAdvertising(const std::string &code) {
   accessCode = code;
+  Serial.printf("Access code length: %d\n", accessCode.length());
+
+  initializeBluetoothIdentifiers();
 
   ConnectionScreen::showMessage("Starting BLE advertiser...");
-  delay(1000);
+  delay(500);
 
-  NimBLEDevice::init(BLE_NAME_PREFIX.c_str()); // Initialize with dynamic name
+  // 🔄 Manually track BLE initialization
+  if (bleInitialized) {
+    Serial.println("♻️ BLE was initialized. Resetting...");
+    NimBLEDevice::deinit(true);
+    delay(100);
+  }
+
+  NimBLEDevice::init(BLE_NAME_PREFIX.c_str());
+  bleInitialized = true;
+  Serial.println("🔧 NimBLE initialized");
+
   server = NimBLEDevice::createServer();
   server->setCallbacks(new ServerCallbacks(this));
 
@@ -24,15 +39,25 @@ void BluetoothPeripheral::beginAdvertising(const std::string &code) {
   advertising = NimBLEDevice::getAdvertising();
   NimBLEAdvertisementData adData;
   adData.setName(BLE_NAME_PREFIX.c_str());
-  adData.setManufacturerData(std::string("\x01\x02") + accessCode);
+
+  std::string fullData = "code:" + accessCode;
+  adData.setManufacturerData(fullData);
+
   advertising->setAdvertisementData(adData);
-  advertising->addServiceUUID(service->getUUID());
   advertising->start();
 
-  Serial.println("Advertising as: " + String(BLE_NAME_PREFIX.c_str()));
-  ConnectionScreen::showMessage(
-      "Advertising as:\n" + String(BLE_NAME_PREFIX.c_str()) +
-      "\nAccess Code:\n" + String(accessCode.c_str()));
+  Serial.print("🔎 Advertising raw data: ");
+  Serial.println(fullData.c_str());
+
+  Serial.print("📏 Length: ");
+  Serial.println(fullData.length());
+
+  Serial.printf("🟢 Advertising state: %s\n",
+                advertising->isAdvertising() ? "ON" : "OFF");
+
+  Serial.println("✅ Advertising started.");
+  Serial.println("BLE Name: " + String(BLE_NAME_PREFIX.c_str()));
+  Serial.println("Access Code: " + String(accessCode.c_str()));
 }
 
 // ###################### Update Data #####################

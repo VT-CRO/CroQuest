@@ -103,13 +103,16 @@ void handleTicTacToeFrame() {
 
   if (game_state == HOMESCREEN) {
     if (millis() - lastMoveTime > moveDelay / 2) {
+
       if (A.wasJustPressed()) {
+
         if (selection == 0) {
           game_state = SINGLE_PLAYER;
           // Clear the screen with orange background
           tft.fillScreen(orange_color);
           // Draw initial screen
           drawAllPlaying();
+
         } else if (selection == 1) {
           game_state = MULTIPLAYER_SELECTION;
           drawHomescreenSelect();
@@ -131,36 +134,29 @@ void handleTicTacToeFrame() {
         if (subselection == 0) {
           game_state = HOST_SCREEN;
 
-          BluetoothManager::initPeripheral(tft);
-          BluetoothPeripheral &peripheral = BluetoothManager::getPeripheral();
+          // // For now, pressing 'Start' returns to the menu
+          // if (Start.wasJustPressed()) {
+          //   game_state = HOMESCREEN;
+          //   drawHomeScreen();
+          // }
+
+          // HOST = CENTRAL
+          BluetoothManager::initCentral(tft);
+          BluetoothCentral &central = BluetoothManager::getCentral();
 
           std::string code = generate6DigitCode();
-          peripheral.beginAdvertising(code);
 
-          // Set the screen for JoinHost
-          JoinHost::init(tft);
+          // Set the screen for HostGame
+          HostGame::init(tft);
 
           // Now safely show code
-          JoinHost::showCode(String(code.c_str()));
+          HostGame::showCode(String(code.c_str()));
 
-          // drawHostGameScreen(String(code.c_str()));
+          central.scanAndConnectLoop(code);
+
         } else {
           game_state = BLUETOOTH_NUMPAD;
           pad.numPadSetup();
-
-          // TODO
-          // if (pad.hasCompleteCode()) {
-          //   std::string enteredCode = pad.getEnteredCode();
-          //   BluetoothManager::initCentral(tft);
-          //   BluetoothCentral &central = BluetoothManager::getCentral();
-
-          //   central.beginScan(enteredCode);
-          //   delay(5000); // allow scanning to complete
-          //   central.connectToDevices();
-
-          //   game_state = MULTIPLAYER_PLAYING; // or your multiplayer game
-          //   state
-          // }
         }
       }
       if (up.isPressed()) {
@@ -317,6 +313,18 @@ void handleTicTacToeFrame() {
     }
   } else if (game_state == BLUETOOTH_NUMPAD) {
     pad.handleButtonInput(&lastMoveTime, moveDelay);
+
+    std::string enteredCode = pad.getCode();
+    if (enteredCode.length() == 6 && pad.wasEnterPressed()) {
+      game_state = MULTIPLAYER_PLAYING;
+
+      // JOIN = PERIPHERAL
+      BluetoothManager::initPeripheral(tft);
+      BluetoothPeripheral &peripheral = BluetoothManager::getPeripheral();
+      peripheral.beginAdvertising(enteredCode);
+
+      pad.clearCode();
+    }
   }
 }
 

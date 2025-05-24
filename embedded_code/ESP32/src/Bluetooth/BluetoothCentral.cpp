@@ -2,9 +2,6 @@
 
 #include "BluetoothCentral.hpp"
 
-#include "BluetoothCommon.hpp"
-#include "ConnectionScreen.hpp"
-
 BluetoothCentral::BluetoothCentral(TFT_eSPI &display) : tft(display) {}
 
 // ####################################################################################################
@@ -12,13 +9,23 @@ BluetoothCentral::BluetoothCentral(TFT_eSPI &display) : tft(display) {}
 // ####################################################################################################
 void BluetoothCentral::ScanCallbacks::onResult(
     const NimBLEAdvertisedDevice *advertisedDevice) {
+
   std::string name = advertisedDevice->getName();
   std::string manuData = advertisedDevice->getManufacturerData();
 
-  Serial.printf("🔍 Found %s | Data: %s\n", name.c_str(), manuData.c_str());
-  if (manuData.find(parent->targetCode) != std::string::npos) {
-    Serial.println("✅ Match found!");
-    parent->foundDevices.push_back(*advertisedDevice);
+  if (manuData.find("code:") == 0 && manuData.length() >= 11) {
+    std::string codePart = manuData.substr(5, 6);
+    Serial.printf("🔍 Found %s | Code: %s\n", name.c_str(), codePart.c_str());
+
+    if (codePart == parent->targetCode) {
+      Serial.printf("✅ Match found: %s\n", name.c_str());
+
+      // ✅ Add match and stop scanning immediately
+      parent->foundDevices.push_back(*advertisedDevice);
+      NimBLEDevice::getScan()->stop(); // ✅ prevents repeat matches
+    } else {
+      Serial.println("🚫 Code did not match");
+    }
   }
 }
 
@@ -32,32 +39,34 @@ void BluetoothCentral::beginScan(const std::string &accessCode) {
   NimBLEScan *scanner = NimBLEDevice::getScan();
   scanner->setScanCallbacks(new ScanCallbacks(this));
   scanner->setActiveScan(true);
-  scanner->start(5, false); // Scan for 5 seconds
+  scanner->start(0, false); // Scan continuously
 
   ConnectionScreen::showMessage("Scanning...\nAccess Code:\n" +
                                 String(accessCode.c_str()));
 }
 
 // ###################### Keep Scanning for more Players #####################
-void BluetoothCentral::scanAndConnectLoop() {
+void BluetoothCentral::scanAndConnectLoop(const std::string &accessCode) {
+  this->targetCode = accessCode;
+  this->foundDevices.clear();
   Serial.println("🔄 Starting scan-and-connect loop...");
 
   ConnectionScreen::showMessage("Scanning for players...\nCode: " +
                                 String(this->targetCode.c_str()));
   beginScan(this->targetCode);
 
-  delay(5000);                  // wait for scan to complete
-  BluetoothManager::stopScan(); // stop scanning explicitly
+  // ✅ Wait until scan stops due to onResult()
+  while (NimBLEDevice::getScan()->isScanning()) {
+    delay(100);
+  }
 
-  if (foundDevices.empty()) {
+  Serial.println("⏹ Scan stopped.");
+
+  if (!foundDevices.empty()) {
+    connectToDevices();
+  } else {
     Serial.println("⚠️ No matching devices found.");
     ConnectionScreen::showMessage("No devices found.\nTry again.");
-  } else {
-    Serial.printf("🔍 Scan complete. Found %d device(s).\n",
-                  foundDevices.size());
-    ConnectionScreen::showMessage(
-        "Connecting to " + String(foundDevices.size()) + " player(s)...");
-    connectToDevices();
   }
 
   Serial.println("✅ Scan-and-connect loop complete.");
@@ -67,19 +76,28 @@ void BluetoothCentral::scanAndConnectLoop() {
 void BluetoothCentral::connectToDevices() {
   this->connectedClients.clear();
 
-  for (auto &device : this->foundDevices) {
-    NimBLEClient *client = NimBLEDevice::createClient();
-    if (client->connect(&device)) {
-      Serial.printf("🔗 Connected to %s\n", device.getName().c_str());
-      this->connectedClients.push_back(client);
-    } else {
-      Serial.println("❌ Failed to connect to device.");
-      NimBLEDevice::deleteClient(client); // ✅ Safe deletion
-    }
+  if (foundDevices.empty()) {
+    Serial.println("⚠️ No devices to connect to.");
+    return;
   }
 
-  ConnectionScreen::showMessage(
-      "Connected to " + String(this->connectedClients.size()) + " player(s)");
+  NimBLEAdvertisedDevice &device = foundDevices[0];
+
+  Serial.printf("🔗 Attempting to connect to %s (%s)...\n",
+                device.getName().c_str(),
+                device.getAddress().toString().c_str());
+
+  NimBLEClient *client = NimBLEDevice::createClient();
+  if (client->connect(&device)) {
+    Serial.printf("✅ Connected to %s\n", device.getName().c_str());
+    this->connectedClients.push_back(client);
+
+    ConnectionScreen::showMessage("Connected to 1 player!");
+  } else {
+    Serial.println("❌ Connection failed.");
+    NimBLEDevice::deleteClient(client);
+    ConnectionScreen::showMessage("Failed to connect.");
+  }
 }
 
 // ###################### Poll Devices for Incoming Data #####################
@@ -106,7 +124,8 @@ void BluetoothCentral::pollDevices() {
   }
 }
 
-// ###################### Send Message to Specific Device #####################
+// ###################### Send Message to Specific Device
+// #####################
 void BluetoothCentral::sendToDevice(NimBLEClient *client,
                                     const std::string &message) {
   if (!client || !client->isConnected())
@@ -133,4 +152,9 @@ void BluetoothCentral::disconnectAll() {
     NimBLEDevice::deleteClient(client); // Proper deletion
   }
   this->connectedClients.clear();
+}
+
+const std::vector<NimBLEClient *> &
+BluetoothCentral::getConnectedClients() const {
+  return connectedClients;
 }
