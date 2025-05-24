@@ -48,6 +48,12 @@ private:
 
   const int SCREEN_WIDTH = 480;
 
+  // Selector Constants
+  static constexpr int SELECTOR_THICKNESS = 3;
+  static constexpr int SELECTOR_RADIUS = 6;
+  static constexpr uint16_t SELECTOR_COLOR = TFT_WHITE;
+  static constexpr uint16_t BACKGROUND_COLOR = TFT_BLACK;
+
   // Pad layout
   int pad[4][3] = {{1, 2, 3}, {4, 5, 6}, {7, 8, 9}, {DEL, 0, ENTER}};
 
@@ -72,12 +78,13 @@ private:
 
   void drawButton(button_state state, int row, int col);
   void drawCode();
+
+  // Selector
+  void drawSelector(int row, int col, uint16_t color);
+  void clearSelector(int row, int col);
 };
 
 // ================ IMPLEMENTATION =========================
-
-// Could only get the template to work when I placed the implementation
-// in the header file instead of a .cpp file
 
 static const int globalYOffset =
     30; // or however far down you want to shift the entire pad
@@ -108,8 +115,6 @@ NumPad<EnumType>::NumPad(void (*backScreen)(), void (*forwardScreen)(),
     }
   }
 
-  // // Optionally preload the background
-  // drawing.drawSdJpeg("/numpad/numpad.jpg", x, y);
   drawing.pushSprite(false, true);
 }
 
@@ -146,32 +151,22 @@ void NumPad<EnumType>::modButtonState(enum direction direction,
   default:
     break;
   }
+
   // "Erase" previous selection by redrawing just that tile from the base numpad
   // image
   if (prev_row != row || prev_col != column) {
-    // === Step 1: Clean up leftover SELECTED pixels from background ===
-    JpegDrawing::ImageInfo dim =
-        drawing.getJpegDimensions("/numpad/numpad.jpg");
-    int fullX = (480 - dim.width) / 2;
-    int fullY = (320 - dim.height) / 2 + globalYOffset;
+    // Clear selector from old position
+    clearSelector(prev_row, prev_col);
 
-    // Match your button dimensions exactly
-    int buttonW = 47;
-    int buttonH = 31;
-
-    int srcX = buttonPos[prev_row][prev_col].x - fullX;
-    int srcY = buttonPos[prev_row][prev_col].y - fullY;
-    int dstX = buttonPos[prev_row][prev_col].x;
-    int dstY = buttonPos[prev_row][prev_col].y;
-
-    drawing.drawJpegTile("/numpad/numpad.jpg", srcX, srcY, buttonW, buttonH,
-                         dstX, dstY);
-    drawing.pushSprite(false, true);
-
-    // === Step 2: Restore full BASIC button ===
+    // Redraw underlying button
     drawButton(BASIC, prev_row, prev_col);
   }
 
+  if (selected == 1) {
+    drawSelector(row, column, SELECTOR_COLOR);
+  }
+
+  // Draw selector on new position
   if (state == PRESSED) {
     if (pad[row][column] == DEL) {
       if (code.length() > 0) {
@@ -331,4 +326,24 @@ template <typename EnumType> bool NumPad<EnumType>::wasEnterPressed() {
   bool pressed = enterWasPressed;
   enterWasPressed = false;
   return pressed;
+}
+
+template <typename EnumType>
+void NumPad<EnumType>::drawSelector(int row, int col, uint16_t color) {
+  const Position &pos = buttonPos[row][col];
+  int w = buttonWidth + 2;
+  int h = buttonHeight - 10;
+
+  int offsetX = -3;
+  int offsetY = -2;
+
+  for (int i = 0; i < SELECTOR_THICKNESS; i++) {
+    tft.drawRoundRect(pos.x - i + offsetX, pos.y - i + offsetY, w + 2 * i,
+                      h + 2 * i, SELECTOR_RADIUS, color);
+  }
+}
+
+template <typename EnumType>
+void NumPad<EnumType>::clearSelector(int row, int col) {
+  drawSelector(row, col, BACKGROUND_COLOR);
 }

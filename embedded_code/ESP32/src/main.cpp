@@ -11,11 +11,7 @@
 #include "Menu/GameMenu.hpp"
 #include "SettingsMenu/Settings/Settings.hpp" // for `settings.brightness`
 
-// Include Games
-#include "Games/simon/Simon.hpp"
-#include "Games/tic_tac_toe/TicTacToe.hpp"
-
-GameMenu menu(&tft);
+GameMenu menu(&tft);                    // Create a GameMenu instance
 AppState currentMenuState = STATE_MENU; // Start in menu for now
 
 // ####################################################################################################
@@ -23,23 +19,29 @@ AppState currentMenuState = STATE_MENU; // Start in menu for now
 // ####################################################################################################
 void setup() {
 
-  // Starts Boot + Speaker
-  initBoot(); // Initializes SD + TFT
+  // Initialize SD + TFT
+  initBoot();
 
   // Loads settings
   loadFromSettingsFile("/settings.bin");
 
+  // Speaker Start UP
+  speaker();
+
   // fills screen so sound doesn't start w/ white background
   tft.fillScreen(TFT_BLACK);
 
-  speaker(); // Speaker Start UP
+  // Generate BLE name + UUIDs
+  initializeBluetoothIdentifiers();
 
-  initializeBluetoothIdentifiers(); // Generate BLE name + UUIDs based on MAC
-
+  // Initialize Bluetooth Peripheral
   randomSeed(esp_random());
 
-  showBootWithLoading("/boot/assets/boot.jpg"); // Show Splash + animation
-  menu.draw();                                  // Draw menu page
+  // Initialize Boot Screen
+  showBootWithLoading("/boot/assets/boot.jpg");
+
+  // Draw Menu Page
+  menu.draw();
 }
 
 // ####################################################################################################
