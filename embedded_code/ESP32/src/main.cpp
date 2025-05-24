@@ -26,15 +26,9 @@ void setup() {
   // Starts Boot + Speaker
   initBoot(); // Initializes SD + TFT
 
-<<<<<<< HEAD
-=======
-  //Loads settings
+  // Loads settings
   loadFromSettingsFile("/settings.bin");
 
-  // initBacklightPWM(); // Set up PWM on backlight pin
-  // applyBrightness(settings.brightness); // Apply saved brightness level
-
->>>>>>> 3c45252eaf124a5b220f3978e9edc171545efc09
   // fills screen so sound doesn't start w/ white background
   tft.fillScreen(TFT_BLACK);
 
