@@ -9,6 +9,10 @@
 #include <SPI.h>
 #include <TFT_eSPI.h>
 
+#include "SettingsMenu/AudioMenu/Audio.hpp"
+
+extern int& volume;
+
 // ======================== Global Display Instance ========================
 TFT_eSPI tft = TFT_eSPI(); // Shared display object
 
@@ -200,15 +204,14 @@ void jpegRender(int xpos, int ypos) {
 
 // ======================== Speaker Start up noise ========================
 void speaker() {
-  ledcAttachPin(SPEAKER_PIN, 0); // Attach speaker pin to PWM channel 0
-
+  ledcAttachPin(SPEAKER_PIN, channel);
   int melody[] = {440, 554, 659,
                   880}; // A4, C#5, E5, A5 - simple ascending notes
   int noteDurations[] = {150, 150, 150, 300}; // durations in ms
 
   for (int i = 0; i < 4; i++) {
-    ledcWriteTone(0, melody[i]);
+    playTone(melody[i], volume);
     delay(noteDurations[i]);
   }
-  ledcWriteTone(0, 0); // Stop tone
+  playTone(0, 0); // Stop tone
 }

@@ -25,6 +25,9 @@ void setup() {
   // Starts Boot + Speaker
   initBoot(); // Initializes SD + TFT
 
+  //Loads settings
+  loadFromSettingsFile("/settings.bin");
+
   // initBacklightPWM(); // Set up PWM on backlight pin
   // applyBrightness(settings.brightness); // Apply saved brightness level
 

@@ -5,8 +5,7 @@
 
 #include "pong_logic.hpp"
 #include <Arduino.h>
-
-#define SPEAKER_PIN 21 
+#include "SettingsMenu/AudioMenu/Audio.hpp"
 
 //Screen dimensions
 const int SCREEN_HEIGHT = 320;
@@ -34,40 +33,38 @@ enum paddle_walls {
 };
 
 // ============ SOUNDS ============= //
+extern int& volume;
 
 void playPaddleHitSound() {
-  const int channel = 0;
   const int freq = 900;     // Sharp "blip"
   const int duration = 20;  // Very quick
 
   ledcAttachPin(SPEAKER_PIN, channel);
-  ledcWriteTone(channel, freq);
+  playTone(freq, volume);
   delay(duration);
-  ledcWriteTone(channel, 0);
+  playTone(0, 0);
 }
 
 void playWallBounceSound() {
-  const int channel = 0;
   const int freq = 700;     // Slightly lower pitch
   const int duration = 20;
 
   ledcAttachPin(SPEAKER_PIN, channel);
-  ledcWriteTone(channel, freq);
+  playTone(freq, volume);
   delay(duration);
-  ledcWriteTone(channel, 0);
+  playTone(0, 0);
 }
 
 void playMissSound() {
-  const int channel = 0;
   ledcAttachPin(SPEAKER_PIN, channel);
 
   // Rising tone: 400 Hz → 700 Hz
   for (int freq = 400; freq <= 700; freq += 30) {
-    ledcWriteTone(channel, freq);
+    playTone(freq, volume);
     delay(15); // Smooth upward sweep
   }
 
-  ledcWriteTone(channel, 0); // Turn off sound
+  playTone(0, 0); // Turn off sound
 }
 
 
