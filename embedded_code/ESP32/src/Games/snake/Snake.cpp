@@ -623,7 +623,6 @@ void gameOverScreen() {
 void playGameOverSound() {
   int notes[] = { 1000, 900, 800, 700, 600, 500 };
   int noteDuration = 150;  // ms
-  int volume = 80;          // volume in percent (0–100)
 
   for (int i = 0; i < 6; i++) {
     playTone(notes[i], volume);
@@ -639,7 +638,7 @@ void playGameOverSound() {
 }
 
 void playEatSound() {
-  playTone(1000, 90);  // quick blip at 1kHz
+  playTone(1000, volume);  // quick blip at 1kHz
   delay(30);           // very short duration
   playTone(0, 0);      // stop sound
 }
