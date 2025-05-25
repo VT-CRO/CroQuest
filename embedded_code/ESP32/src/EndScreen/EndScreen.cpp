@@ -44,16 +44,21 @@ void EndScreen::gameOverScreen() {
     String resultText;
     uint16_t resultColor;
 
-    if (score == highScore) {
-        if (highScoreCount == 1) {
-            resultText = "YOU WON";
-            resultColor = TFT_GREEN;
+    if(multiplayer){
+        if (score == highScore) {
+            if (highScoreCount == 1) {
+                resultText = "YOU WON";
+                resultColor = TFT_GREEN;
+            } else {
+                resultText = "YOU TIED";
+                resultColor = TFT_ORANGE;
+            }
         } else {
-            resultText = "YOU TIED";
-            resultColor = TFT_ORANGE;
+            resultText = "YOU LOST";
+            resultColor = TFT_RED;
         }
-    } else {
-        resultText = "YOU LOST";
+    }else{
+        resultText = "GAMEOVER";
         resultColor = TFT_RED;
     }
 
