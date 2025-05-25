@@ -1,16 +1,14 @@
 #include "Simon.hpp"
 #include "SettingsMenu/AudioMenu/Audio.hpp"
+#include <vector>
+#include "EndScreen/EndScreen.hpp"
 
 // ========== Drawing ==========
 void drawSimonHomeScreen();
 void drawSimonGameScreen();
-void drawSimonGameOverScreen();
-void drawSimonLevelUpScreen();
 void drawSimonScore();
 void highlightSimonButton(int buttonId);
 void drawSimonHomeSelection();
-void drawSimonGameOverSelect();
-void drawCenteredOverlay(const char *imagePath);
 void drawSimonTriangleOverlay(int buttonId);
 
 // ========== Logic ==========
@@ -23,6 +21,9 @@ void simonGameOver();
 void simonLevelUp();
 void simonHandleInput();
 void drawPlayerStatusTable();
+
+// =========== AUDIO ============
+static void playGameOverSound();
 
 // ======================== Global Definitions ========================
 
@@ -48,7 +49,6 @@ SimonState simon_game_state = SIMON_HOMESCREEN;
 int sequence[100];      // Sequence storage
 int sequenceLength = 0; // Current sequence length
 int playerPos = 0;      // Player's current position in the sequence
-int playerScore = 0;    // Player's score
 
 // Timing variables
 unsigned long lastButtonPressTime = 0;
@@ -76,6 +76,11 @@ bool showing = false;
 int simonSelection = 0;
 int simonsubselection = 0;
 bool start = true;
+
+//MULTIPLAYER + PLAYER SCORE + PLAYER NAMES
+bool multiplayer = false;
+
+int playerScore = 0;
 
 // Numpad
 static NumPad<SimonState> pad(drawSimonHomeScreen, simonStartNewGame,
@@ -210,34 +215,22 @@ void handleSimonFrame() {
     }
     break;
 
-  case SIMON_GAMEOVER_SCREEN:
-    if (millis() - lastButtonPressTime > buttonDebounceDelay) {
-      if (up.wasJustPressed()) {
-        if (simonSelection == 1) {
-          simonSelection = 0;
-          drawSimonGameOverSelect();
-        }
-      }
-      if (down.wasJustPressed()) {
-        if (simonSelection == 0) {
-          simonSelection = 1;
-          drawSimonGameOverSelect();
-        }
-      }
-      if (A.wasJustPressed()) {
-        if (simonSelection == 0) {
-          simon_game_state = SIMON_HOMESCREEN;
-          drawSimonHomeScreen();
-        } else {
-          simonStartNewGame();
-        }
-        lastButtonPressTime = millis();
-      }
+  case SIMON_GAMEOVER_SCREEN: {
+    // ENDSCREEN HANDLING
+    std::vector<String> playerNames = {settings.name, settings.name, "BILLY", "BOB"}; //TEMP
+    std::vector<int> playerScores = {2, 2, 1, 1}; //TEMP
+
+    EndScreen endScreen(playerNames, playerScores, true, settings.name, playerScore);
+    if (endScreen.handleUserInput()) {
+        simonStartNewGame(); // handleUserInput returns true : game restarts
+    } else {
+        simon_game_state = SIMON_HOMESCREEN;
+        drawSimonHomeScreen(); // handleUserInput returns false : returns to game menu
     }
     break;
-
+}
   case SIMON_LEVELUP:
-    if (millis() - levelUpTime > 1500) {
+    if (millis() - levelUpTime > 200) {
       simon_game_state = SIMON_STATE_WATCH;
       lastSequenceTime = millis();
     }
@@ -250,7 +243,9 @@ void handleSimonFrame() {
 }
 
 void simonStartNewGame() {
-  playerScore = 0;
+  if(!multiplayer){
+    playerScore = 0;
+  }
   playerLevels[0] = 0;
   playerFailed = false;
 
@@ -318,7 +313,6 @@ void simonPlaySequence() {
 
 void simonCheckInput(int buttonPressed) {
   if (buttonPressed == sequence[playerPos]) {
-    playerScore++;    // Count 1 point for this correct input
     drawSimonScore(); // Update display
 
     playerPos++;
@@ -328,12 +322,14 @@ void simonCheckInput(int buttonPressed) {
   } else {
     playerFailed = true;     // Mark failure
     drawPlayerStatusTable(); // Shows table
-    delay(800);              // Let player visualize the table
+    delay(400);              // Let player visualize the table
     simonGameOver();
   }
 }
 
 void simonLevelUp() {
+    // UPDATES PLAYER SCORE HERE
+  playerScore++;    // Count 1 point for this correct input
 
   playerLevels[0]++; // Only P1 for now
 
@@ -349,8 +345,11 @@ void simonLevelUp() {
 }
 
 void simonGameOver() {
+  //Gameover audio
+  playGameOverSound();
+
+  //draws gameover screen
   simon_game_state = SIMON_GAMEOVER_SCREEN;
-  drawSimonGameOverScreen();
   gameOverTime = millis();
 }
 
@@ -363,83 +362,6 @@ void drawSimonGameScreen() {
   drawing.clearSprite();
   drawing.drawSdJpeg(DISK_PATH, diskX, diskY);
   drawing.pushSprite(true);
-}
-
-void drawSimonGameOverScreen() {
-  tft.fillScreen(TFT_BLACK);
-
-  tft.setTextColor(TFT_RED, TFT_BLACK);
-  tft.setTextSize(3);
-  tft.setTextDatum(MC_DATUM);
-  tft.drawString("GAME OVER", centerX, centerY - 40);
-
-  tft.setTextSize(2);
-  tft.setTextColor(TFT_WHITE, TFT_BLACK);
-  tft.drawString("Your Score: " + String(playerScore), centerX, centerY);
-
-  drawSimonGameOverSelect();
-}
-
-void drawSimonGameOverSelect() {
-  const int textSize = 2;
-  const int paddingX = 10;
-  const int paddingY = 4;
-  const int spacing = 10; // vertical space between boxes
-  const int highlightColor = TFT_WHITE;
-
-  const char *optionHome = "Press for homescreen";
-  const char *optionRestart = "Press to restart";
-
-  tft.setTextDatum(MC_DATUM);
-  tft.setTextSize(textSize);
-
-  // Calculate Y positions
-  int h = 16 * textSize + paddingY * 2;
-  int yHome = centerY + 40;
-  int yRestart = yHome + h + spacing;
-
-  int wHome = tft.textWidth(optionHome);
-  int wRestart = tft.textWidth(optionRestart);
-
-  // Clear both option areas
-  tft.drawRect(centerX - wHome / 2 - paddingX, yHome - h / 2,
-               wHome + 2 * paddingX, h, TFT_BLACK);
-  tft.drawRect(centerX - wRestart / 2 - paddingX, yRestart - h / 2,
-               wRestart + 2 * paddingX, h, TFT_BLACK);
-
-  // Draw highlight rectangle for current simonSelection
-  if (simonSelection == 0) {
-    tft.drawRect(centerX - wHome / 2 - paddingX, yHome - h / 2,
-                 wHome + 2 * paddingX, h, highlightColor);
-  } else if (simonSelection == 1) {
-    tft.drawRect(centerX - wRestart / 2 - paddingX, yRestart - h / 2,
-                 wRestart + 2 * paddingX, h, highlightColor);
-  }
-
-  // Draw option texts
-  tft.setTextColor(TFT_YELLOW, TFT_BLACK);
-  tft.drawString(optionHome, centerX, yHome);
-  tft.drawString(optionRestart, centerX, yRestart);
-}
-
-void drawSimonLevelUpScreen() {
-  // Overlay a message on the game screen
-  int boxWidth = 140;
-  int boxHeight = 60;
-  tft.fillRect(diskCenterX - boxWidth / 2, diskCenterY - boxHeight / 2,
-               boxWidth, boxHeight, TFT_BLACK);
-  tft.drawRect(diskCenterX - boxWidth / 2, diskCenterY - boxHeight / 2,
-               boxWidth, boxHeight, TFT_YELLOW);
-
-  tft.setTextColor(TFT_YELLOW, TFT_BLACK);
-  tft.setTextSize(2);
-  tft.setTextDatum(MC_DATUM);
-  tft.drawString("LEVEL UP!", diskCenterX, diskCenterY - 10);
-  tft.drawString("Score: " + String(playerScore), diskCenterX,
-                 diskCenterY + 10);
-
-  delay(200);
-  drawSimonGameScreen();
 }
 
 void drawSimonScore() {
@@ -463,16 +385,14 @@ void highlightSimonButton(int buttonId) {
 
   // Play tone
   playTone(440 + buttonId * 100, volume);
-  delay(150);
-  playTone(0, 0); // Turn tone off
-
   // Keep highlight visible briefly
   delay(200);
+  playTone(0, 0); // Turn tone off
 
   // Clear by redrawing full game screen (disk + score, etc.)
   drawSimonGameScreen();
 
-  delay(150); // Short pause before resuming logic
+  delay(100); // Short pause before resuming logic
 }
 
 void drawSimonHomeScreen() {
@@ -559,37 +479,6 @@ void drawSimonHomeSelection() {
   }
 }
 
-void drawCenteredOverlay(const char *imagePath) {
-  File imageFile = SD.open(imagePath);
-  if (!imageFile) {
-    Serial.print("❌ Failed to open: ");
-    Serial.println(imagePath);
-    return;
-  }
-
-  tft.setSwapBytes(true); // for TFT_eSPI JPEG decoder
-
-  if (JpegDec.decodeSdFile(imageFile)) {
-    int imgW = JpegDec.width;
-    int imgH = JpegDec.height;
-
-    int xpos = diskCenterX - imgW / 2;
-    int ypos = diskCenterY - imgH / 2;
-
-    while (JpegDec.read()) {
-      int x = JpegDec.MCUx * JpegDec.MCUWidth + xpos;
-      int y = JpegDec.MCUy * JpegDec.MCUHeight + ypos;
-
-      if (x < tft.width() && y < tft.height()) {
-        tft.pushImage(x, y, JpegDec.MCUWidth, JpegDec.MCUHeight,
-                      JpegDec.pImage);
-      }
-    }
-  }
-
-  imageFile.close();
-}
-
 void drawSimonTriangleOverlay(int buttonId) {
   const char *path;
   int x = 0, y = 0;
@@ -620,7 +509,6 @@ void drawSimonTriangleOverlay(int buttonId) {
   }
 
   drawing.deleteSprite();
-
   drawing.drawSdJpeg(path, x, y);
   drawing.pushSprite(false, true, 0xFFFF); // white treated as transparen
 }
@@ -670,4 +558,20 @@ void drawPlayerStatusTable() {
       tft.drawLine(failX - 3, failY + 3, failX + 3, failY - 3, TFT_WHITE);
     }
   }
+}
+
+
+// ================== AUDIO ===================== //
+
+static void playGameOverSound() {
+  int duration = 200; // milliseconds
+
+  playTone(880, volume); // A5
+  delay(duration);
+  playTone(660, volume); // E5
+  delay(duration);
+  playTone(440, volume); // A4
+  delay(duration);
+
+  playTone(0, 0); // stop tone
 }

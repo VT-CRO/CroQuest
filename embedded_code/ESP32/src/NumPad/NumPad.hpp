@@ -203,7 +203,7 @@ template <typename EnumType> void NumPad<EnumType>::drawAllButtons() {
 
   drawing.drawSdJpeg("/numpad/numpad.jpg", x, y);
   drawing.pushSprite(false, true);
-  back(selected, TFT_BLACK);
+  back(selected, TFT_BLACK, "< Back");
 }
 
 // Draw a button
@@ -286,7 +286,7 @@ void NumPad<EnumType>::handleButtonInput(unsigned long *lastMoveTime,
       if (row <= 0 && selected == 1) {
         selected = 0;
         modButtonState(NumPad::NONE, NumPad::BASIC);
-        back(selected, TFT_BLACK);
+        back(selected, TFT_BLACK, "< Back");
       } else {
         modButtonState(NumPad::UP, NumPad::SELECTED);
       }
@@ -296,7 +296,7 @@ void NumPad<EnumType>::handleButtonInput(unsigned long *lastMoveTime,
       // de-select the button
       if (row <= 0 && selected == 0) {
         selected = 1;
-        back(selected, TFT_BLACK);
+        back(selected, TFT_BLACK, "< Back");
         modButtonState(NumPad::NONE, NumPad::SELECTED);
       } else {
         modButtonState(NumPad::DOWN, NumPad::SELECTED);
