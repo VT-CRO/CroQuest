@@ -47,3 +47,7 @@ void BluetoothManager::stopScan() {
     }
   }
 }
+
+bool BluetoothManager::getPeripheralActive() {
+  return currentRole == ROLE_PERIPHERAL && peripheral != nullptr;
+}

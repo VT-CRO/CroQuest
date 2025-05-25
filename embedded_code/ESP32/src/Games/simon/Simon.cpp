@@ -274,7 +274,7 @@ void simonStartNewGame() {
   // Reset sequence playback state
   currentStep = 0;
   showing = false;
-  lastStepTime = millis() - 600;
+  lastStepTime = millis() - 1000;
 
   simon_game_state = SIMON_STATE_WATCH;
 }

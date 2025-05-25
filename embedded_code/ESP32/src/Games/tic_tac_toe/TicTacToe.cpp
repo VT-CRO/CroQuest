@@ -132,13 +132,6 @@ void handleTicTacToeFrame() {
     if (!roundEnded && millis() - lastMoveTime > moveDelay) {
       if (A.wasJustPressed()) {
         if (subselection == 0) {
-          game_state = HOST_SCREEN;
-
-          // // For now, pressing 'Start' returns to the menu
-          // if (Start.wasJustPressed()) {
-          //   game_state = HOMESCREEN;
-          //   drawHomeScreen();
-          // }
 
           // HOST = CENTRAL
           BluetoothManager::initCentral(tft);
@@ -154,6 +147,13 @@ void handleTicTacToeFrame() {
 
           central.scanAndConnectLoop(code);
 
+          // Only move to HOST_SCREEN if connection was made
+          if (!BluetoothManager::getCentral().getConnectedClients().empty()) {
+            game_state = HOST_SCREEN;
+          } else {
+            game_state = MULTIPLAYER_SELECTION;
+            ConnectionScreen::showMessage("Connection failed.\nTry again.");
+          }
         } else {
           game_state = BLUETOOTH_NUMPAD;
           pad.numPadSetup();
@@ -175,6 +175,14 @@ void handleTicTacToeFrame() {
       }
       lastMoveTime = millis();
     }
+  } else if (game_state == HOST_SCREEN) {
+    BluetoothManager::getCentral().pollDevices();
+
+  } else if (game_state == MULTIPLAYER_PLAYING) {
+    BluetoothManager::getPeripheral().update();
+    ConnectionScreen::showMessage(
+        "Multiplayer Playing...\n Waiting for moves...");
+
   } else if (game_state == SINGLE_PLAYER) {
     if (!roundEnded && millis() - lastMoveTime > moveDelay / 2) {
       if (up.isPressed() && cursorIndex >= 3) {

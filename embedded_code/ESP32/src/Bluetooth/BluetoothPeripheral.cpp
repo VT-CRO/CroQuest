@@ -62,41 +62,55 @@ void BluetoothPeripheral::beginAdvertising(const std::string &code) {
 
 // ###################### Update Data #####################
 void BluetoothPeripheral::update() {
-  if (!characteristic)
+  if (!characteristic) {
+    Serial.println("⚠️ characteristic is null, skipping update.");
+    return;
+  }
+
+  std::string received;
+  try {
+    received = characteristic->getValue();
+  } catch (...) {
+    Serial.println("❌ Exception when reading from characteristic.");
+    return;
+  }
+
+  if (received.empty() || received == lastHostMessage)
     return;
 
-  std::string received = characteristic->getValue();
-  String receivedStr = String(received.c_str());
+  lastHostMessage = received;
 
-  if (!received.empty() && receivedStr != String(lastHostMessage.c_str()) &&
-      received != lastReply) {
-    lastHostMessage = receivedStr.c_str();
+  Serial.print("📥 Host said: ");
+  Serial.println(received.c_str());
+  ConnectionScreen::showMessage("Host said:\n" + String(received.c_str()));
 
-    Serial.print("📥 Host said: ");
-    Serial.println(receivedStr);
-    ConnectionScreen::showMessage("Host said:\n" + receivedStr);
+  std::string reply;
 
-    std::string reply;
+  // ✉️ Handle predefined conversation flow
+  if (responseHandler) {
+    reply = responseHandler(received.c_str());
+  } else {
+    if (received == "Hello Slave")
+      reply = "Hello Host, guess what?";
+    else if (received == "what is it?")
+      reply = "We can do this";
+    else if (received == "yes we can")
+      reply = "Let's go!";
+    else
+      return;
+  }
 
-    if (responseHandler) {
-      reply = responseHandler(receivedStr.c_str());
-    } else {
-      // Default fallback
-      if (receivedStr == "hello slave")
-        reply = "hello host";
-      else if (receivedStr == "guess what")
-        reply = "what is it";
-      else if (receivedStr == "we can do this")
-        reply = "yes we can!";
-      else
-        reply = "message received";
+  // ✅ Only send if it's different from last reply
+  if (reply != lastReply) {
+    delay(200); // Optional: feel more natural
+    try {
+      characteristic->setValue(reply);
+      lastReply = reply;
+      Serial.print("📤 Replied: ");
+      Serial.println(reply.c_str());
+    } catch (...) {
+      Serial.println("❌ Exception when writing to characteristic.");
     }
-
-    delay(200);
-    characteristic->setValue(reply);
-    lastReply = reply;
-    Serial.print("📤 Replied: ");
-    Serial.println(reply.c_str());
   }
 }
 
@@ -115,6 +129,15 @@ void BluetoothPeripheral::ServerCallbacks::onConnect(NimBLEServer *pServer,
                                                      NimBLEConnInfo &connInfo) {
   Serial.println("✅ Host connected!");
   ConnectionScreen::showMessage("Connected to Host!");
+
+  // // Optional: Start the conversation from the peripheral
+  // if (parent && parent->characteristic) {
+  //   // std::string greeting = "hello host";
+  //   parent->characteristic->setValue(greeting);
+  //   parent->lastReply = greeting;
+  //   Serial.print("📤 Sent initial: ");
+  //   Serial.println(greeting.c_str());
+  // }
 }
 
 // ###################### Disconnect #####################

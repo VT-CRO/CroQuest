@@ -20,4 +20,6 @@ BluetoothCentral &getCentral();
 // Utilities
 void stopScan();
 
+static bool getPeripheralActive();
+
 } // namespace BluetoothManager

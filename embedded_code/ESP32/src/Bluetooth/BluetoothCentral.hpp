@@ -4,6 +4,7 @@
 
 #include <NimBLEAdvertisedDevice.h>
 #include <NimBLEDevice.h>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -43,6 +44,11 @@ private:
 
   std::vector<NimBLEAdvertisedDevice> foundDevices;
   std::vector<NimBLEClient *> connectedClients;
+
+  std::map<NimBLEClient *, std::string> lastMessages;
+  std::map<NimBLEClient *, std::string> lastReplies;
+
+  std::string sanitize(const std::string &input);
 
   // ####################################################################################################
   //  Scan Callbacks

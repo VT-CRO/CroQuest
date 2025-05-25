@@ -1,6 +1,7 @@
 // src/Bluetooth/BluetoothCentral.cpp
 
 #include "BluetoothCentral.hpp"
+#include "ConnectionScreen.hpp"
 
 BluetoothCentral::BluetoothCentral(TFT_eSPI &display) : tft(display) {}
 
@@ -93,7 +94,11 @@ void BluetoothCentral::connectToDevices() {
     this->connectedClients.push_back(client);
 
     ConnectionScreen::showMessage("Connected to 1 player!");
-  } else {
+
+    sendToDevice(client, "Hello Slave");
+  }
+
+  else {
     Serial.println("❌ Connection failed.");
     NimBLEDevice::deleteClient(client);
     ConnectionScreen::showMessage("Failed to connect.");
@@ -112,14 +117,47 @@ void BluetoothCentral::pollDevices() {
 
     NimBLERemoteCharacteristic *charac =
         service->getCharacteristic(CHARACTERISTIC_UUID);
-    if (!charac || !charac->canRead())
+    if (!charac || !charac->canRead() || !charac->canWrite())
       continue;
 
-    std::string data = charac->readValue();
-    if (!data.empty()) {
-      Serial.printf("📥 [%s] %s\n", client->getPeerAddress().toString().c_str(),
-                    data.c_str());
-      // TODO: hand off to game logic
+    std::string rawData;
+    try {
+      rawData = charac->readValue();
+    } catch (...) {
+      Serial.println("❌ Failed to read value from characteristic.");
+      continue;
+    }
+
+    std::string data = sanitize(rawData); // ✅ SANITIZE HERE
+
+    std::string &lastMessage = lastMessages[client];
+    std::string &lastReply = lastReplies[client];
+
+    // Ignore if it's a repeat or echo
+    if (data.empty() || data == lastMessage || data == lastReply)
+      continue;
+
+    // Process new message
+    lastMessage = data;
+    Serial.printf("📥 Slave said: %s\n", rawData.c_str());
+    ConnectionScreen::showMessage("Slave said:\n" + String(rawData.c_str()));
+
+    // Determine reply
+    std::string reply;
+    if (data == "Hello Host, guess what?")
+      reply = "what is it?";
+    else if (data == "We can do this")
+      reply = "yes we can";
+    else if (data == "Let's go!")
+      reply = "done!";
+    else
+      return; // Ignore unknown messages to prevent spam
+
+    // Send only if reply is new
+    if (reply != lastReply) {
+      sendToDevice(client, reply);
+      lastReply = reply;
+      Serial.printf("📤 Sent to Slave: %s\n", reply.c_str());
     }
   }
 }
@@ -139,8 +177,9 @@ void BluetoothCentral::sendToDevice(NimBLEClient *client,
       service->getCharacteristic(CHARACTERISTIC_UUID);
   if (charac && charac->canWrite()) {
     charac->writeValue(message, false);
-    Serial.printf("📤 Sent to [%s]: %s\n",
-                  client->getPeerAddress().toString().c_str(), message.c_str());
+    // Serial.printf("📤 Sent to [%s]: %s\n",
+    //               client->getPeerAddress().toString().c_str(),
+    //               message.c_str());
   }
 }
 
@@ -157,4 +196,18 @@ void BluetoothCentral::disconnectAll() {
 const std::vector<NimBLEClient *> &
 BluetoothCentral::getConnectedClients() const {
   return connectedClients;
+}
+
+std::string BluetoothCentral::sanitize(const std::string &input) {
+  size_t start = input.find_first_not_of(" \n\r\t");
+  size_t end = input.find_last_not_of(" \n\r\t");
+
+  if (start == std::string::npos || end == std::string::npos)
+    return "";
+
+  std::string trimmed = input.substr(start, end - start + 1);
+  for (char &c : trimmed) {
+    c = tolower(c);
+  }
+  return trimmed;
 }
