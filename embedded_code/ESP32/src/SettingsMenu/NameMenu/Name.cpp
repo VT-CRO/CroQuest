@@ -9,9 +9,6 @@
 static int prevSelectedLetterIndex = 0;
 static int selectedLetterIndex = 0;
 
-// Prohibited names
-std::vector<String> prohibitedNames;
-
 // Box Sizes
 int boxSize = 80;
 int spacing = 10;
