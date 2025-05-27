@@ -90,19 +90,92 @@ void runBadgesMenu() {
     tft.drawString("[A] to go back", tft.width() / 2, tft.height() - 5);
   };
 
-  drawBadges();
+  auto drawStaticLayout = [&]() {
+    tft.fillScreen(SETTINGS_BG_COLOR);
+    tft.setTextDatum(TC_DATUM);
+    tft.setTextColor(TFT_WHITE);
+    tft.setTextSize(2);
+    tft.drawString("Your Badges", tft.width() / 2, 20);
+
+    for (int i = 0; i < badgeCount; i++) {
+      int row = i / colCount;
+      int col = i % colCount;
+      int x = startX + col * (badgeSize + spacing);
+      int y = startY + row * (badgeSize + spacing);
+      drawSdJpeg(badgePaths[i], x, y);
+    }
+
+    // Draw description box border (once)
+    tft.drawRoundRect(descX - 1, descY - 1, descW + 2, descH + 2, 6, TFT_WHITE);
+
+    // Draw footer
+    tft.setTextDatum(BC_DATUM);
+    tft.setTextSize(1);
+    tft.drawString("[A] to go back", tft.width() / 2, tft.height() - 5);
+  };
+
+  auto drawSelectorAndDescription = [&](int index, int prevIndex) {
+    // Clear previous selector
+    if (prevIndex >= 0) {
+      int pr = prevIndex / colCount;
+      int pc = prevIndex % colCount;
+      int px = startX + pc * (badgeSize + spacing);
+      int py = startY + pr * (badgeSize + spacing);
+
+      // Clear previous selector
+      tft.fillRect(px - 3, py - 3, badgeSize + 6, badgeSize + 6,
+                   SETTINGS_BG_COLOR);
+
+      // Redraw badge icon
+      drawSdJpeg(badgePaths[prevIndex], px, py); // redraw icon
+    }
+
+    // Draw new selector
+    int row = index / colCount;
+    int col = index % colCount;
+    int x = startX + col * (badgeSize + spacing);
+    int y = startY + row * (badgeSize + spacing);
+
+    for (int j = 0; j < 3; j++) {
+      tft.drawRoundRect(x - j, y - j, badgeSize + 2 * j, badgeSize + 2 * j, 4,
+                        TFT_WHITE);
+    }
+
+    // Update description (clear only the inside)
+    tft.fillRect(descX, descY, descW, descH, TFT_BLACK);
+    tft.setTextDatum(CC_DATUM);
+    tft.setTextColor(TFT_WHITE);
+    tft.setTextSize(1);
+    tft.drawString(badgeDescriptions[index], tft.width() / 2,
+                   descY + descH / 2);
+  };
+
+  drawStaticLayout();
+  drawSelectorAndDescription(selectedIndex, -1);
 
   while (true) {
+    int previousIndex = selectedIndex;
+
     if (left.wasJustPressed()) {
-      selectedIndex = (selectedIndex - 1 + badgeCount) % badgeCount;
-      drawBadges();
-      delay(150);
+      if (selectedIndex % colCount > 0)
+        selectedIndex--;
     } else if (right.wasJustPressed()) {
-      selectedIndex = (selectedIndex + 1) % badgeCount;
-      drawBadges();
-      delay(150);
+      if (selectedIndex % colCount < colCount - 1 &&
+          selectedIndex + 1 < badgeCount)
+        selectedIndex++;
+    } else if (up.wasJustPressed()) {
+      if (selectedIndex - colCount >= 0)
+        selectedIndex -= colCount;
+    } else if (down.wasJustPressed()) {
+      if (selectedIndex + colCount < badgeCount)
+        selectedIndex += colCount;
     } else if (A.wasJustPressed()) {
       break;
+    }
+
+    if (selectedIndex != previousIndex) {
+      drawSelectorAndDescription(selectedIndex, previousIndex);
+      delay(150);
     }
 
     delay(10);
