@@ -117,7 +117,7 @@ void BluetoothCentral::pollDevices() {
 
     NimBLERemoteCharacteristic *charac =
         service->getCharacteristic(CHARACTERISTIC_UUID);
-    if (!charac || !charac->canRead() || !charac->canWrite())
+    if (!charac || !charac->canRead())
       continue;
 
     std::string rawData;
@@ -128,36 +128,22 @@ void BluetoothCentral::pollDevices() {
       continue;
     }
 
-    std::string data = sanitize(rawData); // ✅ SANITIZE HERE
-
+    std::string data = sanitize(rawData);
     std::string &lastMessage = lastMessages[client];
-    std::string &lastReply = lastReplies[client];
 
-    // Ignore if it's a repeat or echo
-    if (data.empty() || data == lastMessage || data == lastReply)
+    // Skip if same message
+    if (data.empty() || data == lastMessage)
       continue;
 
-    // Process new message
     lastMessage = data;
-    Serial.printf("📥 Slave said: %s\n", rawData.c_str());
-    ConnectionScreen::showMessage("Slave said:\n" + String(rawData.c_str()));
 
-    // Determine reply
-    std::string reply;
-    if (data == "Hello Host, guess what?")
-      reply = "what is it?";
-    else if (data == "We can do this")
-      reply = "yes we can";
-    else if (data == "Let's go!")
-      reply = "done!";
-    else
-      return; // Ignore unknown messages to prevent spam
+    Serial.printf("📥 Received from client: %s\n", rawData.c_str());
 
-    // Send only if reply is new
-    if (reply != lastReply) {
-      sendToDevice(client, reply);
-      lastReply = reply;
-      Serial.printf("📤 Sent to Slave: %s\n", reply.c_str());
+    // Handle Tic Tac Toe game state
+    if (data.rfind("ttt@", 0) == 0) {
+      readTicTacToeString("", data.c_str()); // mirror and sync board
+    } else {
+      Serial.println("⚠️ Unknown message format, ignored.");
     }
   }
 }

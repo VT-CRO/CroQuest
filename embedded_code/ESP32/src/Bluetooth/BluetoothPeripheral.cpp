@@ -62,11 +62,13 @@ void BluetoothPeripheral::beginAdvertising(const std::string &code) {
 
 // ###################### Update Data #####################
 void BluetoothPeripheral::update() {
+  // Check if characteristic is valid
   if (!characteristic) {
     Serial.println("⚠️ characteristic is null, skipping update.");
     return;
   }
 
+  // Attempt to read the value from the characteristic
   std::string received;
   try {
     received = characteristic->getValue();
@@ -75,42 +77,22 @@ void BluetoothPeripheral::update() {
     return;
   }
 
+  // Skip empty or repeated messages
   if (received.empty() || received == lastHostMessage)
     return;
 
   lastHostMessage = received;
 
-  Serial.print("📥 Host said: ");
+  Serial.print("📥 Game data received: ");
   Serial.println(received.c_str());
-  ConnectionScreen::showMessage("Host said:\n" + String(received.c_str()));
 
-  std::string reply;
+  ConnectionScreen::showMessage("Host sent:\n" + String(received.c_str()));
 
-  // ✉️ Handle predefined conversation flow
-  if (responseHandler) {
-    reply = responseHandler(received.c_str());
+  // Check if it's a Tic Tac Toe game state
+  if (received.rfind("ttt@", 0) == 0) {
+    readTicTacToeString("", received.c_str());
   } else {
-    if (received == "Hello Slave")
-      reply = "Hello Host, guess what?";
-    else if (received == "what is it?")
-      reply = "We can do this";
-    else if (received == "yes we can")
-      reply = "Let's go!";
-    else
-      return;
-  }
-
-  // ✅ Only send if it's different from last reply
-  if (reply != lastReply) {
-    delay(200); // Optional: feel more natural
-    try {
-      characteristic->setValue(reply);
-      lastReply = reply;
-      Serial.print("📤 Replied: ");
-      Serial.println(reply.c_str());
-    } catch (...) {
-      Serial.println("❌ Exception when writing to characteristic.");
-    }
+    Serial.println("⚠️ Unknown message format, ignored.");
   }
 }
 
@@ -149,5 +131,21 @@ void BluetoothPeripheral::ServerCallbacks::onDisconnect(
   if (parent->advertising) {
     delay(1000);
     parent->advertising->start();
+  }
+}
+
+// ###################### Send Messages #####################
+void BluetoothPeripheral::sendAction(const std::string &message) {
+  if (!characteristic) {
+    Serial.println("⚠️ Cannot send: characteristic is null.");
+    return;
+  }
+
+  try {
+    characteristic->setValue(message);
+    Serial.print("📤 Sent action: ");
+    Serial.println(message.c_str());
+  } catch (...) {
+    Serial.println("❌ Exception while sending action.");
   }
 }

@@ -13,21 +13,6 @@
 void runTicTacToe();
 void handleTicTacToeFrame();
 
-// ========== Game States ==========
-enum State {
-  HOMESCREEN,
-  MULTIPLAYER,
-  SINGLE_PLAYER,
-  GAMEOVER_SCREEN,
-  BLUETOOTH_NUMPAD,
-  MULTIPLAYER_SELECTION,
-  MULTIPLAYER_PLAYING,
-  JOIN_SCREEN,
-  HOST_SCREEN,
-};
-
-// extern State game_state;
-
 // ========== Globals ==========
 extern TFT_eSPI tft;
 extern JpegDrawing drawing;
@@ -37,3 +22,5 @@ struct Move {
   int index;
   char symbol;
 };
+
+void readTicTacToeString(String oldState, String newState);

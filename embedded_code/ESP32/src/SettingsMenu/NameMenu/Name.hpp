@@ -1,8 +1,10 @@
+// src/SettingsMenu/NameMenu/Name.hpp
+
 #pragma once
 
-#include "SettingsMenu/Settings/Settings.hpp"
+#include ".prohibitedNames.hpp"
 #include "Core/Buttons.hpp"
 #include "Core/JpegDrawing.hpp"
-#include <TFT_eSPI.h>
+#include "SettingsMenu/Settings/Settings.hpp"
 
 void runNameMenu();

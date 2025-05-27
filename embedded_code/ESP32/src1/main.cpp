@@ -1,92 +1,110 @@
+// buttons.cpp
+
 #include <Arduino.h>
-#include <NimBLEDevice.h>
+
 #include <SPI.h>
 #include <TFT_eSPI.h>
 
-// ==================== Config ====================
-const std::string TARGET_CODE = "code:826491";
-bool foundDevice = false;
-bool scanStarted = false;
+// ###################### Button Structure ######################
+struct Button {
+  const int pin; // Pin where the button is connected
+  const char *label;
+  int state;     // Current button state
+  int lastState; // Last button state
+  bool isOn;     // ON/OFF state to represent if the button is toggled
+};
 
-void printMessage(const String &text);
+// ###################### Definitions ######################
+// Function to print messages to the screen
+void printMessage(String text);
+
+// Function prototype for looping through buttons
+void handleButtonInputs();
 
 // ###################### TFT Setup ######################
 TFT_eSPI tft = TFT_eSPI();
 
-// ==================== Scan Callback ====================
-class MyScanCallbacks : public NimBLEScanCallbacks {
-
-  void onResult(const NimBLEAdvertisedDevice *advertisedDevice) override {
-    std::string name = advertisedDevice->getName();
-    std::string manuData = advertisedDevice->getManufacturerData();
-
-    printMessage("Found ");
-    printMessage(name.c_str());
-    printMessage(", data: ");
-    printMessage(manuData.c_str());
-
-    Serial.print("Found ");
-    Serial.print(name.c_str());
-    Serial.print(", data: ");
-    Serial.println(manuData.c_str());
-
-    if (manuData.find(TARGET_CODE) != std::string::npos) {
-      printMessage("✅ MATCH FOUND!");
-      Serial.println("✅ MATCH FOUND!");
-      foundDevice = true;
-
-      NimBLEDevice::getScan()->stop();
-    }
-  }
+// ###################### Buttons Setup ######################
+Button buttons[] = {
+    {22, "A", 0, 0, false},         // Button: A
+    {1, "B", 0, 0, false},          // Button: B tx0
+    {3, "Start", 0, 0, false},      // Button: start rx0
+    {35, "Up/Right", 0, 0, false},  // up and right
+    {34, "Left/Down", 0, 0, false}, // left and down
 };
 
-// ==================== Setup ====================
+// Calculate the number of buttons in the array
+const int numButtons = sizeof(buttons) / sizeof(buttons[0]);
+
+// ###################### Setup ######################
 void setup() {
-  Serial.begin(115200);
+
+  // Initialize serial communication for debugging
+  Serial.begin(3600);
 
   tft.init();
   tft.setRotation(3);
 
-  NimBLEDevice::init("ESP32_Master");
+  // Set the built-in LED pin as output
+  // pinMode(BUILTIN_LED, OUTPUT);
 
-  NimBLEScan *scanner = NimBLEDevice::getScan();
-  scanner->setScanCallbacks(new MyScanCallbacks());
-  scanner->setActiveScan(true);
-  scanner->start(0); // Scan continuously in background
-
-  if (scanner->isScanning()) {
-    Serial.println("✅ Scanner is running.");
-  } else {
-    Serial.println("❌ Scanner failed to start.");
+  // Set all button pins as input
+  for (int i = 0; i < numButtons; i++) {
+    pinMode(buttons[i].pin, INPUT);
   }
-
-  scanStarted = true;
-  Serial.println("BLE scan started.");
-  printMessage("Scanning for device...");
 }
 
-// ==================== Loop ====================
+// ###################### Loop ######################
 void loop() {
-  if (!foundDevice && NimBLEDevice::getScan()->isScanning()) {
-    Serial.println("Still scanning...");
-    delay(1000);
-    return;
-  }
 
-  if (foundDevice) {
-    printMessage("Target found.\nReady to connect.");
-    Serial.println("Target found. Ready to connect.");
+  handleButtonInputs();
 
-    foundDevice = false;
-    scanStarted = false;
-
-    delay(5000); // Optional: freeze screen
-  }
+  delay(50); // Small delay to avoid overwhelming the loop
 }
+
+// ###########################################################
+// SIMPLKE EXAMPLE WITHOUT BUTTONS
+// void setup() {
+//   // Comment this out to free pins 1 and 3
+//   // Serial.begin(3600);
+
+//   tft.init();
+//   tft.setRotation(3);
+
+//   pinMode(1, INPUT);
+//   pinMode(3, INPUT);
+// }
+
+// void loop() {
+//   if (digitalRead(1) == LOW) {
+//     printMessage("Button B Pressed (GPIO1)");
+//     delay(300);
+//   }
+//   if (digitalRead(3) == LOW) {
+//     printMessage("Start Pressed (GPIO3)");
+//     delay(300);
+//   }
+//   if (digitaRead(22) == LOW) {
+//     printMessage("Button A Pressed (GPIO22)");
+//   }
+// }
+// ###########################################################
 
 // ###################### Print Message ######################
-void printMessage(const String &text) {
-  tft.setRotation(3);
+#define MAX_LINES 6
+String messageBuffer[MAX_LINES];
+
+void printMessage(String text) {
+  // Do NOT call setRotation repeatedly
+  // tft.setRotation(3); ← REMOVE THIS
+
+  // Shift buffer
+  for (int i = 0; i < MAX_LINES - 1; i++) {
+    messageBuffer[i] = messageBuffer[i + 1];
+  }
+  messageBuffer[MAX_LINES - 1] = text;
+
+  // Redraw
   tft.fillScreen(TFT_BLACK);
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
   tft.setTextSize(1);
@@ -94,16 +112,51 @@ void printMessage(const String &text) {
 
   int y = 10;
   int lineHeight = 20;
-  int idx = 0;
 
-  while (idx < text.length()) {
-    int lineEnd = text.indexOf('\n', idx);
-    if (lineEnd == -1)
-      lineEnd = text.length();
-
-    String line = text.substring(idx, lineEnd);
-    tft.drawString(line, 10, y);
+  for (int i = 0; i < MAX_LINES; i++) {
+    tft.drawString(messageBuffer[i], 10, y);
     y += lineHeight;
-    idx = lineEnd + 1;
   }
+}
+
+// ###################### Handle Buttons Input ######################
+
+void handleButtonInputs() {
+  // Handle analog multi-direction buttons
+  // int val35 = analogRead(35);
+  // int val34 = analogRead(34);
+
+  // if (val35 > 4000) {
+  //   printMessage("Right Pressed");
+  // } else if (val35 > 3000) {
+  //   printMessage("Up Pressed");
+  // }
+
+  // if (val34 > 4000) {
+  //   printMessage("Down Pressed");
+  // } else if (val34 > 3000) {
+  //   printMessage("Left Pressed");
+  // }
+
+  // Handle digital buttons
+  for (int i = 0; i < numButtons; i++) {
+    // // Skip analog pins (already handled above)
+    // if (buttons[i].pin == 34 || buttons[i].pin == 35)
+    //   continue;
+
+    buttons[i].state = digitalRead(buttons[i].pin);
+
+    if (buttons[i].state == HIGH && buttons[i].lastState == LOW) {
+      printMessage("Button \"" + String(buttons[i].label) + "\" Pressed");
+      Serial.println("Button \"" + String(buttons[i].label) + "\" Pressed");
+
+      while (digitalRead(buttons[i].pin) == HIGH) {
+        delay(10); // prevent bouncing
+      }
+    }
+
+    buttons[i].lastState = buttons[i].state;
+  }
+
+  // delay(200); // debounce
 }

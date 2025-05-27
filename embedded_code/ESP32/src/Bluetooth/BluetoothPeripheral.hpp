@@ -10,6 +10,9 @@
 #include "BluetoothCommon.hpp"
 #include "ConnectionScreen.hpp"
 
+// Games
+#include "Games/tic_tac_toe/TicTacToe.hpp"
+
 class BluetoothPeripheral {
 public:
   BluetoothPeripheral(TFT_eSPI &display);
@@ -23,6 +26,9 @@ public:
   // ###################### Voicemail #####################
   void
   setResponseHandler(std::function<std::string(const std::string &)> handler);
+
+  // ###################### Send Messages #####################
+  void sendAction(const std::string &message);
 
 private:
   TFT_eSPI &tft;

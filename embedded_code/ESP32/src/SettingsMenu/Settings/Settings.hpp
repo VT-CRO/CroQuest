@@ -5,6 +5,7 @@
 #include "Core/Buttons.hpp"
 #include "Menu/GameMenu.hpp"
 #include "SettingsMenu/AudioMenu/Audio.hpp"
+#include "SettingsMenu/BadgesMenu/Badges.hpp"
 #include "SettingsMenu/NameMenu/Name.hpp"
 
 // WILL BRING THIS BACK IF WE FIGURE OUT A WAY TO CHANGE BRIGHTNESS
@@ -22,9 +23,8 @@ extern SettingsData settings;
 // void initSettings(TFT_eSPI *display);
 void runSettings();
 
-//Background color for the setting menus
+// Background color for the setting menus
 #define SETTINGS_BG_COLOR 0x528A
 
 // ============== API ================ //
-bool loadFromSettingsFile(const char* path);
-
+bool loadFromSettingsFile(const char *path);

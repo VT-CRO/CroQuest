@@ -7,15 +7,20 @@ SettingsData settings; // Define global
 
 // static TFT_eSPI *tft = nullptr;
 
-//tft object
+// tft object
 extern TFT_eSPI tft;
 
-//Saving settings to file
-static bool saveToSettingsFile(const char* path);
+// Saving settings to file
+static bool saveToSettingsFile(const char *path);
 
 void runSettings() {
 
-  const char *options[] = {"Name", "Volume", "Back"};
+  const char *options[] = {
+      "Name",
+      "Volume",
+      "Badges",
+      "Back",
+  };
   const int optionCount = sizeof(options) / sizeof(options[0]);
   int selectedOption = 0;
   int lastDrawnOption = -1;
@@ -34,16 +39,16 @@ void runSettings() {
 
     // Full area clear (with buffer)
     tft.fillRect(buttonPadding - selectorMaxRadius - 1,
-                  y - selectorMaxRadius - 1,
-                  tft.width() - 2 * (buttonPadding - selectorMaxRadius - 1),
-                  optionHeight + 2 * selectorMaxRadius + 2, SETTINGS_BG_COLOR);
+                 y - selectorMaxRadius - 1,
+                 tft.width() - 2 * (buttonPadding - selectorMaxRadius - 1),
+                 optionHeight + 2 * selectorMaxRadius + 2, SETTINGS_BG_COLOR);
 
     // Selector
     if (selected) {
       for (int j = 0; j < MenuLayout::SELECTOR_THICKNESS; j++) {
         tft.drawRoundRect(buttonPadding - j, y - j,
-                           tft.width() - 2 * buttonPadding + 2 * j,
-                           optionHeight + 2 * j, 4, TFT_WHITE);
+                          tft.width() - 2 * buttonPadding + 2 * j,
+                          optionHeight + 2 * j, 4, TFT_WHITE);
       }
     }
 
@@ -56,14 +61,14 @@ void runSettings() {
     if (index > 0) {
       int dividerY = y - optionGap / 2;
       tft.drawLine(buttonPadding, dividerY, tft.width() - buttonPadding,
-                    dividerY, dividerColor);
+                   dividerY, dividerColor);
     }
 
     // Divider BELOW (if not the last option)
     if (index < optionCount - 1) {
       int dividerY = y + optionHeight + optionGap / 2;
       tft.drawLine(buttonPadding, dividerY, tft.width() - buttonPadding,
-                    dividerY, dividerColor);
+                   dividerY, dividerColor);
     }
   };
 
@@ -78,7 +83,7 @@ void runSettings() {
   int dividerTop = 10 + 24 + 12; // y = title_y + approx text height + padding
   for (int i = 0; i < 2; i++) {  // thickness = 2px
     tft.drawLine(buttonPadding, dividerTop + i, tft.width() - buttonPadding,
-                  dividerTop + i, TFT_WHITE);
+                 dividerTop + i, TFT_WHITE);
   }
 
   // === Initial draw of all options ===
@@ -108,19 +113,21 @@ void runSettings() {
         saveToSettingsFile("/settings.bin");
         backAudio();
         break;
-      } 
+      }
       // WILL BRING THIS BACK IF WE FIGURE OUT A WAY TO CHANGE BRIGHTNESS
 
       // else if (strcmp(options[selectedOption], "Brightness") == 0) {
       //   runBrightnessMenu();
-      // } 
+      // }
       else if (strcmp(options[selectedOption], "Volume") == 0) {
         playPressSound();
         runAudioMenu();
-      }
-      else if (strcmp(options[selectedOption], "Name") == 0){
+      } else if (strcmp(options[selectedOption], "Name") == 0) {
         playPressSound();
         runNameMenu();
+      } else if (strcmp(options[selectedOption], "Badges") == 0) {
+        playPressSound();
+        runBadgesMenu();
       }
 
       // === Full screen reset after returning from Brightness ===
@@ -135,8 +142,8 @@ void runSettings() {
       // Redraw thick white divider under title
       int dividerTop = 10 + 24 + 12;
       for (int i = 0; i < 2; i++) {
-        tft.drawLine(buttonPadding, dividerTop + i,
-                      tft.width() - buttonPadding, dividerTop + i, TFT_WHITE);
+        tft.drawLine(buttonPadding, dividerTop + i, tft.width() - buttonPadding,
+                     dividerTop + i, TFT_WHITE);
       }
 
       // Redraw all options and selector
@@ -153,28 +160,29 @@ void runSettings() {
 
 // ============= SAVING AND LOADING SETTINGS =================== //
 
-//Doesn't need to be called anywhere else
-static bool saveToSettingsFile(const char* path) {
+// Doesn't need to be called anywhere else
+static bool saveToSettingsFile(const char *path) {
   File file = SD.open(path, FILE_WRITE);
   if (!file) {
     Serial.println("Failed to open settings file for writing");
     return false;
   }
 
-  file.write((uint8_t*)&settings, sizeof(SettingsData));
+  file.write((uint8_t *)&settings, sizeof(SettingsData));
   file.close();
   return true;
 }
 
-//Needs to be called in bootup
-bool loadFromSettingsFile(const char* path) {
+// Needs to be called in bootup
+bool loadFromSettingsFile(const char *path) {
   File file = SD.open(path, FILE_READ);
   if (!file) {
     Serial.println("Settings file not found, using defaults");
     return false;
   }
 
-  if (file.read((uint8_t*)&settings, sizeof(SettingsData)) != sizeof(SettingsData)) {
+  if (file.read((uint8_t *)&settings, sizeof(SettingsData)) !=
+      sizeof(SettingsData)) {
     Serial.println("Failed to read complete settings");
     file.close();
     return false;
@@ -183,4 +191,3 @@ bool loadFromSettingsFile(const char* path) {
   file.close();
   return true;
 }
-
