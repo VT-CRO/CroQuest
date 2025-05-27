@@ -10,6 +10,7 @@
 #include "Games/snake/Snake.hpp"
 #include "Games/tic_tac_toe/TicTacToe.hpp"
 #include "Games/tetris/Tetris.hpp"
+#include "Games/memory/memory.hpp"
 
 // Include games headers here
 // #include "Games/Tetris/Tetris.hpp"
@@ -33,7 +34,7 @@ void launchGameByName(const char *name) {
   } else if (strcmp(name, "Breakout") == 0) {
     runBreakout();
   } else if (strcmp(name, "Memory") == 0) {
-    // launchMemory();
+    runMemory();
   } else if (strcmp(name, "Tetris") == 0) {
     runTetris();
   } else if (strcmp(name, "Chess") == 0) {
