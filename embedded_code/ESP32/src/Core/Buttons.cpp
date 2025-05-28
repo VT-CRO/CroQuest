@@ -2,14 +2,14 @@
 #include "Buttons.hpp"
 
 // Digital Buttons
-Button A(22, "A", DIGITAL);
-Button B(39, "B", DIGITAL);
-Button Start(36, "Start", DIGITAL);
+// Button A(22, "A", DIGITAL);
+// Button B(39, "B", DIGITAL);
+// Button Start(36, "Start", DIGITAL);
 
 // Working buttons (hopefully)
-// Button A(36, "A", ANALOG_INPUT, 1600, 2200);
-// Button B(36, "B", ANALOG_INPUT, 3601, 4095);
-// Button Start(36, "Start", ANALOG_INPUT, 1100, 1400);
+Button A(36, "A", ANALOG_INPUT, 1650, 1850);
+Button B(36, "B", ANALOG_INPUT, 4000, 4095);
+Button Start(36, "Start", ANALOG_INPUT, 2100, 2600);
 
 // Analog Buttons
 Button up(35, "Up", ANALOG_INPUT, 2000, 3800);
