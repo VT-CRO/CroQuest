@@ -7,9 +7,9 @@
 
 // Working buttons (hopefully)
 
-Button A(36, "A", ANALOG_INPUT, 1600, 2100);
-Button B(36, "B", ANALOG_INPUT, 3601, 4095);
-Button Start(36, "Start", ANALOG_INPUT, 2101, 2600);
+Button A(36, "A", ANALOG_INPUT, 100, 1800);
+Button B(36, "B", ANALOG_INPUT, 2800, 4095);
+Button Start(36, "Start", ANALOG_INPUT, 1801, 2600);
 
 // Analog Buttons
 Button up(35, "Up", ANALOG_INPUT, 2000, 3800);
