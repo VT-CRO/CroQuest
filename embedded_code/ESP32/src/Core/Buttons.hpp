@@ -59,7 +59,10 @@ public:
       lastState = currentState;
       return pressed;
     } else {
-      return isPressed(); // analog wasJustPressed support could be improved
+      bool currentState = isPressed();
+      bool pressed = (currentState == true && lastState == false);
+      lastState = currentState;
+      return pressed; // analog wasJustPressed support could be improved
     }
   }
 
