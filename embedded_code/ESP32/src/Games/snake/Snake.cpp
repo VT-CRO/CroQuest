@@ -62,13 +62,101 @@ void showCreditsScreen();
 void gameOverScreen();
 void showHomeScreen();
 
-//Sounds
+// Sounds
 void playGameOverSound();
 void playEatSound();
 
-//GAME STATE
-enum GameState {HOMESCREEN, PLAYING, GAMEOVERSCREEN};
+// GAME STATE
+enum GameState { HOMESCREEN, PLAYING, GAMEOVERSCREEN };
 static enum GameState gameState = HOMESCREEN;
+
+// Initializing game
+void runSnake() {
+
+  resetExitFlag();        // Resets flag for Main Menu
+  gameState = HOMESCREEN; // Ensure correct starting state
+
+  tft.setRotation(3);
+  tft.fillScreen(TFT_BLACK);
+
+  // read high score
+  File file = SD.open("/snake/highscore.txt", "r");
+  if (file) {
+    highScore = file.parseInt();
+    file.close();
+  }
+
+  showCreditsScreen();
+
+  // Loop through and play game
+  for (;;) {
+
+    if (checkStartButtonAndExit(tft))
+      break;
+
+    unsigned long now = millis();
+
+    if (gameState == HOMESCREEN) {
+      // Start game
+      if (A.wasJustPressed()) {
+        gameState = PLAYING;
+        playPressSound();
+        resetGame();
+      } else if (left.isPressed()) {
+        backAudio();
+        break;
+      }
+    } else if (gameState == PLAYING) {
+      // Playing game
+      handleButtonInputs();
+
+      if (!gameOver && (now - lastMoveTime >= MOVE_INTERVAL)) {
+        moveSnake();
+        lastMoveTime = now;
+      }
+    } else if (gameState == GAMEOVERSCREEN) {
+      // Go to game menu
+      if (left.isPressed()) {
+        gameState = HOMESCREEN;
+        backAudio();
+        tft.fillScreen(TFT_BLACK);
+        showHomeScreen();
+      }
+      // restart game
+      else if (A.wasJustPressed()) {
+        gameState = PLAYING;
+        playPressSound();
+        resetGame();
+      }
+    }
+  }
+  if (getExitFlag())
+    return;
+}
+
+// Reading the input
+void handleButtonInputs() {
+
+  // ----------- (UP / RIGHT) ----------
+  if (right.isPressed()) { // Tune this range for RIGHT
+    if (lastDirectionOnTick != LEFT)
+      direction = RIGHT;
+  } else if (up.isPressed()) { // Tune this range for UP
+    if (lastDirectionOnTick != DOWN)
+      direction = UP;
+  }
+
+  // ----------- (DOWN / LEFT) ----------
+  if (down.isPressed()) { // Tune this range for DOWN
+    if (lastDirectionOnTick != UP)
+      direction = DOWN;
+  } else if (left.isPressed()) { // Tune this range for LEFT
+    if (lastDirectionOnTick != RIGHT)
+      direction = LEFT;
+  }
+
+  // delay(20);
+}
 
 // Method for drawing a single tile
 void drawTile(int x, int y, uint16_t color) {
@@ -84,14 +172,15 @@ void drawBackground() {
   // Draw the rest of the border
 
   // Left border
-  tft.fillRect(0,0, TILE_SIZE, tft.height(), tft.color565(50, 50, 50));
+  tft.fillRect(0, 0, TILE_SIZE, tft.height(), tft.color565(50, 50, 50));
   // Right border
-  tft.fillRect((GRID_WIDTH - 1) * TILE_SIZE, 0, TILE_SIZE, tft.height(), tft.color565(50, 50, 50));
+  tft.fillRect((GRID_WIDTH - 1) * TILE_SIZE, 0, TILE_SIZE, tft.height(),
+               tft.color565(50, 50, 50));
   // Bottom border
-  tft.fillRect(0, (GRID_HEIGHT) * TILE_SIZE, tft.width(), TILE_SIZE, tft.color565(50, 50, 50));
+  tft.fillRect(0, (GRID_HEIGHT)*TILE_SIZE, tft.width(), TILE_SIZE,
+               tft.color565(50, 50, 50));
 
-
-  //Draw SCORE and HIGHSCORE
+  // Draw SCORE and HIGHSCORE
   drawScores();
 
   // Draw the play field (starting from y = 2)
@@ -103,30 +192,28 @@ void drawBackground() {
     }
   }
 
-  //38 width 17 Height
-  // Draw border
+  // 38 width 17 Height
+  //  Draw border
   uint16_t borderColor = tft.color565(30, 30, 30);
   int borderThickness = 4;
 
   // Top border
   tft.fillRect(TILE_SIZE - borderThickness, TILE_SIZE * 2 - borderThickness,
-              (GRID_WIDTH - 2) * TILE_SIZE + 2 * borderThickness, borderThickness,
-              borderColor);
+               (GRID_WIDTH - 2) * TILE_SIZE + 2 * borderThickness,
+               borderThickness, borderColor);
 
   // Bottom border
   tft.fillRect(TILE_SIZE - borderThickness, TILE_SIZE * (GRID_HEIGHT),
-              (GRID_WIDTH - 2) * TILE_SIZE + 2 * borderThickness, borderThickness,
-              borderColor);
+               (GRID_WIDTH - 2) * TILE_SIZE + 2 * borderThickness,
+               borderThickness, borderColor);
 
   // Left border
-  tft.fillRect(TILE_SIZE - borderThickness, TILE_SIZE * 2,
-              borderThickness, (GRID_HEIGHT - 2) * TILE_SIZE,
-              borderColor);
+  tft.fillRect(TILE_SIZE - borderThickness, TILE_SIZE * 2, borderThickness,
+               (GRID_HEIGHT - 2) * TILE_SIZE, borderColor);
 
   // Right border
-  tft.fillRect(TILE_SIZE * (GRID_WIDTH - 1), TILE_SIZE * 2,
-              borderThickness, (GRID_HEIGHT - 2) * TILE_SIZE,
-              borderColor);
+  tft.fillRect(TILE_SIZE * (GRID_WIDTH - 1), TILE_SIZE * 2, borderThickness,
+               (GRID_HEIGHT - 2) * TILE_SIZE, borderColor);
 }
 
 // Drawing the snake segments
@@ -331,14 +418,12 @@ void moveSnake() {
 
   // Calling game over if any collision occurs
   if (gameOver) {
-    //plays gameover sound
+    // plays gameover sound
     playGameOverSound();
-    if (score > highScore)
-    {
+    if (score > highScore) {
       highScore = score;
       File file = SD.open("/snake/highscore.txt", FILE_WRITE);
-      if (file)
-      {
+      if (file) {
         file.println(highScore);
         file.close();
       }
@@ -393,30 +478,6 @@ void moveSnake() {
   if (ateFood) {
     spawnFood();
   }
-}
-
-// Reading the input
-void handleButtonInputs() {
-
-  // ----------- (UP / RIGHT) ----------
-  if (right.isPressed()) { // Tune this range for RIGHT
-    if (lastDirectionOnTick != LEFT)
-      direction = RIGHT;
-  } else if (up.isPressed()) { // Tune this range for UP
-    if (lastDirectionOnTick != DOWN)
-      direction = UP;
-  }
-
-  // ----------- (DOWN / LEFT) ----------
-  if (down.isPressed()) { // Tune this range for DOWN
-    if (lastDirectionOnTick != UP)
-      direction = DOWN;
-  } else if (left.isPressed()) { // Tune this range for LEFT
-    if (lastDirectionOnTick != RIGHT)
-      direction = LEFT;
-  }
-
-  // delay(20);
 }
 
 // Resetting the game after death
@@ -484,7 +545,8 @@ void showCreditsScreen() {
   tft.setTextColor(TFT_YELLOW);
   tft.setTextSize(2);
   int charSpacingAuthor = 14;
-  int authorXStart = (tft.width() / 2) - (author.length() * charSpacingAuthor) / 2;
+  int authorXStart =
+      (tft.width() / 2) - (author.length() * charSpacingAuthor) / 2;
 
   for (int i = 0; i < author.length(); i++) {
     int x = authorXStart + i * charSpacingAuthor;
@@ -502,70 +564,12 @@ void showCreditsScreen() {
   tft.drawString("Press A to start", tft.width() / 2, tft.height() - 50);
 }
 
-// Initializing game
-void runSnake() {
-  Serial.begin(115200);
-  tft.init();
-  tft.setRotation(3);
-  tft.fillScreen(TFT_BLACK);
-
-  // read high score
-  File file = SD.open("/snake/highscore.txt", "r");
-  if (file)
-  {
-    highScore = file.parseInt();
-    file.close();
-  }
-
-  showCreditsScreen();
-
-  // Loop through and play game
-  for (;;) {
-    unsigned long now = millis();
-
-    if(gameState == HOMESCREEN){
-      //Start game
-      if(A.wasJustPressed()){
-        gameState = PLAYING;
-        playPressSound();
-        resetGame();
-      }else if(left.isPressed()){
-        backAudio();
-        break;
-      }
-    }else if(gameState == PLAYING){
-      //Playing game
-      handleButtonInputs();
-
-      if (!gameOver && (now - lastMoveTime >= MOVE_INTERVAL)) {
-        moveSnake();
-        lastMoveTime = now;
-      }
-    }else if(gameState == GAMEOVERSCREEN){
-      // Go to game menu
-      if(left.isPressed()){
-        gameState = HOMESCREEN;
-        backAudio();
-        tft.fillScreen(TFT_BLACK);
-        showHomeScreen();
-      }
-      //restart game
-      else if(A.wasJustPressed()){
-        gameState = PLAYING;
-        playPressSound();
-        resetGame();
-      }
-    }
-  }
-}
-
-
 // ==================== DRAWING ==================== //
 
-//Draws highscore and current score
-void drawScores(){
-  tft.setTextSize(2);  // or 3 for larger text
-  tft.setTextColor(TFT_WHITE, tft.color565(50, 50, 50));  // white on dark gray
+// Draws highscore and current score
+void drawScores() {
+  tft.setTextSize(2);                                    // or 3 for larger text
+  tft.setTextColor(TFT_WHITE, tft.color565(50, 50, 50)); // white on dark gray
 
   // Align to top-left (default)
   tft.setTextDatum(TL_DATUM);
@@ -588,7 +592,8 @@ void showHomeScreen() {
   // Draw the author name
   tft.setTextColor(TFT_YELLOW);
   tft.setTextSize(2);
-  tft.drawString("Designed by CroQuest", tft.width() / 2, tft.height() / 2 + 10);
+  tft.drawString("Designed by CroQuest", tft.width() / 2,
+                 tft.height() / 2 + 10);
 
   // Draw the "Press A to start" prompt
   tft.setTextColor(TFT_WHITE);
@@ -608,26 +613,29 @@ void gameOverScreen() {
   // Score and High Score in yellow
   tft.setTextColor(TFT_YELLOW);
   tft.setTextSize(2);
-  tft.drawString("Score: " + String(score), tft.width() / 2, tft.height() / 2 - 10);
-  tft.drawString("High Score: " + String(highScore), tft.width() / 2, tft.height() / 2 + 20);
+  tft.drawString("Score: " + String(score), tft.width() / 2,
+                 tft.height() / 2 - 10);
+  tft.drawString("High Score: " + String(highScore), tft.width() / 2,
+                 tft.height() / 2 + 20);
 
   // Action prompts in white, lower on the screen
   tft.setTextColor(TFT_WHITE);
   tft.setTextSize(2);
   tft.drawString("Press A to restart", tft.width() / 2, tft.height() - 60);
-  tft.drawString("Press B to return to menu", tft.width() / 2, tft.height() - 30);
+  tft.drawString("Press B to return to menu", tft.width() / 2,
+                 tft.height() - 30);
 }
 
 // ================ AUDIO ================= //
 
 void playGameOverSound() {
-  int notes[] = { 1000, 900, 800, 700, 600, 500 };
-  int noteDuration = 150;  // ms
+  int notes[] = {1000, 900, 800, 700, 600, 500};
+  int noteDuration = 150; // ms
 
   for (int i = 0; i < 6; i++) {
     playTone(notes[i], volume);
     delay(noteDuration);
-    playTone(0, 0);  // stop tone
+    playTone(0, 0); // stop tone
     delay(50);
   }
 
@@ -638,7 +646,7 @@ void playGameOverSound() {
 }
 
 void playEatSound() {
-  playTone(1000, volume);  // quick blip at 1kHz
-  delay(30);           // very short duration
-  playTone(0, 0);      // stop sound
+  playTone(1000, volume); // quick blip at 1kHz
+  delay(30);              // very short duration
+  playTone(0, 0);         // stop sound
 }

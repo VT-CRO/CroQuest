@@ -32,7 +32,8 @@ void BluetoothPeripheral::beginAdvertising(const std::string &code) {
 
   NimBLEService *service = server->createService(SERVICE_UUID);
   characteristic = service->createCharacteristic(
-      CHARACTERISTIC_UUID, NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::WRITE);
+      CHARACTERISTIC_UUID,
+      NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::NOTIFY);
   characteristic->setValue("ACK");
   service->start();
 
@@ -143,6 +144,8 @@ void BluetoothPeripheral::sendAction(const std::string &message) {
 
   try {
     characteristic->setValue(message);
+    characteristic->notify();
+    delay(50);
     Serial.print("📤 Sent action: ");
     Serial.println(message.c_str());
   } catch (...) {

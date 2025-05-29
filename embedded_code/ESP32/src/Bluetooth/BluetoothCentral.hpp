@@ -13,6 +13,9 @@
 #include "ConnectionScreen.hpp"
 #include "Core/Buttons.hpp"
 
+// Include games
+#include "Games/tic_tac_toe/TicTacToe.hpp"
+
 class BluetoothCentral {
 public:
   BluetoothCentral(TFT_eSPI &display);

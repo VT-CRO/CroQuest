@@ -6,6 +6,7 @@
 #include "Core/JpegDrawing.hpp"
 #include "HostGame/HostGame.hpp"
 #include "JoinHost/JoinHost.hpp"
+#include "Menu/MenuReturn.hpp"
 #include "NumPad/NumPad.hpp"
 #include <TFT_eSPI.h>
 
@@ -23,4 +24,10 @@ struct Move {
   char symbol;
 };
 
-void readTicTacToeString(String oldState, String newState);
+String generateTicTacToeStateString();
+
+void readTicTacToeString(String oldState, const char *data);
+
+void drawWinLine();
+
+void drawAllPlaying();

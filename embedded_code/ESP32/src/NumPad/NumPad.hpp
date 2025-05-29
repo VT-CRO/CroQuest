@@ -5,6 +5,7 @@
 #include "BackButton/BackButton.hpp"
 #include "Core/Buttons.hpp"
 #include "Core/JpegDrawing.hpp"
+#include "Menu/MenuReturn.hpp"
 #include <TFT_eSPI.h>
 #include <string>
 

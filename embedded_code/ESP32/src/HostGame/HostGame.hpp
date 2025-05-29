@@ -5,9 +5,12 @@
 #include <TFT_eSPI.h>
 
 #include "Core/Buttons.hpp"
+#include "Menu/MenuReturn.hpp"
 
 namespace HostGame {
 void init(TFT_eSPI &display);
 void showCode(const String &code);
 void showStatus(const String &msg); // Optional line under code
+void loopUntilConnected();
+
 } // namespace HostGame

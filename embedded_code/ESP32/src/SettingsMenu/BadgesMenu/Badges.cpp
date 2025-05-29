@@ -36,7 +36,7 @@ void runBadgesMenu() {
       "Win 10 matches of Connect 4.",
       "Perfect Breakout 5 times",
       "Win Matching in less than 150 seconds.",
-      "Reach 1000 points in Tetris.",
+      "Reach 4000 points in Tetris.",
       "Get all 9 badges!"};
 
   int selectedIndex = 0;

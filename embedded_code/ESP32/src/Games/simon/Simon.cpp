@@ -1,7 +1,7 @@
 #include "Simon.hpp"
+#include "EndScreen/EndScreen.hpp"
 #include "SettingsMenu/AudioMenu/Audio.hpp"
 #include <vector>
-#include "EndScreen/EndScreen.hpp"
 
 // ========== Drawing ==========
 void drawSimonHomeScreen();
@@ -77,7 +77,7 @@ int simonSelection = 0;
 int simonsubselection = 0;
 bool start = true;
 
-//MULTIPLAYER + PLAYER SCORE + PLAYER NAMES
+// MULTIPLAYER + PLAYER SCORE + PLAYER NAMES
 bool multiplayer = false;
 
 int playerScore = 0;
@@ -89,6 +89,8 @@ static NumPad<SimonState> pad(drawSimonHomeScreen, simonStartNewGame,
 
 // ======================== Game Entry ========================
 void runSimon() {
+
+  resetExitFlag(); // Resets flag for Main Menu
 
   // Initialize display
   tft.setRotation(3);
@@ -122,9 +124,12 @@ void runSimon() {
     // updateAllButtons();
     handleSimonFrame();
 
+    if (getExitFlag())
+      return;
+
     // Return to main menu if B is pressed
-    if (Start.wasJustPressed()) {
-      Serial.println("Returning to menu from Simon");
+    if (simon_game_state == SIMON_HOMESCREEN && B.wasJustPressed()) {
+      Serial.println("Returning to menu.");
       delay(500);
       return;
     }
@@ -132,6 +137,9 @@ void runSimon() {
 }
 
 void handleSimonFrame() {
+
+  if (checkStartButtonAndExit(tft))
+    return;
 
   // === State machine for Simon ===
   switch (simon_game_state) {
@@ -217,18 +225,21 @@ void handleSimonFrame() {
 
   case SIMON_GAMEOVER_SCREEN: {
     // ENDSCREEN HANDLING
-    std::vector<String> playerNames = {settings.name, settings.name, "BILLY", "BOB"}; //TEMP
-    std::vector<int> playerScores = {2, 2, 1, 1}; //TEMP
+    std::vector<String> playerNames = {settings.name, settings.name, "BILLY",
+                                       "BOB"};    // TEMP
+    std::vector<int> playerScores = {2, 2, 1, 1}; // TEMP
 
-    EndScreen endScreen(playerNames, playerScores, true, settings.name, playerScore);
+    EndScreen endScreen(playerNames, playerScores, true, settings.name,
+                        playerScore);
     if (endScreen.handleUserInput()) {
-        simonStartNewGame(); // handleUserInput returns true : game restarts
+      simonStartNewGame(); // handleUserInput returns true : game restarts
     } else {
-        simon_game_state = SIMON_HOMESCREEN;
-        drawSimonHomeScreen(); // handleUserInput returns false : returns to game menu
+      simon_game_state = SIMON_HOMESCREEN;
+      drawSimonHomeScreen(); // handleUserInput returns false : returns to game
+                             // menu
     }
     break;
-}
+  }
   case SIMON_LEVELUP:
     if (millis() - levelUpTime > 200) {
       simon_game_state = SIMON_STATE_WATCH;
@@ -243,7 +254,7 @@ void handleSimonFrame() {
 }
 
 void simonStartNewGame() {
-  if(!multiplayer){
+  if (!multiplayer) {
     playerScore = 0;
   }
   playerLevels[0] = 0;
@@ -328,8 +339,8 @@ void simonCheckInput(int buttonPressed) {
 }
 
 void simonLevelUp() {
-    // UPDATES PLAYER SCORE HERE
-  playerScore++;    // Count 1 point for this correct input
+  // UPDATES PLAYER SCORE HERE
+  playerScore++; // Count 1 point for this correct input
 
   playerLevels[0]++; // Only P1 for now
 
@@ -345,10 +356,10 @@ void simonLevelUp() {
 }
 
 void simonGameOver() {
-  //Gameover audio
+  // Gameover audio
   playGameOverSound();
 
-  //draws gameover screen
+  // draws gameover screen
   simon_game_state = SIMON_GAMEOVER_SCREEN;
   gameOverTime = millis();
 }
@@ -559,7 +570,6 @@ void drawPlayerStatusTable() {
     }
   }
 }
-
 
 // ================== AUDIO ===================== //
 

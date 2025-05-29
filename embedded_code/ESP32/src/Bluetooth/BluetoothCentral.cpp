@@ -95,10 +95,56 @@ void BluetoothCentral::connectToDevices() {
 
     ConnectionScreen::showMessage("Connected to 1 player!");
 
-    sendToDevice(client, "Hello Slave");
-  }
+    // 🔔 Set up notify once after connection
+    NimBLERemoteService *service = client->getService(SERVICE_UUID);
+    if (service) {
+      NimBLERemoteCharacteristic *charac =
+          service->getCharacteristic(CHARACTERISTIC_UUID);
+      if (charac && charac->canNotify()) {
+        bool success = charac->subscribe(true, [](NimBLERemoteCharacteristic *c,
+                                                  uint8_t *data, size_t length,
+                                                  bool isNotify) {
+          std::string msg(reinterpret_cast<char *>(data), length);
+          Serial.print("📥 Notification received: ");
+          Serial.println(msg.c_str());
 
-  else {
+          if (msg.rfind("ttt@", 0) == 0) {
+
+            Serial.println("PERIPHERAL RECEIVED: ");
+            Serial.println(msg.c_str());
+
+            // 🧠 Step 1: Apply the new state to the host
+            readTicTacToeString("", msg.c_str());
+
+            // 🧼 Step 2: Recalculate and sanitize the game state
+            // String confirmedState = generateTicTacToeStateString();
+
+            // 🖼️ Step 3: Draw the updated board
+            drawAllPlaying();
+            drawWinLine();
+
+            // 📣 Step 4: Re-broadcast the updated board state to all clients
+            BluetoothCentral &central = BluetoothManager::getCentral();
+            String confirmedState = String(msg.c_str());
+            for (auto *client : central.getConnectedClients()) {
+              central.sendToDevice(client, confirmedState.c_str());
+            }
+          } else {
+            Serial.println("⚠️ Unknown message format (notify).");
+          }
+        });
+
+        if (success) {
+          Serial.println("✅ Subscribed to notifications.");
+        } else {
+          Serial.println("❌ Failed to subscribe.");
+        }
+      }
+    }
+
+    sendToDevice(client, "Hello Slave");
+
+  } else {
     Serial.println("❌ Connection failed.");
     NimBLEDevice::deleteClient(client);
     ConnectionScreen::showMessage("Failed to connect.");
@@ -106,47 +152,7 @@ void BluetoothCentral::connectToDevices() {
 }
 
 // ###################### Poll Devices for Incoming Data #####################
-void BluetoothCentral::pollDevices() {
-  for (auto *client : this->connectedClients) {
-    if (!client || !client->isConnected())
-      continue;
-
-    NimBLERemoteService *service = client->getService(SERVICE_UUID);
-    if (!service)
-      continue;
-
-    NimBLERemoteCharacteristic *charac =
-        service->getCharacteristic(CHARACTERISTIC_UUID);
-    if (!charac || !charac->canRead())
-      continue;
-
-    std::string rawData;
-    try {
-      rawData = charac->readValue();
-    } catch (...) {
-      Serial.println("❌ Failed to read value from characteristic.");
-      continue;
-    }
-
-    std::string data = sanitize(rawData);
-    std::string &lastMessage = lastMessages[client];
-
-    // Skip if same message
-    if (data.empty() || data == lastMessage)
-      continue;
-
-    lastMessage = data;
-
-    Serial.printf("📥 Received from client: %s\n", rawData.c_str());
-
-    // Handle Tic Tac Toe game state
-    if (data.rfind("ttt@", 0) == 0) {
-      readTicTacToeString("", data.c_str()); // mirror and sync board
-    } else {
-      Serial.println("⚠️ Unknown message format, ignored.");
-    }
-  }
-}
+void BluetoothCentral::pollDevices() {}
 
 // ###################### Send Message to Specific Device
 // #####################

@@ -46,3 +46,16 @@ void HostGame::showStatus(const String &msg) {
   screen->setTextSize(2);
   screen->drawString(msg, screen->width() / 2, 220); // Below the code
 }
+
+void HostGame::loopUntilConnected() {
+  while (true) {
+    updateAllButtons();
+
+    if (checkStartButtonAndExit(*screen)) {
+      break; // return to game menu
+    }
+
+    // Add small delay to avoid burning CPU
+    delay(50);
+  }
+}

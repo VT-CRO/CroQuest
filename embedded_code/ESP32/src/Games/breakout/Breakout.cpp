@@ -60,21 +60,37 @@ const uint16_t rainbow[] = {TFT_RED,  0xFDA0, TFT_YELLOW, TFT_GREEN,
 
 // ======================== Game Entry ========================
 void runBreakout() {
-  tft.setRotation(3);
-  tft.fillScreen(TFT_BLACK);
-  int screen_width = tft.width();
-  int screen_height = tft.height();
 
+  resetExitFlag(); // Resets flag for Main Menu
+
+  // === Set initial game state ===
+  currentBreakoutState = BREAKOUT_HOMESCREEN;
+  breakout_selection = 0;
+  breakout_subselection = 0;
+  breakoutGameOverSelection = 0;
+
+  // === Reset paddle, score, lives, etc. ===
   paddleX = SCREEN_W / 2 - PADDLE_WIDTH / 2;
   lives = 3;
   score = 0;
-  initBricks();
-  resetBall();
+  lastLives = -1;
+  lastScore = -1;
+  ballMoving = false; // <- CRITICAL LINE
+  resetBall();        // Place ball on paddle
+  initBricks();       // Redraw bricks
+
+  updateAllButtons();
+
+  drawBreakoutHomeScreen();
 
   while (true) {
     handleBreakoutFrame();
+
+    if (getExitFlag())
+      return;
+
     if (currentBreakoutState == BREAKOUT_HOMESCREEN && B.wasJustPressed()) {
-      Serial.println("Returning to menu from Breakout");
+      Serial.println("Returning to menu");
       delay(500);
       return;
     }
@@ -87,6 +103,10 @@ void handleBreakoutFrame() {
   static unsigned long lastFrameTime = 0;
   static int lastSelection = -1;
   static int lastSubselection = -1;
+
+  // check if the Start Button was pressed and goes back to Main Menu
+  if (checkStartButtonAndExit(tft))
+    return;
 
   switch (currentBreakoutState) {
 
