@@ -147,6 +147,9 @@ void GameMenu::handleInput() {
       runSettings();
       // Redraw menu after returning
       drawPage();
+      drawing.clearCache();
+      drawing.clearSprite();
+      drawing.deleteSprite();
       selectedIndex = lastIndexBeforeSettings;
       inSettingsMode = false;
       moved = true;
