@@ -100,6 +100,21 @@ void runTicTacToe() {
   x_start = (screen_width - dim.width) / 2;
   y_start = (screen_height - dim.height) / 2;
 
+  //delete drawing sprite
+  drawing.clearCache();
+  drawing.clearSprite();
+  drawing.deleteSprite();
+
+  //reset game
+  for (int i = 0; i < 9; i++)
+    board[i] = "**";
+  currentPlayer = 'X';
+  cursorIndex = 0;
+  winner = 'N';
+  winCombo[0] = winCombo[1] = winCombo[2] = -1;
+  roundEnded = false;
+  moveCount = 0;
+
   drawHomeScreen();
 
   while (true) {

@@ -44,10 +44,10 @@ void EndScreen::gameOverScreen() {
     String resultText;
     uint16_t resultColor;
 
-    if(multiplayer){
+    if (multiplayer) {
         if (score == highScore) {
             if (highScoreCount == 1) {
-                resultText = "YOU WON";
+                resultText = "YOU WON!";
                 resultColor = TFT_GREEN;
             } else {
                 resultText = "YOU TIED";
@@ -57,23 +57,28 @@ void EndScreen::gameOverScreen() {
             resultText = "YOU LOST";
             resultColor = TFT_RED;
         }
-    }else{
-        resultText = "GAMEOVER";
+    } else {
+        resultText = "GAME OVER";
         resultColor = TFT_RED;
     }
 
-    // Show result text
-    tft.setTextColor(resultColor);
-    tft.drawString(resultText, tft.width() / 2, 40);
-
-    // Show player name and score
-    tft.setTextSize(2);
+        // --- Display result banner ---
     int centerX = tft.width() / 2;
-    int nameY = tft.height() / 2 - 40;
-    int scoreY = tft.height() / 2 - 10;
+
+    tft.setTextColor(resultColor);
+    tft.setTextSize(6);
+    tft.drawString(resultText, centerX, 70);
+
+    // Draw decorative line under banner
+    tft.drawLine(40, 110, tft.width() - 40, 110, resultColor);
+
+    // --- Display player name and score ---
+        tft.setTextSize(2);
+    int nameY = tft.height() / 2;
+    int scoreY = nameY + 35;
 
     String nameStr = String(playerName);
-    tft.setTextColor(TFT_CYAN);
+    tft.setTextColor((multiplayer && score == highScore && highScoreCount == 1) ? TFT_GREEN : TFT_YELLOW);
     tft.drawString(nameStr, centerX, nameY);
 
     // Underline name
@@ -82,11 +87,12 @@ void EndScreen::gameOverScreen() {
     int underlineY = nameY + 14;
     tft.drawLine(centerX - textWidth / 2, underlineY,
                  centerX + textWidth / 2, underlineY,
-                 TFT_CYAN);
+                 (multiplayer && score == highScore && highScoreCount == 1) ? TFT_GREEN : TFT_YELLOW);
 
     tft.setTextColor(TFT_YELLOW);
     tft.drawString("Score: " + String(score), centerX, scoreY);
 
+    // Footer options or selection
     drawingSelections(TFT_BLACK);
 }
 
@@ -216,13 +222,13 @@ void EndScreen::drawingSelections(uint16_t bgcolor){
     tft.setTextSize(2);
     
     // PRESS TO RESTART
-    tft.drawRect(tft.width() / 2 - tft.textWidth("Press to restart")/2 - 4, tft.height() - 60 - tft.fontHeight()/2 - 4, tft.textWidth("Press to restart") + 8,  
-                    tft.fontHeight() + 8, currentSelection == RESTART_GAME ? TFT_WHITE : bgcolor);
+    tft.drawRoundRect(tft.width() / 2 - tft.textWidth("Press to restart")/2 - 4, tft.height() - 60 - tft.fontHeight()/2 - 4, tft.textWidth("Press to restart") + 8,  
+                    tft.fontHeight() + 8, 6, currentSelection == RESTART_GAME ? TFT_WHITE : bgcolor);
     tft.drawString("Press to restart", tft.width() / 2, tft.height() - 60);
     
     // PRESS TO RETURN TO MENU
-    tft.drawRect(tft.width() / 2 - tft.textWidth("Press to return to menu")/2 - 4, tft.height() - 30 - tft.fontHeight()/2 - 4, tft.textWidth("Press to return to menu") + 8,  
-                    tft.fontHeight() + 8, currentSelection == GAME_MENU ? TFT_WHITE : bgcolor);
+    tft.drawRoundRect(tft.width() / 2 - tft.textWidth("Press to return to menu")/2 - 4, tft.height() - 30 - tft.fontHeight()/2 - 4, tft.textWidth("Press to return to menu") + 8,  
+                    tft.fontHeight() + 8, 6, currentSelection == GAME_MENU ? TFT_WHITE : bgcolor);
     tft.drawString("Press to return to menu", tft.width() / 2, tft.height() - 30);
 
     if(multiplayer){

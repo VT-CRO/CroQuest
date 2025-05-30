@@ -102,7 +102,7 @@ void runSnake() {
         gameState = PLAYING;
         playPressSound();
         resetGame();
-      } else if (left.isPressed()) {
+      } else if (B.isPressed()) {
         backAudio();
         break;
       }
@@ -116,7 +116,7 @@ void runSnake() {
       }
     } else if (gameState == GAMEOVERSCREEN) {
       // Go to game menu
-      if (left.isPressed()) {
+      if (B.wasJustPressed()) {
         gameState = HOMESCREEN;
         backAudio();
         tft.fillScreen(TFT_BLACK);

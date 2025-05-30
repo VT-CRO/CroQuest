@@ -169,6 +169,9 @@ static void startNewGame();
 static void clearGrid();
 static void clearRow();
 
+static unsigned long prevBlockFall;
+static bool bottomCollision;
+
 // Numpad
 static NumPad<State> pad(drawHomeScreen, startNewGame, &currentState,
                          HOMESCREEN, PLAYING);
@@ -183,9 +186,17 @@ void runTetris() {
   selection = 0;
   subselection = 0;
 
-  // Clear Screen
+  // Initialize and reset prevBlockFall and bottomCollision
+  prevBlockFall = 0;
+  // Needs to be true to generate the first piece
+  bottomCollision = true;
+
+  // Clear Screen and drawing object
   tft.fillScreen(TFT_BLACK);
   drawHomeScreen();
+  drawing.clearCache();
+  drawing.clearSprite();
+  drawing.deleteSprite();
 
   // Loop
   while (true) {
@@ -328,32 +339,31 @@ static void lockPieceToGrid() {
 
 // MAIN LOGIC FOR FALLING PIECES + COLLISIONS
 static void singlePieceLogic() {
-  if (setcurrentPiece()) {
-    drawPiece(shadowPiece.color, shadowPiece);
-    // Delay added to make sure the player knows it's gameover
-    delay(500);
-    currentState = ENDSCREEN;
-    if (score > highscore) {
-      highscore = score;
-      File file = SD.open("/tetris/highscore.txt", FILE_WRITE);
-      if (file) {
-        file.println(highscore);
-        file.close();
+  if(bottomCollision){
+    if (setcurrentPiece()) {
+      drawPiece(shadowPiece.color, shadowPiece);
+      // Delay added to make sure the player knows it's gameover
+      delay(500);
+      currentState = ENDSCREEN;
+
+      if (score > highscore) {
+        // New Highscore
+        highscore = score;
+        File file = SD.open("/tetris/highscore.txt", FILE_WRITE);
+        if (file) {
+          file.println(highscore);
+          file.close();
+        }
       }
+      return;
     }
-    return;
-  }
-  spawnPiece(random(0, 7));
-  drawNextPiece();
-
-  drawPiece(currentPiece.color, currentPiece);
-  drawPiece(shadowPiece.color, shadowPiece, true);
-
-  unsigned long prevBlockFall = 0;
-  bool bottomCollision = false;
-
-  while (!bottomCollision) {
-
+    spawnPiece(random(0, 7));
+    drawNextPiece();
+  
+    drawPiece(currentPiece.color, currentPiece);
+    drawPiece(shadowPiece.color, shadowPiece, true);
+    bottomCollision = false;
+  }else{
     if (millis() - lastButtonPressTime > buttonDebounceDelay) {
       // Movies pieces to the right
       if (right.isPressed()) {
@@ -423,10 +433,9 @@ static void singlePieceLogic() {
         clearRow();
         lastButtonPressTime = millis();
 
-        break;
+        bottomCollision = true;
       }
     }
-
     // Speeds up falling pieces
     unsigned long currentFallInterval =
         down.isPressed() ? spedupDropInterval : fallInterval;
@@ -441,7 +450,7 @@ static void singlePieceLogic() {
         drawPiece(TFT_BLACK, shadowPiece, true);
         drawPiece(currentPiece.color, currentPiece);
         clearRow();
-        break;
+        bottomCollision = true;
       } else {
         drawPiece(TFT_BLACK, currentPiece); // Erase current position
         currentPiece.y++;

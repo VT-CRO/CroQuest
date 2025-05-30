@@ -458,9 +458,9 @@ void drawHUD() {
 }
 
 void updateBreakoutGame() {
-  if (left.wasJustPressed())
+  if (left.isPressed())
     paddleX -= 10;
-  if (right.wasJustPressed())
+  if (right.isPressed())
     paddleX += 10;
   if (paddleX < 0)
     paddleX = 0;

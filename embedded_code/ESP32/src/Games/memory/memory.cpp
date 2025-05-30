@@ -1,4 +1,6 @@
 #include "memory.hpp"
+#include "EndScreen/EndScreen.hpp"
+#include "SettingsMenu/AudioMenu/Audio.hpp"
 
 // Timing variables
 static unsigned long lastButtonPressTime = 0;
@@ -56,7 +58,9 @@ static void updateMoveCounter();
 static void updateTimerDisplay();
 static void triggerGameOver();
 static void runMemoryFrame();
+static void drawTiles();
 static void showHomeScreen();
+static void clearAllCursors();
 
 // --- Cursor State ---
 static int cursorRow = 0, cursorCol = 0;
@@ -169,7 +173,23 @@ static void runMemoryFrame() {
     break;
   }
   case ENDSCREEN:
+    // ENDSCREEN HANDLING
+    std::vector<String> playerNames = {settings.name}; //TEMP
+    std::vector<int> playerScores = {totalMoves}; //TEMP
 
+    EndScreen endScreen(playerNames, playerScores, false, settings.name, totalMoves);
+    if (endScreen.handleUserInput()) {
+      // Clear Screen
+      tft.fillScreen(TFT_BLACK);
+      loadLevel(currentLevel);
+      // showLevelIntroScreen();
+      // loadLevel(currentLevel);
+      currentState = PLAYING; // handleUserInput returns true : game restarts
+    } else {
+      currentState = HOMESCREEN;
+      showHomeScreen(); // handleUserInput returns false : returns to game menu
+      delay(300);
+    }
     break;
   }
 }
@@ -235,6 +255,7 @@ static void loadLevel(int level) {
 
   // Draw screen
   drawBackground();
+  clearAllCursors();
   drawCardBacks();
   drawCursor();
   updateTimerDisplay();
@@ -242,7 +263,7 @@ static void loadLevel(int level) {
 }
 
 static void drawBackground() {
-  tft.fillScreen(TFT_WHITE);
+  drawTiles();
   tft.setTextColor(TFT_BLACK);
   tft.setTextDatum(TR_DATUM);
   tft.setTextSize(2);
@@ -303,25 +324,25 @@ static void handleInput() {
   int val35 = analogRead(35);
   int val34 = analogRead(34);
 
-  if (val35 > 3900 && val35 < 4200 && cursorCol < cardCols - 1) {
+  if (right.isPressed() && cursorCol < cardCols - 1) {
     clearCursor();
     cursorCol++;
     drawCursor();
   }
 
-  else if (val35 > 3000 && val35 < 3400 && cursorRow > 0) {
+  else if (up.isPressed() && cursorRow > 0) {
     clearCursor();
     cursorRow--;
     drawCursor();
   }
 
-  if (val34 > 3900 && val34 < 4200 && cursorRow < cardRows - 1) {
+  if (down.isPressed() && cursorRow < cardRows - 1) {
     clearCursor();
     cursorRow++;
     drawCursor();
   }
 
-  else if (val34 > 3000 && val34 < 3400 && cursorCol > 0) {
+  else if (left.isPressed() && cursorCol > 0) {
     clearCursor();
     cursorCol--;
     drawCursor();
@@ -351,6 +372,22 @@ static void handleInput() {
     }
   }
 }
+
+static void clearAllCursors()
+{
+  int w = CARD_SIZE - 2 * CARD_PADDING;
+
+  for (int row = 0; row < cardRows; row++) {
+    for (int col = 0; col < cardCols; col++) {
+      int x = CARD_X_OFFSET + col * (CARD_SIZE + GRID_SPACING);
+      int y = CARD_Y_OFFSET + row * (CARD_SIZE + GRID_SPACING);
+
+      tft.drawRect(x - 3, y - 3, w + 18, w + 18, TFT_WHITE);
+      tft.drawRect(x - 4, y - 4, w + 20, w + 20, TFT_WHITE);
+    }
+  }
+}
+
 
 static void flipCard(int row, int col) {
   flipped[row][col] = true;
@@ -382,8 +419,7 @@ static void checkWinCondition() {
   }
   waitingForWinChoice = true;
   totalMoves += movesThisLevel;
-
-  tft.fillScreen(TFT_WHITE);
+  drawTiles();
   tft.setTextColor(TFT_BLACK);
   tft.setTextDatum(MC_DATUM);
   tft.setTextSize(3);
@@ -406,7 +442,7 @@ static void checkWinCondition() {
 }
 
 static void showLevelIntroScreen() {
-  tft.fillScreen(TFT_WHITE);
+  drawTiles();
   tft.setTextColor(TFT_BLACK);
   tft.setTextDatum(MC_DATUM);
   tft.setTextSize(3);
@@ -417,67 +453,79 @@ static void showLevelIntroScreen() {
   delay(1500);
 }
 
-static void updateMoveCounter() {
-  tft.setTextDatum(TR_DATUM);
+static void updateMoveCounter()
+{
+  tft.setTextDatum(MC_DATUM);
   int x = tft.width() - 5;
   int y = 5;
 
   int clearWidth = 120;
-  int clearHeight = 40;
-  tft.fillRect(x - clearWidth, y, clearWidth, clearHeight, TFT_WHITE);
+  int clearHeight = 20;
+  tft.fillRect(x - clearWidth, y - 2, clearWidth, clearHeight, tft.color565(220, 220, 220));
+  tft.drawRect(x - clearWidth - 1, y - 3, clearWidth + 2, clearHeight + 2, TFT_WHITE);
+  tft.drawRect(x - clearWidth - 2, y - 4, clearWidth + 4, clearHeight + 4, TFT_WHITE);
+  tft.drawRect(x - clearWidth - 3, y - 5, clearWidth + 6, clearHeight + 6, TFT_WHITE);
 
   tft.setTextColor(TFT_BLACK);
   tft.setTextSize(2);
-  tft.drawString("Moves: " + String(movesThisLevel), x, y);
+  tft.drawString("Moves: " + String(movesThisLevel), x - clearWidth/2, y + clearHeight/2);
 }
 
-static void updateTimerDisplay() {
-  tft.setTextDatum(TL_DATUM);
-  int x = 5, y = 5;
-  tft.fillRect(x, y, 100, 20, TFT_WHITE);
+
+static void updateTimerDisplay() 
+{
+  tft.setTextDatum(MC_DATUM);
+  int x = 4, y = 5;
+  tft.fillRect(x - 2, y - 2, 120, 20, tft.color565(220, 220, 220));
+  tft.drawRect(x - 2, y - 2, 120, 20, TFT_WHITE);
+  tft.drawRect(x - 3, y - 3, 120 + 2, 20 + 2, TFT_WHITE);
+  tft.drawRect(x - 4, y - 4, 120 + 4, 20 + 4, TFT_WHITE);
   tft.setTextColor(TFT_BLACK);
   tft.setTextSize(2);
-  tft.drawString("Time: " + String(timeRemaining), x, y);
+  tft.drawString("Time: " + String(timeRemaining), x + 60, y + 10);
 }
+
 
 static void triggerGameOver() {
+  currentState = ENDSCREEN;
   gameOver = true;
   currentLevel = 0;
   totalMoves = 0;
   movesThisLevel = 0;
-
-  tft.fillScreen(TFT_WHITE);
-  tft.setTextColor(TFT_RED);
-  tft.setTextDatum(MC_DATUM);
-  tft.setTextSize(3);
-  tft.drawString("Game Over", tft.width() / 2, tft.height() / 2 - 20);
-
-  tft.setTextSize(2);
-  tft.drawString("Returning to Level 1", tft.width() / 2,
-                 tft.height() / 2 + 20);
-
-  delay(2000);
-  showLevelIntroScreen();
-  loadLevel(currentLevel);
 }
 
 void showHomeScreen() {
-  tft.fillScreen(TFT_WHITE); // white background
+  drawTiles();
   tft.setTextDatum(MC_DATUM);
 
   // Draw the game title in large font
-  tft.setTextColor(TFT_NAVY); // dark blue for contrast
+  tft.setTextColor(TFT_NAVY);   // dark blue for contrast
   tft.setTextSize(4);
   tft.drawString("Memory", tft.width() / 2, tft.height() / 2 - 50);
 
   // Draw the author name
-  tft.setTextColor(TFT_DARKGREY); // soft but readable
+  tft.setTextColor(TFT_DARKGREY);  // soft but readable
   tft.setTextSize(2);
-  tft.drawString("Designed by CroQuest", tft.width() / 2,
-                 tft.height() / 2 + 10);
+  tft.drawString("Designed by CroQuest", tft.width() / 2, tft.height() / 2 + 10);
 
   // Draw the "Press A to start" prompt
   tft.setTextColor(TFT_BLACK);
   tft.setTextSize(2);
   tft.drawString("Press A to start", tft.width() / 2, tft.height() - 50);
+}
+
+static void drawTiles(){
+  const int BLOCKSIZE = 80;
+  const int WIDTH = 6;
+  const int HEIGHT = 4;
+
+  uint16_t light_grey = tft.color565(205, 205, 205);
+  uint16_t dark_grey = tft.color565(164, 164, 164);
+
+  for(int row = 0; row < HEIGHT; row++){
+    for(int column = 0; column < WIDTH; column++){
+      tft.fillRect(column * BLOCKSIZE, row * BLOCKSIZE, BLOCKSIZE, BLOCKSIZE, (column + row) % 2 == 0 ? light_grey : dark_grey);
+    }
+  }
+
 }
