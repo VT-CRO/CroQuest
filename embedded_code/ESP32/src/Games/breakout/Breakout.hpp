@@ -13,13 +13,6 @@
 //  Global Definitions
 // ####################################################################################################
 
-extern TFT_eSPI tft;
-extern JpegDrawing drawing;
-
-extern int breakout_selection;
-extern int breakout_subselection;
-extern BreakoutState currentBreakoutState;
-
 // ========== Game States ==========
 enum BreakoutState {
   BREAKOUT_HOMESCREEN,
@@ -53,6 +46,13 @@ struct Paddle {
   int x, y;
   int w, h;
 };
+
+extern TFT_eSPI tft;
+extern JpegDrawing drawing;
+
+extern int breakout_selection;
+extern int breakout_subselection;
+extern BreakoutState currentBreakoutState;
 
 // ####################################################################################################
 //  Launch Game
