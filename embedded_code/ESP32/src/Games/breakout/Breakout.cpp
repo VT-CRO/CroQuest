@@ -1,10 +1,15 @@
+// src/Games/breakout/Breakout.cpp
+
 #include "Breakout.hpp"
 
-#include "Core/Buttons.hpp"
-#include "Core/JpegDrawing.hpp"
+// ####################################################################################################
+//  Global Definitions
+// ####################################################################################################
 
 #define SCREEN_W 480
 #define SCREEN_H 320
+
+#define SPEAKER_PIN 21
 
 #define PADDLE_WIDTH 60 // Smaller paddle
 #define PADDLE_HEIGHT 12
@@ -18,19 +23,13 @@
 #define BRICK_SPACING_X 4
 #define BRICK_SPACING_Y 4
 
-struct Brick {
-  int x, y;
-  bool active;
-  uint16_t color;
-};
+static Ball ball;
+static Ball prev_ball;
+static Paddle paddle;
+static Paddle prev_paddle;
 
 static Brick bricks[BRICK_ROWS][BRICK_COLS];
-static int paddleX;
-static float ballXf, ballYf;
-static int ballX, ballY;
-static int lastBallX = -1, lastBallY = -1;
-static int lastPaddleX = -1;
-static int ballVX = 2, ballVY = -2;
+
 static bool ballMoving = false;
 static int lives = 3;
 static int score = 0;
@@ -47,7 +46,6 @@ int breakout_subselection = 0;
 BreakoutState currentBreakoutState = BREAKOUT_HOMESCREEN;
 
 // Numpad
-// Numpad
 static NumPad<BreakoutState> pad(
     drawBreakoutHomeScreen, // What to show when exiting pad
     []() { currentBreakoutState = BREAKOUT_PLAYING; }, // What to do on confirm
@@ -58,9 +56,12 @@ static NumPad<BreakoutState> pad(
 const uint16_t rainbow[] = {TFT_RED,  0xFDA0, TFT_YELLOW, TFT_GREEN,
                             TFT_BLUE, 0x8010, 0xF81F};
 
-// ======================== Game Entry ========================
-void runBreakout() {
+// ####################################################################################################
+//  Launch Game
+// ####################################################################################################
 
+// ========== Run Game ========== //
+void runBreakout() {
   resetExitFlag(); // Resets flag for Main Menu
 
   // === Set initial game state ===
@@ -69,15 +70,23 @@ void runBreakout() {
   breakout_subselection = 0;
   breakoutGameOverSelection = 0;
 
-  // === Reset paddle, score, lives, etc. ===
-  paddleX = SCREEN_W / 2 - PADDLE_WIDTH / 2;
+  // === Initialize game data ===
   lives = 3;
   score = 0;
   lastLives = -1;
   lastScore = -1;
-  ballMoving = false; // <- CRITICAL LINE
-  resetBall();        // Place ball on paddle
-  initBricks();       // Redraw bricks
+  ballMoving = false;
+
+  // === Set paddle initial position ===
+  paddle = {SCREEN_W / 2 - PADDLE_WIDTH / 2, SCREEN_H - 20, PADDLE_WIDTH,
+            PADDLE_HEIGHT};
+  prev_paddle = paddle;
+
+  // === Ball will be placed above the paddle ===
+  resetBall(); // <-- uses `ball` and `prev_ball` structs
+
+  // === Initialize bricks ===
+  initBricks();
 
   updateAllButtons();
 
@@ -94,11 +103,16 @@ void runBreakout() {
       delay(500);
       return;
     }
-    delay(16);
+
+    delay(16); // ~60 FPS
   }
 }
 
-// ========== MANUAL LOOP ==========
+// ####################################################################################################
+//  Game Logic
+// ####################################################################################################
+
+// ========== MANUAL LOOP ========== //
 void handleBreakoutFrame() {
   static unsigned long lastFrameTime = 0;
   static int lastSelection = -1;
@@ -124,7 +138,7 @@ void handleBreakoutFrame() {
           drawBreakoutHomeSelection();
         } else {
           currentBreakoutState = BREAKOUT_PLAYING;
-          paddleX = SCREEN_W / 2 - PADDLE_WIDTH / 2;
+          paddle.x = SCREEN_W / 2 - PADDLE_WIDTH / 2;
           lives = 3;
           score = 0;
           lastLives = -1;
@@ -217,7 +231,11 @@ void handleBreakoutFrame() {
           drawBreakoutHomeScreen();
         } else {
           currentBreakoutState = BREAKOUT_PLAYING;
-          paddleX = SCREEN_W / 2 - PADDLE_WIDTH / 2;
+          paddle = {SCREEN_W / 2 - PADDLE_WIDTH / 2, SCREEN_H - 20,
+                    PADDLE_WIDTH, PADDLE_HEIGHT};
+          prev_paddle = paddle;
+          resetBall();
+
           lives = 3;
           score = 0;
           lastLives = -1;
@@ -237,6 +255,7 @@ void handleBreakoutFrame() {
   }
 }
 
+// ========== Initialize Bricks Logic ========== //
 void initBricks() {
   for (int row = 0; row < BRICK_ROWS; ++row) {
     for (int col = 0; col < BRICK_COLS; ++col) {
@@ -258,6 +277,193 @@ void initBricks() {
   }
 }
 
+// ========== Resets Ball Position ========== //
+void resetBall() {
+  ballSpeed = 8.0f;
+
+  ball.w = ball.h = 2 * BALL_RADIUS;
+  ball.x = paddle.x + paddle.w / 2 - ball.w / 2;
+  ball.y = paddle.y - ball.h - 2;
+
+  float angle = -PI / 4;
+  ball.vx = cos(angle) * ballSpeed;
+  ball.vy = sin(angle) * ballSpeed;
+
+  prev_ball = ball;
+  ballMoving = false;
+}
+
+// ========== Update Game Status ========== //
+void updateBreakoutGame() {
+
+  // Handle paddle movement
+  updatePaddle(&paddle);
+
+  // Move ball with paddle before game starts
+  if (!ballMoving) {
+
+    // Erase previous ball position
+    eraseBall(&prev_ball);
+
+    // Position ball above paddle and move it
+    ball.x = paddle.x + (paddle.w - ball.w) / 2;
+    ball.y = paddle.y - ball.h - 1;
+
+    // Save current position for next erase
+    prev_ball = ball;
+
+    // Draw updated ball position
+    drawBall(&ball);
+
+    // Start game with A
+    if (A.wasJustPressed()) {
+      ballMoving = true;
+      playStartSound();
+    }
+
+    return; // Skip updateBall and collision logic
+  }
+
+  // Ball is moving
+  updateBall(&ball, &paddle);
+
+  // Check if ball is lost
+  if (ball.y > SCREEN_H) {
+    eraseBall(&prev_ball); // Clear ball before resetting
+
+    playLoseLifeSound(); // Sound of Losing a life
+    lives--;
+
+    if (lives <= 0) {
+      currentBreakoutState = BREAKOUT_GAMEOVER;
+    } else {
+      resetBall();      // Place ball back on paddle
+      prev_ball = ball; // Prevent redraw artifacts
+    }
+    return;
+  }
+
+  // === Brick collisions ===
+  for (int row = 0; row < BRICK_ROWS; ++row) {
+    for (int col = 0; col < BRICK_COLS; ++col) {
+      Brick &b = bricks[row][col];
+      if (!b.active)
+        continue;
+
+      if (ball.x + ball.w > b.x && ball.x < b.x + BRICK_WIDTH &&
+          ball.y + ball.h > b.y && ball.y < b.y + BRICK_HEIGHT) {
+
+        b.active = false;
+        tft.fillRect(b.x + BRICK_SPACING_X / 2, b.y + BRICK_SPACING_Y / 2,
+                     BRICK_WIDTH - BRICK_SPACING_X,
+                     BRICK_HEIGHT - BRICK_SPACING_Y, TFT_BLACK);
+        score += 10;
+
+        playBreakSound();
+
+        // Bounce logic
+        int overlapLeft = (ball.x + ball.w) - b.x;
+        int overlapRight = (b.x + BRICK_WIDTH) - ball.x;
+        int overlapTop = (ball.y + ball.h) - b.y;
+        int overlapBottom = (b.y + BRICK_HEIGHT) - ball.y;
+
+        bool fromLeftRight =
+            min(overlapLeft, overlapRight) < min(overlapTop, overlapBottom);
+
+        if (fromLeftRight)
+          ball.vx *= -1;
+        else
+          ball.vy *= -1;
+
+        break; // only one brick per frame
+      }
+    }
+  }
+
+  // === Win check ===
+  bool allCleared = true;
+  for (int row = 0; row < BRICK_ROWS; ++row) {
+    for (int col = 0; col < BRICK_COLS; ++col) {
+      if (bricks[row][col].active) {
+        allCleared = false;
+        break;
+      }
+    }
+    if (!allCleared)
+      break;
+  }
+
+  if (allCleared)
+    currentBreakoutState = BREAKOUT_WIN;
+}
+
+// ========== Update Ball Status ========== //
+void updateBall(Ball *b, Paddle *paddle) {
+  prev_ball = *b;
+
+  // Apply motion
+  b->x += b->vx;
+  b->y += b->vy;
+
+  // Wall collision
+  if (b->x <= 0 || b->x + b->w >= SCREEN_W) {
+    b->vx *= -1;
+    playBounceSound();
+  }
+
+  const int topMargin = 24; // Protect UI area
+  if (b->y <= topMargin) {
+    b->y = topMargin; // Prevent overshooting
+    b->vy *= -1;
+    playBounceSound();
+  }
+
+  // Paddle collision
+  const int leftMargin = 1;
+  const int rightMargin = 1;
+
+  int px = paddle->x + leftMargin;
+  int pw = paddle->w - leftMargin - rightMargin;
+
+  if (b->vy > 0 && b->y + b->h >= paddle->y && b->y < paddle->y + paddle->h &&
+      b->x + b->w > px && b->x < px + pw) {
+
+    playBounceSound();
+
+    float hitRatio = ((b->x + b->w / 2.0f) - (paddle->x + paddle->w / 2.0f)) /
+                     (paddle->w / 2.0f);
+    hitRatio =
+        constrain(hitRatio, -0.9f, 0.9f); // Prevent flat horizontal bounces
+
+    b->vx = hitRatio * ballSpeed;
+    b->vy = -sqrt(ballSpeed * ballSpeed - b->vx * b->vx);
+
+    // Safety net: force minimum vy
+    if (abs(b->vy) < 2.0f)
+      b->vy = -2.0f;
+
+    b->y = paddle->y - b->h - 1;
+  }
+}
+
+// ========== Update Paddle Status ========== //
+void updatePaddle(Paddle *p) {
+  prev_paddle = *p;
+  if (left.isPressed())
+    p->x -= 10;
+  if (right.isPressed())
+    p->x += 10;
+  if (p->x < 0)
+    p->x = 0;
+  if (p->x + p->w > SCREEN_W)
+    p->x = SCREEN_W - p->w;
+}
+
+// ####################################################################################################
+//  Game Drawing
+// ####################################################################################################
+
+// ========== Draw GameOver Selection Buttons ========== //
 void drawBreakoutGameOverSelect() {
   const int textSize = 2;
   const int paddingX = 10;
@@ -299,6 +505,7 @@ void drawBreakoutGameOverSelect() {
   tft.drawString(optionRestart, centerX, yRestart);
 }
 
+// ========== Draw GameOver Screen ========== //
 void drawBreakoutGameOverScreen() {
   tft.fillScreen(TFT_BLACK);
 
@@ -314,6 +521,7 @@ void drawBreakoutGameOverScreen() {
   drawBreakoutGameOverSelect();
 }
 
+// ========== Draw HomeScreen Selection Buttons ========== //
 void drawBreakoutHomeSelection() {
   int y_single = 180;
   int y_multi = 230;
@@ -369,6 +577,7 @@ void drawBreakoutHomeSelection() {
   }
 }
 
+// ========== Draw HomeScreen Screen ========== //
 void drawBreakoutHomeScreen() {
   tft.fillScreen(TFT_BLACK);
 
@@ -391,270 +600,101 @@ void drawBreakoutHomeScreen() {
   drawBreakoutHomeSelection();
 }
 
-void resetBall() {
-  ballSpeed = 8.0f; // Reasonable fast starting speed
+// ========== Draw Game Frame (Ball and Paddle logic) ========== //
+void drawBreakoutFrame() {
 
-  ballX = paddleX + PADDLE_WIDTH / 2;
-  ballY = SCREEN_H - 30;
-  ballXf = ballX;
-  ballYf = ballY;
+  drawPaddle(&paddle);
+  eraseBall(&prev_ball);
+  drawBall(&ball);
 
-  // Set direction and scale to match ballSpeed
-  float angle = -PI / 4; // 45° upward
-  ballVX = cos(angle) * ballSpeed;
-  ballVY = sin(angle) * ballSpeed;
-
-  ballMoving = false;
-}
-
-void eraseOldBall() {
-  if (lastBallX != -1 && lastBallY != -1) {
-    tft.fillCircle(lastBallX, lastBallY, BALL_RADIUS, TFT_BLACK);
+  if (paddle.x != prev_paddle.x || paddle.y != prev_paddle.y) {
+    erasePaddle(&prev_paddle);
+    drawPaddle(&paddle);
+    prev_paddle = paddle;
   }
-}
 
-void drawBall() {
-  eraseOldBall();
-  tft.fillCircle(ballX, ballY, BALL_RADIUS, TFT_WHITE);
-  lastBallX = ballX;
-  lastBallY = ballY;
-}
-
-void eraseOldPaddle() {
-  if (lastPaddleX != -1) {
-    tft.fillRect(lastPaddleX, SCREEN_H - 20, PADDLE_WIDTH, PADDLE_HEIGHT,
-                 TFT_BLACK);
-  }
-}
-
-void drawPaddle() {
-  if (paddleX != lastPaddleX) {
-    eraseOldPaddle();
-    tft.fillRect(paddleX, SCREEN_H - 20, PADDLE_WIDTH, PADDLE_HEIGHT,
-                 TFT_LIGHTGREY);
-    lastPaddleX = paddleX;
-  }
-}
-
-void drawHUD() {
   if (lives != lastLives || score != lastScore) {
     tft.setTextColor(TFT_WHITE, TFT_BLACK);
-    tft.setTextSize(2);
-    tft.fillRect(0, 0, SCREEN_W, 20, TFT_BLACK); // Clear top bar
+    tft.setTextSize(2); // Same font size as before
 
-    // Draw a single ball icon
-    int ballX = 20;
-    int ballY = 20;
-    tft.fillCircle(ballX, ballY, BALL_RADIUS, TFT_WHITE);
+    // Clear top bar (slightly taller to avoid overlap)
+    tft.fillRect(0, 0, SCREEN_W, 32, TFT_BLACK);
 
-    // Draw " x N" next to it
-    tft.drawString(" x " + String(lives), ballX + BALL_RADIUS * 2 + 20, 20);
+    // New larger radius
+    const int iconRadius = BALL_RADIUS + 2; // make ball bigger
+    const int iconX = 20;
+    const int iconY = 12; // lower a bit to center vertically
+
+    // Draw larger ball
+    tft.fillCircle(iconX + iconRadius, iconY + iconRadius, iconRadius,
+                   TFT_WHITE);
+
+    // Keep same distance from ball to text
+    const int textX = iconX + iconRadius * 2 + 30;
+    const int textY =
+        iconY + iconRadius - 8 + 10; // aligns text vertically with circle
+    tft.drawString("x " + String(lives), textX, textY);
 
     // Draw score
     tft.drawString("Score: " + String(score), SCREEN_W - 80, 20); // Top right
+
     lastLives = lives;
     lastScore = score;
   }
 }
 
-void updateBreakoutGame() {
-  if (left.isPressed())
-    paddleX -= 10;
-  if (right.isPressed())
-    paddleX += 10;
-  if (paddleX < 0)
-    paddleX = 0;
-  if (paddleX + PADDLE_WIDTH > SCREEN_W)
-    paddleX = SCREEN_W - PADDLE_WIDTH;
-
-  if (!ballMoving && A.wasJustPressed())
-    ballMoving = true;
-
-  if (ballMoving) {
-    moveBallSafely();
-
-    if (ballX <= 0 || ballX >= SCREEN_W)
-      ballVX *= -1;
-    if (ballY <= 0)
-      ballVY *= -1;
-
-    if (ballY + BALL_RADIUS >= SCREEN_H - 20 && ballX >= paddleX &&
-        ballX <= paddleX + PADDLE_WIDTH) {
-      ballVY *= -1;
-    }
-
-    if (ballY > SCREEN_H) {
-      lives--;
-      if (lives <= 0) {
-        currentBreakoutState = BREAKOUT_GAMEOVER;
-      } else {
-        resetBall();
-      }
-    }
-
-    for (int row = 0; row < BRICK_ROWS; ++row) {
-      for (int col = 0; col < BRICK_COLS; ++col) {
-        Brick &b = bricks[row][col];
-        if (!b.active)
-          continue;
-
-        if (ballX > b.x && ballX < b.x + BRICK_WIDTH && ballY > b.y &&
-            ballY < b.y + BRICK_HEIGHT) {
-
-          b.active = false;
-          tft.fillRect(b.x + BRICK_SPACING_X / 2, b.y + BRICK_SPACING_Y / 2,
-                       BRICK_WIDTH - BRICK_SPACING_X,
-                       BRICK_HEIGHT - BRICK_SPACING_Y, TFT_BLACK);
-          score += 10;
-
-          // Determine side of impact
-          int ballCenterX = ballX;
-          int ballCenterY = ballY;
-
-          bool hitSide =
-              (ballCenterX <= b.x || ballCenterX >= b.x + BRICK_WIDTH);
-          bool hitTopBottom =
-              (ballCenterY <= b.y || ballCenterY >= b.y + BRICK_HEIGHT);
-
-          if (hitSide && !hitTopBottom) {
-            ballVX *= -1;
-          } else {
-            ballVY *= -1;
-          }
-
-          return; // prevent multiple brick hits in one frame
-        }
-      }
-    }
-
-    bool allCleared = true;
-    for (int row = 0; row < BRICK_ROWS; ++row)
-      for (int col = 0; col < BRICK_COLS; ++col)
-        if (bricks[row][col].active)
-          allCleared = false;
-    if (allCleared)
-      currentBreakoutState = BREAKOUT_WIN;
-  }
+// ========== Draw Ball ========== //
+void drawBall(const Ball *b) {
+  tft.fillCircle(b->x + b->w / 2, b->y + b->h / 2, b->w / 2, TFT_WHITE);
 }
 
-void drawBreakoutFrame() {
-  drawPaddle();
-  drawBall();
-  drawHUD();
+// ========== Remove Ball ========== //
+void eraseBall(const Ball *b) {
+  if (b->y + b->h / 2 < 20)
+    return;
+  tft.fillCircle(b->x + b->w / 2, b->y + b->h / 2, b->w / 2, TFT_BLACK);
 }
 
-void moveBallSafely() {
-  int steps = ceil(ballSpeed);
-  float stepX = ballVX / (float)steps;
-  float stepY = ballVY / (float)steps;
-
-  for (int i = 0; i < steps; ++i) {
-    ballXf += stepX;
-    ballYf += stepY;
-
-    ballX = round(ballXf);
-    ballY = round(ballYf);
-
-    if (checkBallCollisions())
-      break;
-  }
+// ========== Draw Paddle ========== //
+void drawPaddle(const Paddle *p) {
+  tft.fillRect(p->x, p->y, p->w, p->h, TFT_WHITE);
 }
 
-bool checkBallCollisions() {
-  // Bounce off left wall
-  if (ballXf - BALL_RADIUS <= 0) {
-    ballXf = BALL_RADIUS + 1;
-    ballVX = abs(ballVX);
+// ========== Remove Paddle ========== //
+void erasePaddle(const Paddle *p) {
+  tft.fillRect(p->x, p->y, p->w, p->h, TFT_BLACK);
+}
 
-    float mag = sqrt(ballVX * ballVX + ballVY * ballVY);
-    ballVX = (ballVX / mag) * ballSpeed;
-    ballVY = (ballVY / mag) * ballSpeed;
+// ####################################################################################################
+//  Audio Logic
+// ####################################################################################################
 
-    ballX = round(ballXf);
-    return true;
-  }
+// ========== Start Game Sound ========== //
+void playStartSound() {
+  playTone(1000, volume);
+  delay(80);
+  playTone(1400, volume);
+  delay(80);
+  playTone(0, 0); // stop sound
+}
 
-  // Bounce off right wall
-  if (ballXf + BALL_RADIUS >= SCREEN_W) {
-    ballXf = SCREEN_W - BALL_RADIUS - 1;
-    ballVX = -abs(ballVX);
+// ========== Bouncing Sound ========== //
+void playBounceSound() {
+  playTone(1200, volume); // Quick bounce blip
+  delay(15);
+  playTone(0, 0);
+}
 
-    float mag = sqrt(ballVX * ballVX + ballVY * ballVY);
-    ballVX = (ballVX / mag) * ballSpeed;
-    ballVY = (ballVY / mag) * ballSpeed;
+// ========== Life Lost Sound ========== //
+void playLoseLifeSound() {
+  playTone(200, volume); // Deep drop tone
+  delay(30);
+  playTone(0, 0);
+}
 
-    ballX = round(ballXf);
-    return true;
-  }
-
-  // Bounce off top wall
-  if (ballYf - BALL_RADIUS <= 0) {
-    ballYf = BALL_RADIUS + 1;
-    ballVY = abs(ballVY);
-
-    float mag = sqrt(ballVX * ballVX + ballVY * ballVY);
-    ballVX = (ballVX / mag) * ballSpeed;
-    ballVY = (ballVY / mag) * ballSpeed;
-
-    ballY = round(ballYf);
-    return true;
-  }
-
-  // Paddle
-  if (ballVY > 0 && ballYf + BALL_RADIUS >= SCREEN_H - 20 &&
-      ballYf - ballVY + BALL_RADIUS <= SCREEN_H - 20 && ballX >= paddleX &&
-      ballX <= paddleX + PADDLE_WIDTH) {
-
-    ballYf = SCREEN_H - 20 - BALL_RADIUS - 1;
-    ballY = round(ballYf);
-
-    ballVY = -abs(ballVY);
-
-    // Avoid getting stuck with very small horizontal motion
-    if (abs(ballVX) < 0.5f)
-      ballVX = (ballVX < 0) ? -0.5f : 0.5f;
-
-    float mag = sqrt(ballVX * ballVX + ballVY * ballVY);
-    ballVX = (ballVX / mag) * ballSpeed;
-    ballVY = (ballVY / mag) * ballSpeed;
-
-    return true;
-  }
-
-  // Bricks
-  for (int row = 0; row < BRICK_ROWS; ++row) {
-    for (int col = 0; col < BRICK_COLS; ++col) {
-      Brick &b = bricks[row][col];
-      if (!b.active)
-        continue;
-
-      if (ballX > b.x && ballX < b.x + BRICK_WIDTH && ballY > b.y &&
-          ballY < b.y + BRICK_HEIGHT) {
-
-        b.active = false;
-        tft.fillRect(b.x + BRICK_SPACING_X / 2, b.y + BRICK_SPACING_Y / 2,
-                     BRICK_WIDTH - BRICK_SPACING_X,
-                     BRICK_HEIGHT - BRICK_SPACING_Y, TFT_BLACK);
-
-        // Bounce
-        ballVY *= -1;
-
-        float currentSpeed = sqrt(ballVX * ballVX + ballVY * ballVY);
-        float newSpeed = min(currentSpeed + 0.5f, 12.0f);
-
-        float directionX = ballVX / currentSpeed;
-        float directionY = ballVY / currentSpeed;
-
-        ballVX = directionX * newSpeed;
-        ballVY = directionY * newSpeed;
-
-        ballSpeed = newSpeed;
-        score += 10;
-
-        return true;
-      }
-    }
-  }
-
-  return false;
+// ========== Breaking Brick Sound ========== //
+void playBreakSound() {
+  playTone(1200, volume); // Higher pitch for break
+  delay(30);
+  playTone(0, 0);
 }

@@ -1,9 +1,9 @@
 #include "Audio.hpp"
 
 extern TFT_eSPI tft;
-int& volume = settings.volume;  // now expected to range 0–100
+int &volume = settings.volume; // now expected to range 0–100
 
-//Static functions
+// Static functions
 static void sliderSound();
 
 void runAudioMenu() {
@@ -25,7 +25,8 @@ void runAudioMenu() {
     int sliderH = 16;
     int fillW = (volume * sliderW) / maxPercent;
 
-    tft.fillRect(sliderX + fillW - 2, sliderY - 2, sliderW + 4, sliderH + 4, SETTINGS_BG_COLOR);
+    tft.fillRect(sliderX + fillW - 2, sliderY - 2, sliderW + 4, sliderH + 4,
+                 SETTINGS_BG_COLOR);
     tft.drawRoundRect(sliderX, sliderY, sliderW, sliderH, 4, TFT_WHITE);
     tft.fillRect(sliderX + 1, sliderY + 1, fillW - 2, sliderH - 2, TFT_WHITE);
 
@@ -36,7 +37,8 @@ void runAudioMenu() {
     char percentStr[6];
 
     tft.setTextSize(2);
-    snprintf(percentStr, sizeof(percentStr), "%3d%%", volume);  // e.g., "  5%", "100%"
+    snprintf(percentStr, sizeof(percentStr), "%3d%%",
+             volume); // e.g., "  5%", "100%"
     tft.drawString(percentStr, tft.width() / 2, sliderY + 30);
   };
 
@@ -45,14 +47,15 @@ void runAudioMenu() {
   tft.setTextSize(1);
   tft.setTextDatum(BC_DATUM);
   tft.drawString("Use LEFT/RIGHT to adjust, A to return", tft.width() / 2,
-                  tft.height() - 10);
+                 tft.height() - 10);
 
-  // Main loop 
+  // Main loop
   while (true) {
     if (left.wasJustPressed()) {
       if (volume > minPercent) {
         volume -= stepPercent;
-        if (volume < minPercent) volume = minPercent;
+        if (volume < minPercent)
+          volume = minPercent;
         drawSlider();
         sliderSound();
         delay(150);
@@ -60,7 +63,8 @@ void runAudioMenu() {
     } else if (right.wasJustPressed()) {
       if (volume < maxPercent) {
         volume += stepPercent;
-        if (volume > maxPercent) volume = maxPercent;
+        if (volume > maxPercent)
+          volume = maxPercent;
         drawSlider();
         sliderSound();
         delay(150);
@@ -79,22 +83,21 @@ void runAudioMenu() {
 // ============= ADJUSTABLE VOLUME ================== //
 
 void playTone(int toneFreq, int volume) {
-    if (toneFreq == 0) {
-        ledcWriteTone(channel, 0);
-        return;
-    }
+  if (toneFreq == 0) {
+    ledcWriteTone(channel, 0);
+    return;
+  }
 
-    ledcWriteTone(channel, toneFreq);
-    ledcWrite(channel, (volume * 255) / 100);  // Convert percent to 0–255 range
+  ledcWriteTone(channel, toneFreq);
+  ledcWrite(channel, (volume * 255) / 100); // Convert percent to 0–255 range
 }
-
 
 // =================== SOUNDS ========================= //
 
 void playSelectBeep() {
   playTone(1000, volume); // 1kHz tone
-  delay(50);         // very short beep
-  playTone(0, 0);    // stop tone
+  delay(50);              // very short beep
+  playTone(0, 0);         // stop tone
 }
 
 void playPressSound() {
@@ -112,13 +115,15 @@ void playPressSound() {
   playTone(0, 0); // stop tone
 }
 
-void backAudio(){
-    playTone(900, volume); delay(30);
-    playTone(700, volume); delay(30);
-    playTone(0, volume);
+void backAudio() {
+  playTone(900, volume);
+  delay(30);
+  playTone(700, volume);
+  delay(30);
+  playTone(0, volume);
 }
 
-static void sliderSound(){
+static void sliderSound() {
   playTone(800, volume);
   delay(15);
   playTone(0, volume);

@@ -1,14 +1,24 @@
+// src/Games/breakout/Breakout.hpp
+
 #pragma once
 
 #include "Core/Buttons.hpp"
 #include "Core/JpegDrawing.hpp"
 #include "Menu/MenuReturn.hpp"
 #include "NumPad/NumPad.hpp"
+#include "SettingsMenu/AudioMenu/Audio.hpp"
 #include <TFT_eSPI.h>
 
-// ========== API ==========
-void runBreakout();         // Call once to start the game
-void handleBreakoutFrame(); // Call repeatedly from loop()
+// ####################################################################################################
+//  Global Definitions
+// ####################################################################################################
+
+extern TFT_eSPI tft;
+extern JpegDrawing drawing;
+
+extern int breakout_selection;
+extern int breakout_subselection;
+extern BreakoutState currentBreakoutState;
 
 // ========== Game States ==========
 enum BreakoutState {
@@ -22,40 +32,100 @@ enum BreakoutState {
   BREAKOUT_GAMEOVER_SCREEN,
 };
 
-// ========== Globals ==========
-extern TFT_eSPI tft;
-extern JpegDrawing drawing;
+// ========== Structures ==========
 
-extern int breakout_selection;
-extern int breakout_subselection;
-extern BreakoutState currentBreakoutState;
+// Structure for Bricks
+struct Brick {
+  int x, y;
+  bool active;
+  uint16_t color;
+};
 
+// Structure for Ball
+struct Ball {
+  int x, y;
+  int w, h;
+  float vx, vy;
+};
+
+// Struct for Paddle
+struct Paddle {
+  int x, y;
+  int w, h;
+};
+
+// ####################################################################################################
+//  Launch Game
+// ####################################################################################################
+
+// ========== Run Game ========== //
+void runBreakout();
+
+// ####################################################################################################
+//  Game Logic
+// ####################################################################################################
+
+// ========== MANUAL LOOP ========== //
+void handleBreakoutFrame();
+
+// ========== Initialize Bricks Logic ========== //
 void initBricks();
 
-void drawBreakoutGameOverSelect();
-
-void drawBreakoutGameOverScreen();
-
-void drawBreakoutHomeSelection();
-
-void drawBreakoutHomeScreen();
-
+// ========== Resets Ball Position ========== //
 void resetBall();
 
-void eraseOldBall();
-
-void drawBall();
-
-void eraseOldPaddle();
-
-void drawPaddle();
-
-void drawHUD();
-
+// ========== Update Game Status ========== //
 void updateBreakoutGame();
 
+// ========== Update Ball Status ========== //
+void updateBall(Ball *b, Paddle *paddle);
+
+// ========== Update Paddle Status ========== //
+void updatePaddle(Paddle *p);
+
+// ####################################################################################################
+//  Game Drawing
+// ####################################################################################################
+
+// ========== Draw GameOver Selection Buttons ========== //
+void drawBreakoutGameOverSelect();
+
+// ========== Draw GameOver Screen ========== //
+void drawBreakoutGameOverScreen();
+
+// ========== Draw HomeScreen Selection Buttons ========== //
+void drawBreakoutHomeSelection();
+
+// ========== Draw HomeScreen Screen ========== //
+void drawBreakoutHomeScreen();
+
+// ========== Draw Game Frame (Ball and Paddle logic) ========== //
 void drawBreakoutFrame();
 
-void moveBallSafely();
+// ========== Draw Ball ========== //
+void drawBall(const Ball *b);
 
-bool checkBallCollisions();
+// ========== Remove Ball ========== //
+void eraseBall(const Ball *b);
+
+// ========== Draw Paddle ========== //
+void drawPaddle(const Paddle *p);
+
+// ========== Remove Paddle ========== //
+void erasePaddle(const Paddle *p);
+
+// ####################################################################################################
+//  Audio Logic
+// ####################################################################################################
+
+// ========== Start Game Sound ========== //
+void playStartSound();
+
+// ========== Bouncing Sound ========== //
+void playBounceSound();
+
+// ========== Life Lost Sound ========== //
+void playLoseLifeSound();
+
+// ========== Breaking Brick Sound ========== //
+void playBreakSound();

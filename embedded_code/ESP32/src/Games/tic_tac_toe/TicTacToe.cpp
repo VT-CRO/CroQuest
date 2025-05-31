@@ -2,6 +2,10 @@
 
 #include "TicTacToe.hpp"
 
+// ####################################################################################################
+//  Functions Declarations
+// ####################################################################################################
+
 // ========== Drawing ==========
 void drawScoreboard();
 void drawWinnerMessage();
@@ -36,8 +40,11 @@ enum State {
   HOST_SCREEN,
 };
 
-// ======================== Global Definitions ========================
+// ####################################################################################################
+//  Global Definitions
+// ####################################################################################################
 
+// Speaker Pin
 #define SPEAKER_PIN 21
 
 // Logic
@@ -82,7 +89,11 @@ int oWins = 0;
 static NumPad<State> pad(drawHomeScreen, drawAllPlaying, &game_state,
                          HOMESCREEN, SINGLE_PLAYER);
 
-// ======================== Game Entry ========================
+// ####################################################################################################
+//  Launch Game
+// ####################################################################################################
+
+// ========== Run Game ========== //
 void runTicTacToe() {
 
   resetExitFlag(); // Resets flag for Main Menu
@@ -100,12 +111,12 @@ void runTicTacToe() {
   x_start = (screen_width - dim.width) / 2;
   y_start = (screen_height - dim.height) / 2;
 
-  //delete drawing sprite
+  // delete drawing sprite
   drawing.clearCache();
   drawing.clearSprite();
   drawing.deleteSprite();
 
-  //reset game
+  // reset game
   for (int i = 0; i < 9; i++)
     board[i] = "**";
   currentPlayer = 'X';
@@ -132,7 +143,11 @@ void runTicTacToe() {
   }
 }
 
-// ========== MANUAL LOOP ==========
+// ####################################################################################################
+//  Game Logic
+// ####################################################################################################
+
+// ========== Manual Loop ========== //
 void handleTicTacToeFrame() {
   static int lastCursor = -1;
   static unsigned long lastMoveTime = 0;
@@ -520,6 +535,7 @@ void handleTicTacToeFrame() {
   }
 }
 
+// ========== Check Winner ========== //
 void checkWinner() {
   const int wins[8][3] = {
       {0, 1, 2}, {3, 4, 5}, {6, 7, 8}, // rows
@@ -564,6 +580,185 @@ void checkWinner() {
   }
 }
 
+// ========== Selector ========== //
+void highlightCursor(int index) {
+  int row = index / 3;
+  int col = index % 3;
+
+  int x = x_start + col * cell_size + cell_size / 3 - 3;
+  int y = y_start + row * cell_size + cell_size / 3 - 3;
+
+  tft.drawRect(x, y, cell_size - 30, cell_size - 30, TFT_WHITE);
+}
+
+// ========== AI Moves ========== //
+int findBestMove(char aiSymbol, char playerSymbol) {
+  // Winning combinations
+  const int wins[8][3] = {{0, 1, 2}, {3, 4, 5}, {6, 7, 8}, {0, 3, 6},
+                          {1, 4, 7}, {2, 5, 8}, {0, 4, 8}, {2, 4, 6}};
+
+  // 1. Try to win
+  for (const auto &combo : wins) {
+    int countAI = 0, empty = -1;
+    for (int idx : combo) {
+      if (board[idx] == String(aiSymbol))
+        countAI++;
+      else if (board[idx] == "**")
+        empty = idx;
+    }
+    if (countAI == 2 && empty != -1)
+      return empty;
+  }
+
+  // 2. Block opponent
+  for (const auto &combo : wins) {
+    int countPlayer = 0, empty = -1;
+    for (int idx : combo) {
+      if (board[idx] == String(playerSymbol))
+        countPlayer++;
+      else if (board[idx] == "**")
+        empty = idx;
+    }
+    if (countPlayer == 2 && empty != -1)
+      return empty;
+  }
+
+  // 3. Take center
+  if (board[4] == "**")
+    return 4;
+
+  // 4. Take a corner
+  for (int i : {0, 2, 6, 8}) {
+    if (board[i] == "**")
+      return i;
+  }
+
+  // 5. Take any side
+  for (int i : {1, 3, 5, 7}) {
+    if (board[i] == "**")
+      return i;
+  }
+
+  // If somehow none of these work
+  return -1;
+}
+
+// ####################################################################################################
+//  Game Drawing
+// ####################################################################################################
+
+// ========== Draw Score Board ========== //
+void drawScoreboard() {
+  int centerY = tft.height() / 2;
+  int padding = 20;
+
+  // Settings for big scoreboard
+  int textSize = 4;
+  tft.setTextSize(textSize);
+  tft.setTextDatum(MC_DATUM);
+
+  int underlineWidth = 40;
+  int underlineThickness = 4; // <== THICKNESS OF THE LINE
+  int underlineOffset = 24;   // Vertical distance from text to line
+  int scoreOffset = 32;       // Distance from underline to score
+
+  // === X Side ===
+  tft.setTextColor(TFT_WHITE, orange_color);
+  int xX = padding + underlineWidth;
+  int yX = centerY - (underlineOffset + scoreOffset) / 2;
+  tft.drawString("X", xX, yX);
+
+  // Thick underline using fillRect
+  int xLineY = yX + underlineOffset;
+  tft.fillRect(xX - underlineWidth / 2, xLineY, underlineWidth,
+               underlineThickness, TFT_WHITE);
+
+  // Score for X
+  tft.drawString(String(xWins), xX, xLineY + scoreOffset);
+
+  // === O Side ===
+  tft.setTextColor(TFT_WHITE, orange_color);
+  int xO = tft.width() - padding - underlineWidth;
+  int yO = yX;
+  tft.drawString("O", xO, yO);
+
+  // Thick underline using fillRect
+  int oLineY = yO + underlineOffset;
+  tft.fillRect(xO - underlineWidth / 2, oLineY, underlineWidth,
+               underlineThickness, TFT_WHITE);
+
+  // Score for O
+  tft.drawString(String(oWins), xO, oLineY + scoreOffset);
+}
+
+// ========== Draw Line Over Assets ========== //
+void drawWinLine() {
+  if (winner != 'X' && winner != 'O')
+    return;
+
+  int i1 = winCombo[0];
+  int i3 = winCombo[2];
+
+  // Cell positions (row/col)
+  int row1 = i1 / 3, col1 = i1 % 3;
+  int row3 = i3 / 3, col3 = i3 % 3;
+
+  // Compute center points of the two winning cells
+  int x1 = x_start + col1 * cell_size + cell_size / 2;
+  int y1 = y_start + row1 * cell_size + cell_size / 2;
+  int x3 = x_start + col3 * cell_size + cell_size / 2;
+  int y3 = y_start + row3 * cell_size + cell_size / 2;
+
+  // Optional vertical nudge (if the line looks off)
+  int y_adjust = 10; // change to +6 if needed
+  y1 += y_adjust;
+  y3 += y_adjust;
+
+  uint16_t color = (winner == 'X') ? TFT_RED : TFT_BLUE;
+
+  // Draw a thick line by offsetting in both directions
+  for (int offset = -2; offset <= 2; offset++) {
+    tft.drawLine(x1 + offset, y1, x3 + offset, y3, color);
+    tft.drawLine(x1, y1 + offset, x3, y3 + offset, color);
+  }
+}
+
+// ========== Draw Winner Message ========== //
+void drawWinnerMessage() {
+  String msg;
+  uint16_t color = TFT_WHITE;
+  uint16_t bgColor = TFT_BLACK;
+
+  // Determine message and color
+  if (winner == 'X') {
+    msg = "X WINS!";
+    color = TFT_RED;
+  } else if (winner == 'O') {
+    msg = "O WINS!";
+    color = TFT_BLUE;
+  } else if (winner == 'D') {
+    msg = "DRAW!";
+    color = TFT_YELLOW;
+  }
+
+  // Draw rounded box
+  int boxWidth = 180;
+  int boxHeight = 50;
+  int x = (tft.width() - boxWidth) / 2;
+  int y = 20;
+
+  tft.fillRoundRect(x, y, boxWidth, boxHeight, 8, bgColor);
+  tft.drawRoundRect(x, y, boxWidth, boxHeight, 8, color);
+
+  // Draw glowing text in center
+  tft.setTextDatum(MC_DATUM);
+  tft.setTextSize(3);
+  tft.setTextColor(color, bgColor);
+  tft.drawString(msg, tft.width() / 2, y + boxHeight / 2);
+}
+
+// TODO: replace by real "End Screen"
+// ========== Draw End Screen ========== //
 void drawEndScreen() {
 
   // Set text properties
@@ -613,6 +808,7 @@ void drawEndScreen() {
   }
 }
 
+// ========== Draw HomeScreen ========== //
 void drawHomeScreen() {
   // Clear the screen with orange background
   tft.fillScreen(orange_color);
@@ -648,6 +844,7 @@ void drawHomeScreen() {
   drawHomescreenSelect();
 }
 
+// ========== Draw HomeScreen Buttons ========== //
 void drawHomescreenSelect() {
   int y_single = 200;
   int y_multi = 250;
@@ -725,6 +922,7 @@ void drawHomescreenSelect() {
   }
 }
 
+// ========== Draw Moves ========== //
 void drawAllPlaying() {
   drawScoreboard();
   drawGrid();
@@ -732,6 +930,7 @@ void drawAllPlaying() {
   highlightCursor(cursorIndex);
 }
 
+// ========== Create Grid ========== //
 void drawGrid() {
 
   drawing.drawSdJpeg(BOARD_PATH, x_start, y_start);
@@ -763,16 +962,7 @@ void drawGrid() {
   }
 }
 
-void highlightCursor(int index) {
-  int row = index / 3;
-  int col = index % 3;
-
-  int x = x_start + col * cell_size + cell_size / 3 - 3;
-  int y = y_start + row * cell_size + cell_size / 3 - 3;
-
-  tft.drawRect(x, y, cell_size - 30, cell_size - 30, TFT_WHITE);
-}
-
+// ========== Remove Cursor ========== //
 void clearCursor(int index) {
   if (index < 0 || index > 8)
     return;
@@ -800,188 +990,30 @@ void clearCursor(int index) {
                  TFT_BLACK); // bottom
 }
 
-void drawWinLine() {
-  if (winner != 'X' && winner != 'O')
-    return;
-
-  int i1 = winCombo[0];
-  int i3 = winCombo[2];
-
-  // Cell positions (row/col)
-  int row1 = i1 / 3, col1 = i1 % 3;
-  int row3 = i3 / 3, col3 = i3 % 3;
-
-  // Compute center points of the two winning cells
-  int x1 = x_start + col1 * cell_size + cell_size / 2;
-  int y1 = y_start + row1 * cell_size + cell_size / 2;
-  int x3 = x_start + col3 * cell_size + cell_size / 2;
-  int y3 = y_start + row3 * cell_size + cell_size / 2;
-
-  // Optional vertical nudge (if the line looks off)
-  int y_adjust = 10; // change to +6 if needed
-  y1 += y_adjust;
-  y3 += y_adjust;
-
-  uint16_t color = (winner == 'X') ? TFT_RED : TFT_BLUE;
-
-  // Draw a thick line by offsetting in both directions
-  for (int offset = -2; offset <= 2; offset++) {
-    tft.drawLine(x1 + offset, y1, x3 + offset, y3, color);
-    tft.drawLine(x1, y1 + offset, x3, y3 + offset, color);
-  }
-}
-
-void drawWinnerMessage() {
-  String msg;
-  uint16_t color = TFT_WHITE;
-  uint16_t bgColor = TFT_BLACK;
-
-  // Determine message and color
-  if (winner == 'X') {
-    msg = "X WINS!";
-    color = TFT_RED;
-  } else if (winner == 'O') {
-    msg = "O WINS!";
-    color = TFT_BLUE;
-  } else if (winner == 'D') {
-    msg = "DRAW!";
-    color = TFT_YELLOW;
-  }
-
-  // Draw rounded box
-  int boxWidth = 180;
-  int boxHeight = 50;
-  int x = (tft.width() - boxWidth) / 2;
-  int y = 20;
-
-  tft.fillRoundRect(x, y, boxWidth, boxHeight, 8, bgColor);
-  tft.drawRoundRect(x, y, boxWidth, boxHeight, 8, color);
-
-  // Draw glowing text in center
-  tft.setTextDatum(MC_DATUM);
-  tft.setTextSize(3);
-  tft.setTextColor(color, bgColor);
-  tft.drawString(msg, tft.width() / 2, y + boxHeight / 2);
-}
-
-void drawScoreboard() {
-  int centerY = tft.height() / 2;
-  int padding = 20;
-
-  // Settings for big scoreboard
-  int textSize = 4;
-  tft.setTextSize(textSize);
-  tft.setTextDatum(MC_DATUM);
-
-  int underlineWidth = 40;
-  int underlineThickness = 4; // <== THICKNESS OF THE LINE
-  int underlineOffset = 24;   // Vertical distance from text to line
-  int scoreOffset = 32;       // Distance from underline to score
-
-  // === X Side ===
-  tft.setTextColor(TFT_WHITE, orange_color);
-  int xX = padding + underlineWidth;
-  int yX = centerY - (underlineOffset + scoreOffset) / 2;
-  tft.drawString("X", xX, yX);
-
-  // Thick underline using fillRect
-  int xLineY = yX + underlineOffset;
-  tft.fillRect(xX - underlineWidth / 2, xLineY, underlineWidth,
-               underlineThickness, TFT_WHITE);
-
-  // Score for X
-  tft.drawString(String(xWins), xX, xLineY + scoreOffset);
-
-  // === O Side ===
-  tft.setTextColor(TFT_WHITE, orange_color);
-  int xO = tft.width() - padding - underlineWidth;
-  int yO = yX;
-  tft.drawString("O", xO, yO);
-
-  // Thick underline using fillRect
-  int oLineY = yO + underlineOffset;
-  tft.fillRect(xO - underlineWidth / 2, oLineY, underlineWidth,
-               underlineThickness, TFT_WHITE);
-
-  // Score for O
-  tft.drawString(String(oWins), xO, oLineY + scoreOffset);
-}
-
-int findBestMove(char aiSymbol, char playerSymbol) {
-  // Winning combinations
-  const int wins[8][3] = {{0, 1, 2}, {3, 4, 5}, {6, 7, 8}, {0, 3, 6},
-                          {1, 4, 7}, {2, 5, 8}, {0, 4, 8}, {2, 4, 6}};
-
-  // 1. Try to win
-  for (const auto &combo : wins) {
-    int countAI = 0, empty = -1;
-    for (int idx : combo) {
-      if (board[idx] == String(aiSymbol))
-        countAI++;
-      else if (board[idx] == "**")
-        empty = idx;
-    }
-    if (countAI == 2 && empty != -1)
-      return empty;
-  }
-
-  // 2. Block opponent
-  for (const auto &combo : wins) {
-    int countPlayer = 0, empty = -1;
-    for (int idx : combo) {
-      if (board[idx] == String(playerSymbol))
-        countPlayer++;
-      else if (board[idx] == "**")
-        empty = idx;
-    }
-    if (countPlayer == 2 && empty != -1)
-      return empty;
-  }
-
-  // 3. Take center
-  if (board[4] == "**")
-    return 4;
-
-  // 4. Take a corner
-  for (int i : {0, 2, 6, 8}) {
-    if (board[i] == "**")
-      return i;
-  }
-
-  // 5. Take any side
-  for (int i : {1, 3, 5, 7}) {
-    if (board[i] == "**")
-      return i;
-  }
-
-  // If somehow none of these work
-  return -1;
-}
-
 // ####################################################################################################
 //  Audio Logic
 // ####################################################################################################
 
-// ========== Placing Marker ==========
+// ========== Placing Marker ========== //
 void playMoveSound() {
   tone(SPEAKER_PIN, 660, 100); // Frequency, Duration
 }
 
-// ========== Winning sound ==========
+// ========== Winning sound ========== //
 void playWinSound() {
   tone(SPEAKER_PIN, 880, 300);
   delay(100);
   tone(SPEAKER_PIN, 990, 300);
 }
 
-// ========== Error sound ==========
+// ========== Error sound ========== //
 void playErrorSound() { tone(SPEAKER_PIN, 300, 300); }
 
 // ####################################################################################################
 //  Bluetooth Logic
 // ####################################################################################################
 
-// ========== Generate Tic Tac Toe State String ==========
+// ========== Generate Tic Tac Toe State String ========== //
 String generateTicTacToeStateString() {
   String state = "ttt@";
 
@@ -1021,7 +1053,7 @@ String generateTicTacToeStateString() {
   return state;
 }
 
-// ========== Reads Tic Tac Toe State String ==========
+// ========== Reads Tic Tac Toe State String ========== //
 void readTicTacToeString(String oldState, const char *data) {
   String input = String(data);
   input.trim();              // Clean newline characters

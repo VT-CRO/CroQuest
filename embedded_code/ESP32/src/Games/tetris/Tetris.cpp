@@ -3,6 +3,9 @@
 #include "SettingsMenu/AudioMenu/Audio.hpp"
 #include <unordered_map>
 
+// Speaker PIN
+#define SPEAKER_PIN 21
+
 // Tetris States
 enum State {
   HOMESCREEN,
@@ -168,6 +171,12 @@ static int findShadowPieceY();
 static void startNewGame();
 static void clearGrid();
 static void clearRow();
+
+static void playMoveSound();
+static void playRotateSound();
+static void playDropSound();
+static void playClearSound();
+static void playGameOverSound();
 
 static unsigned long prevBlockFall;
 static bool bottomCollision;
@@ -339,9 +348,10 @@ static void lockPieceToGrid() {
 
 // MAIN LOGIC FOR FALLING PIECES + COLLISIONS
 static void singlePieceLogic() {
-  if(bottomCollision){
+  if (bottomCollision) {
     if (setcurrentPiece()) {
       drawPiece(shadowPiece.color, shadowPiece);
+      playGameOverSound();
       // Delay added to make sure the player knows it's gameover
       delay(500);
       currentState = ENDSCREEN;
@@ -359,11 +369,12 @@ static void singlePieceLogic() {
     }
     spawnPiece(random(0, 7));
     drawNextPiece();
-  
+
     drawPiece(currentPiece.color, currentPiece);
+    playMoveSound();
     drawPiece(shadowPiece.color, shadowPiece, true);
     bottomCollision = false;
-  }else{
+  } else {
     if (millis() - lastButtonPressTime > buttonDebounceDelay) {
       // Movies pieces to the right
       if (right.isPressed()) {
@@ -408,6 +419,7 @@ static void singlePieceLogic() {
         drawPiece(TFT_BLACK, currentPiece);
         tryRotatePieceClockwise();
         drawPiece(currentPiece.color, currentPiece);
+        playRotateSound();
 
         drawPiece(TFT_BLACK, shadowPiece, true);
         shadowPiece.rotation = currentPiece.rotation;
@@ -428,6 +440,7 @@ static void singlePieceLogic() {
         currentPiece.y = shadowPiece.y;
         currentPiece.x = shadowPiece.x;
         lockPieceToGrid();
+        playDropSound();
         drawPiece(currentPiece.color,
                   currentPiece); // draw new location of the piece
         clearRow();
@@ -501,6 +514,7 @@ static void clearRow() {
       }
       lines++;
       score += 100;
+      playClearSound();
     }
   }
   drawLines();
@@ -944,4 +958,36 @@ static void drawNextPiece() {
       }
     }
   }
+}
+
+static void playMoveSound() {
+  playTone(700, volume); // gentle movement blip
+  delay(25);
+  playTone(0, 0);
+}
+
+static void playRotateSound() {
+  playTone(850, volume); // slightly higher for rotate
+  delay(25);
+  playTone(0, 0);
+}
+
+static void playDropSound() {
+  playTone(600, volume); // deeper drop tone
+  delay(40);
+  playTone(0, 0);
+}
+
+static void playClearSound() {
+  playTone(1200, volume); // clear row "ping"
+  delay(80);
+  playTone(0, 0);
+}
+
+static void playGameOverSound() {
+  playTone(400, volume);
+  delay(200);
+  playTone(300, volume);
+  delay(200);
+  playTone(0, 0);
 }
