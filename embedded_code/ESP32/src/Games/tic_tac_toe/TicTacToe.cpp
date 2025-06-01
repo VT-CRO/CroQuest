@@ -85,6 +85,9 @@ uint16_t orange_color = tft.color565(0xFF, 0x70, 0x00);
 int xWins = 0;
 int oWins = 0;
 
+// update
+volatile bool update = false;
+
 // TODO: Numpad w/ pointers to functions & Game State are temporary)
 static NumPad<State> pad(drawHomeScreen, drawAllPlaying, &game_state,
                          HOMESCREEN, SINGLE_PLAYER);
@@ -115,6 +118,9 @@ void runTicTacToe() {
   drawing.clearCache();
   drawing.clearSprite();
   drawing.deleteSprite();
+
+  //clear update bool
+  update = false;
 
   // reset game
   for (int i = 0; i < 9; i++)
@@ -205,7 +211,9 @@ void handleTicTacToeFrame() {
 
           // Now safely show code
           HostGame::showCode(String(code.c_str()));
-          HostGame::loopUntilConnected();
+
+          // Host never leaving this function
+          // HostGame::loopUntilConnected();
 
           // Check if user exited
           if (getExitFlag()) {
@@ -267,14 +275,14 @@ void handleTicTacToeFrame() {
 
     BluetoothCentral &central = BluetoothManager::getCentral();
 
-    // Receive updates from client (if there are any)
-    central.pollDevices();
+    // // Receive updates from client (if there are any)
+    // central.pollDevices();
 
-    // Send all the game state to peripheral devices
-    String gameState = generateTicTacToeStateString();
-    for (auto *client : central.getConnectedClients()) {
-      central.sendToDevice(client, gameState.c_str());
-    }
+    // // Send all the game state to peripheral devices
+    // String gameState = generateTicTacToeStateString();
+    // for (auto *client : central.getConnectedClients()) {
+    //   central.sendToDevice(client, gameState.c_str());
+    // }
   }
 
   // ================== MULTIPLAYER_PLAYING State ===================
@@ -290,89 +298,143 @@ void handleTicTacToeFrame() {
   }
 
   if (game_state == HOST_SCREEN || game_state == MULTIPLAYER_PLAYING) {
-    if (!roundEnded && millis() - lastMoveTime > moveDelay / 2) {
-      if (up.isPressed() && cursorIndex >= 3) {
-        cursorIndex -= 3;
-        lastMoveTime = millis();
-      } else if (down.isPressed() && cursorIndex <= 5) {
-        cursorIndex += 3;
-        lastMoveTime = millis();
-      } else if (left.isPressed() && cursorIndex % 3 != 0) {
-        cursorIndex -= 1;
-        lastMoveTime = millis();
-      } else if (right.isPressed() && cursorIndex % 3 != 2) {
-        cursorIndex += 1;
-        lastMoveTime = millis();
-      }
-    }
-
-    bool selectPressed = A.wasJustPressed();
-
-    if (!roundEnded && selectPressed && !buttonPreviouslyPressed &&
-        board[cursorIndex] == "**") {
-      if (moveCount >= 6) {
-        int oldIndex = moveQueue[0].index;
-        board[oldIndex] = "**";
-        for (int i = 1; i < 6; i++)
-          moveQueue[i - 1] = moveQueue[i];
-        moveCount = 5;
-      }
-
-      playMoveSound();
-
-      board[cursorIndex] = String(currentPlayer);
-      moveQueue[moveCount].index = cursorIndex;
-      moveQueue[moveCount].symbol = currentPlayer;
-      moveCount++;
-
-      currentPlayer = (currentPlayer == 'X') ? 'O' : 'X';
-      checkWinner();
-
+    
+    // Used for updating the screen after a player wins
+    if(update){
       drawAllPlaying();
       drawWinLine();
       if (roundEnded) {
         playWinSound();
         drawWinnerMessage();
       }
+      update = false;
+    }
 
-      // After move, send state
-      String newState = generateTicTacToeStateString();
+    tft.setTextSize(2);
+    tft.setTextDatum(MC_DATUM);
 
-      Serial.println("HOST SENDING: ");
-      Serial.println(newState);
+    if(currentPlayer == 'O' && game_state == HOST_SCREEN || currentPlayer == 'X' && game_state == MULTIPLAYER_PLAYING){
+      tft.drawString("Waiting...", tft.width() / 2, tft.height() - 10);
+    }
+    else if(currentPlayer == 'X' && game_state == HOST_SCREEN){
+      tft.drawString(" X's Turn ", tft.width() / 2, tft.height() - 10);
+    }
+    else if(currentPlayer == 'O' && game_state == MULTIPLAYER_PLAYING){
+      tft.drawString(" O's Turn  ", tft.width() / 2, tft.height() - 10);
+    }
 
-      if (game_state == HOST_SCREEN) {
-        BluetoothCentral &central = BluetoothManager::getCentral();
-        for (auto *client : central.getConnectedClients()) {
-          central.sendToDevice(client, newState.c_str());
+    if(currentPlayer == 'X' && game_state == HOST_SCREEN || currentPlayer == 'O' && game_state == MULTIPLAYER_PLAYING){
+      if (!roundEnded && millis() - lastMoveTime > moveDelay / 2) {
+        if (up.isPressed() && cursorIndex >= 3) {
+          cursorIndex -= 3;
+          lastMoveTime = millis();
+        } else if (down.isPressed() && cursorIndex <= 5) {
+          cursorIndex += 3;
+          lastMoveTime = millis();
+        } else if (left.isPressed() && cursorIndex % 3 != 0) {
+          cursorIndex -= 1;
+          lastMoveTime = millis();
+        } else if (right.isPressed() && cursorIndex % 3 != 2) {
+          cursorIndex += 1;
+          lastMoveTime = millis();
         }
-      } else if (game_state == MULTIPLAYER_PLAYING) {
-
+      }
+  
+      bool selectPressed = A.wasJustPressed();
+  
+      if (!roundEnded && selectPressed && !buttonPreviouslyPressed &&
+          board[cursorIndex] == "**") {
+        if (moveCount >= 6) {
+          int oldIndex = moveQueue[0].index;
+          board[oldIndex] = "**";
+          for (int i = 1; i < 6; i++)
+            moveQueue[i - 1] = moveQueue[i];
+          moveCount = 5;
+        }
+        playMoveSound();
+    
+        board[cursorIndex] = String(currentPlayer);
+        moveQueue[moveCount].index = cursorIndex;
+        moveQueue[moveCount].symbol = currentPlayer;
+        moveCount++;
+    
+        currentPlayer = (currentPlayer == 'X') ? 'O' : 'X';
+        checkWinner();
+    
+        drawAllPlaying();
+        drawWinLine();
+        if (roundEnded) {
+          playWinSound();
+          drawWinnerMessage();
+        }
+    
+        // After move, send state
+        String newState = generateTicTacToeStateString();
+    
         Serial.println("HOST SENDING: ");
         Serial.println(newState);
-
-        BluetoothPeripheral &peripheral = BluetoothManager::getPeripheral();
-        peripheral.sendAction(newState.c_str());
+    
+        if (game_state == HOST_SCREEN) {
+          BluetoothCentral &central = BluetoothManager::getCentral();
+          for (auto *client : central.getConnectedClients()) {
+            central.sendToDevice(client, newState.c_str());
+          }
+        } else if (game_state == MULTIPLAYER_PLAYING) {
+    
+          Serial.println("HOST SENDING: ");
+          Serial.println(newState);
+    
+          BluetoothPeripheral &peripheral = BluetoothManager::getPeripheral();
+          peripheral.sendAction(newState.c_str());
+        }
+    
+        delay(400);
+      } else if (!roundEnded && selectPressed && !buttonPreviouslyPressed &&
+                 board[cursorIndex] != "**") {
+        playErrorSound();
       }
-
-      delay(400);
-    } else if (!roundEnded && selectPressed && !buttonPreviouslyPressed &&
-               board[cursorIndex] != "**") {
-      playErrorSound();
+    
+      buttonPreviouslyPressed = selectPressed;
+      // Redraw when moving or selecting
+      if (cursorIndex != lastCursor || selectPressed) {
+        drawAllPlaying();
+        drawWinLine();
+        if (roundEnded) {
+          playWinSound();
+          drawWinnerMessage();
+        }
+        lastCursor = cursorIndex;
+      }
     }
 
-    buttonPreviouslyPressed = selectPressed;
-
-    // Redraw when moving or selecting
-    if (cursorIndex != lastCursor || selectPressed) {
+    // Auto Restart
+    if (roundEnded && millis() - winTime >= 5000 && xWins < 2 && oWins < 2) {
+      for (int i = 0; i < 9; i++)
+        board[i] = "**";
+      currentPlayer = 'X';
+      cursorIndex = 0;
+      lastCursor = -1;
+      winner = 'N';
+      winCombo[0] = winCombo[1] = winCombo[2] = -1;
+      roundEnded = false;
+      moveCount = 0;
+      tft.fillScreen(orange_color);
       drawAllPlaying();
-      drawWinLine();
-      if (roundEnded) {
-        playWinSound();
-        drawWinnerMessage();
-      }
-      lastCursor = cursorIndex;
+    } else if (xWins >= 2 || oWins >= 2) {
+      game_state = GAMEOVER_SCREEN;
+      for (int i = 0; i < 9; i++)
+        board[i] = "**";
+      currentPlayer = 'X';
+      cursorIndex = 0;
+      lastCursor = -1;
+      winner = 'N';
+      winCombo[0] = winCombo[1] = winCombo[2] = -1;
+      roundEnded = false;
+      moveCount = 0;
+      // Clear the screen with orange background
+      tft.fillScreen(orange_color);
     }
+
   }
 
   // ================== SINGLE_PLAYER State ===================
@@ -1113,11 +1175,24 @@ void readTicTacToeString(String oldState, const char *data) {
     line++;
   }
 
-  checkWinner();
-  drawAllPlaying();
-  drawWinLine();
-  if (roundEnded) {
-    playWinSound();
-    drawWinnerMessage();
+  //Used to update the winner
+  if(!update){
+    if(winner == 'N'){
+      checkWinner();
+      if(winner == 'O' || winner == 'X')
+        update = true;
+    }
   }
+
+  /////////// These functions seem to mess up the host display - 
+  // could have something to do with them not being async safe
+  // I'm not too sure ////////////////////////
+
+  // checkWinner();
+  // drawAllPlaying();
+  // drawWinLine();
+  // if (roundEnded) {
+  //   playWinSound();
+  //   drawWinnerMessage();
+  // }
 }

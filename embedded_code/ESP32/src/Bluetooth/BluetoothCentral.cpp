@@ -120,8 +120,11 @@ void BluetoothCentral::connectToDevices() {
             // String confirmedState = generateTicTacToeStateString();
 
             // 🖼️ Step 3: Draw the updated board
-            drawAllPlaying();
-            drawWinLine();
+
+            // I've also commented out these lines, and will only call them in TictacToe
+            // Unless there is a better solution
+            // drawAllPlaying();
+            // drawWinLine();
 
             // 📣 Step 4: Re-broadcast the updated board state to all clients
             BluetoothCentral &central = BluetoothManager::getCentral();
