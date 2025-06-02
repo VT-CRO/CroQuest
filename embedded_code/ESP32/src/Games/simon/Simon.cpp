@@ -10,6 +10,7 @@ void drawSimonScore();
 void highlightSimonButton(int buttonId);
 void drawSimonHomeSelection();
 void drawSimonTriangleOverlay(int buttonId);
+static void drawHighscore();
 
 // ========== Logic ==========
 void simonGenerateSequence();
@@ -49,6 +50,9 @@ SimonState simon_game_state = SIMON_HOMESCREEN;
 int sequence[100];      // Sequence storage
 int sequenceLength = 0; // Current sequence length
 int playerPos = 0;      // Player's current position in the sequence
+static int highscore = 0;
+int playerScore = 0;
+bool multiplayer = false;
 
 // Timing variables
 unsigned long lastButtonPressTime = 0;
@@ -77,11 +81,6 @@ int simonSelection = 0;
 int simonsubselection = 0;
 bool start = true;
 
-// MULTIPLAYER + PLAYER SCORE + PLAYER NAMES
-bool multiplayer = false;
-
-int playerScore = 0;
-
 // Numpad
 static NumPad<SimonState> pad(drawSimonHomeScreen, simonStartNewGame,
                               &simon_game_state, SIMON_HOMESCREEN,
@@ -108,6 +107,11 @@ void runSimon() {
   // Save position for reuse
   diskX = diskCenterX - 120; // Change if you want to move the disk
   diskY = diskCenterY - 120;
+
+  //clear sprite and cache
+  drawing.clearCache();
+  drawing.clearSprite();
+  drawing.deleteSprite();
 
   // Draw the disk
   drawing.drawSdJpeg(DISK_PATH, diskX, diskY); // First render (first = true)
@@ -225,11 +229,10 @@ void handleSimonFrame() {
 
   case SIMON_GAMEOVER_SCREEN: {
     // ENDSCREEN HANDLING
-    std::vector<String> playerNames = {settings.name, settings.name, "BILLY",
-                                       "BOB"};    // TEMP
-    std::vector<int> playerScores = {2, 2, 1, 1}; // TEMP
+    std::vector<String> playerNames = {settings.name};
+    std::vector<int> playerScores = {playerScore};
 
-    EndScreen endScreen(playerNames, playerScores, true, settings.name,
+    EndScreen endScreen(playerNames, playerScores, multiplayer, settings.name,
                         playerScore);
     if (endScreen.handleUserInput()) {
       simonStartNewGame(); // handleUserInput returns true : game restarts
@@ -271,8 +274,9 @@ void simonStartNewGame() {
   // Draws the disk
   drawSimonGameScreen();
 
-  // Print Score
+  // Print Score and highscore
   drawSimonScore();
+  drawHighscore();
 
   // Player Status
   drawPlayerStatusTable();
@@ -334,6 +338,17 @@ void simonCheckInput(int buttonPressed) {
     playerFailed = true;     // Mark failure
     drawPlayerStatusTable(); // Shows table
     delay(400);              // Let player visualize the table
+
+    if(playerScore > highscore){
+      // Add new highscore
+      highscore = playerScore;
+      File file = SD.open("/simon/highscore.txt", FILE_WRITE);
+      if (file) {
+        file.println(highscore);
+        file.close();
+      }
+    }
+
     simonGameOver();
   }
 }
@@ -373,21 +388,6 @@ void drawSimonGameScreen() {
   drawing.clearSprite();
   drawing.drawSdJpeg(DISK_PATH, diskX, diskY);
   drawing.pushSprite(true);
-}
-
-void drawSimonScore() {
-  const int scoreX = 5;                  // Left margin
-  const int scoreY = SCREEN_HEIGHT - 30; // Bottom of screen
-  const int padding = 4;
-
-  // Set text properties
-  tft.setTextColor(TFT_WHITE, TFT_BLACK);
-  tft.setTextSize(2);
-  tft.setTextDatum(TL_DATUM); // Top-left corner
-
-  // Draw score string
-  String scoreText = "Score: " + String(playerScore);
-  tft.drawString(scoreText, scoreX + padding, scoreY);
 }
 
 void highlightSimonButton(int buttonId) {
@@ -584,4 +584,37 @@ static void playGameOverSound() {
   delay(duration);
 
   playTone(0, 0); // stop tone
+}
+
+// ============ HIGHSCORE and SCORE DRAWING =============== //
+static void drawHighscore(){
+  File file = SD.open("/simon/highscore.txt", "r");
+
+  if (file) {
+    highscore = file.parseInt();
+    file.close();
+  }
+
+  const int scoreX = 5;                  // Left margin
+  const int scoreY = SCREEN_HEIGHT - 30; // Bottom of screen
+  const int padding = 4;
+
+  // Set text properties
+  tft.setTextColor(TFT_WHITE, TFT_BLACK);
+  tft.setTextSize(2);
+  tft.setTextDatum(TL_DATUM); // Top-left corner
+
+  tft.setTextDatum(TL_DATUM);
+  tft.drawString("Highscore: " + String(highscore), scoreX + padding, scoreY);
+}
+
+void drawSimonScore() {
+  // Set text properties
+  tft.setTextColor(TFT_WHITE, TFT_BLACK);
+  tft.setTextSize(2);
+  tft.setTextDatum(TL_DATUM); // Top-left corner
+  
+  // Draw score string
+  String scoreText = "Score: " + String(playerScore);
+  tft.drawString(scoreText, 10, 10);
 }

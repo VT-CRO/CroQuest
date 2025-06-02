@@ -34,6 +34,7 @@ static const unsigned long MATCH_DELAY = 1000;
 static bool waitingForWinChoice = false;
 static int movesThisLevel = 0;
 static int totalMoves = 0;
+static int totalTime = 0;
 static unsigned long levelStartTime = 0;
 static int timeRemaining = 0;
 static bool gameOver = false;
@@ -77,6 +78,11 @@ void runMemory() {
 
   //reset level
   currentLevel = 0;
+
+  //clear sprite and cache
+  drawing.clearCache();
+  drawing.clearSprite();
+  drawing.deleteSprite();
 
   showHomeScreen();
   for (;;) {
@@ -130,6 +136,7 @@ static void runMemoryFrame() {
         if (currentLevel == NUM_LEVELS - 1) {
           totalMoves = 0;
           currentLevel = 0;
+          totalTime = 0;
         }
 
         else {
@@ -434,27 +441,35 @@ static void checkWinCondition() {
         return;
     }
   }
+  // Update total time taken for this level
+  totalTime += (cardRows * cardCols * 5) - timeRemaining;
   waitingForWinChoice = true;
   totalMoves += movesThisLevel;
   drawTiles();
+
+  // Draw centered UI
   tft.setTextColor(TFT_BLACK);
   tft.setTextDatum(MC_DATUM);
+
+  // Title
   tft.setTextSize(3);
-  tft.drawString("Level Complete!", tft.width() / 2, tft.height() / 2 - 40);
+  tft.drawString("Level Complete!", tft.width() / 2, tft.height() / 2 - 70);
 
+  // Game stats
   tft.setTextSize(2);
-  tft.drawString("Total Moves: " + String(totalMoves), tft.width() / 2,
-                 tft.height() / 2 - 10);
+  tft.drawString("Total Time: " + String(totalTime) + "s", tft.width() / 2,
+               tft.height() / 2 - 30);
+  tft.drawString("Total Moves: " + String(totalMoves), tft.width() / 2, tft.height() / 2 - 5);
 
+  // Options
   if (currentLevel == NUM_LEVELS - 1) {
-    tft.drawString("LEFT: Replay", tft.width() / 2, tft.height() / 2 + 70);
-    tft.drawString("RIGHT: Restart", tft.width() / 2, tft.height() / 2 + 95);
+    tft.drawString("LEFT: Replay", tft.width() / 2, tft.height() / 2 + 40);
+    tft.drawString("RIGHT: Restart", tft.width() / 2, tft.height() / 2 + 65);
+  } else {
+    tft.drawString("LEFT: Replay", tft.width() / 2, tft.height() / 2 + 40);
+    tft.drawString("RIGHT: Next", tft.width() / 2, tft.height() / 2 + 65);
   }
 
-  else {
-    tft.drawString("LEFT: Replay", tft.width() / 2, tft.height() / 2 + 20);
-    tft.drawString("RIGHT: Next", tft.width() / 2, tft.height() / 2 + 45);
-  }
   playLevelCompleteSound();
   movesThisLevel = 0;
 }

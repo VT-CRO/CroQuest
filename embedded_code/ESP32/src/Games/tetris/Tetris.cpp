@@ -200,12 +200,14 @@ void runTetris() {
   // Needs to be true to generate the first piece
   bottomCollision = true;
 
-  // Clear Screen and drawing object
-  tft.fillScreen(TFT_BLACK);
-  drawHomeScreen();
+  //clear sprite and cache
   drawing.clearCache();
   drawing.clearSprite();
   drawing.deleteSprite();
+
+  // Clear Screen and drawing object
+  tft.fillScreen(TFT_BLACK);
+  drawHomeScreen();
 
   // Loop
   while (true) {

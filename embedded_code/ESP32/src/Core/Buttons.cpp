@@ -1,11 +1,11 @@
 // Buttons.cpp
 #include "Buttons.hpp"
 
-Button A(22, "A", DIGITAL);
+// Button A(22, "A", DIGITAL);
 
 // Working buttons (hopefully)
 
-// Button A(36, "A", ANALOG_INPUT, 100, 1800);
+Button A(36, "A", ANALOG_INPUT, 100, 1800);
 Button B(36, "B", ANALOG_INPUT, 2800, 4095);
 Button Start(36, "Start", ANALOG_INPUT, 1801, 2600);
 

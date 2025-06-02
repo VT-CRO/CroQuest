@@ -44,7 +44,7 @@ void EndScreen::gameOverScreen() {
     String resultText;
     uint16_t resultColor;
 
-    if (multiplayer) {
+    if (playerNames.size() > 1) {
         if (score == highScore) {
             if (highScoreCount == 1) {
                 resultText = "YOU WON!";

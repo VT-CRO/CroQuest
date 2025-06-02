@@ -1,6 +1,7 @@
 // src/Games/breakout/Breakout.cpp
 
 #include "Breakout.hpp"
+#include "EndScreen/EndScreen.hpp"
 
 // ####################################################################################################
 //  Global Definitions
@@ -70,6 +71,11 @@ void runBreakout() {
   breakout_subselection = 0;
   breakoutGameOverSelection = 0;
 
+  //clear sprite and cache
+  drawing.clearCache();
+  drawing.clearSprite();
+  drawing.deleteSprite();
+
   // === Initialize game data ===
   lives = 3;
   score = 0;
@@ -84,9 +90,6 @@ void runBreakout() {
 
   // === Ball will be placed above the paddle ===
   resetBall(); // <-- uses `ball` and `prev_ball` structs
-
-  // === Initialize bricks ===
-  initBricks();
 
   updateAllButtons();
 
@@ -186,35 +189,59 @@ void handleBreakoutFrame() {
 
   case BREAKOUT_PLAYING:
     if (millis() - lastFrameTime > 16) {
+      lastFrameTime = millis();
       updateBreakoutGame();
       drawBreakoutFrame();
-      lastFrameTime = millis();
     }
     break;
 
-  case BREAKOUT_WIN:
-    tft.setTextDatum(MC_DATUM);
-    tft.setTextColor(TFT_GREEN);
-    tft.setTextSize(3);
-    tft.fillScreen(TFT_BLACK);
-    tft.drawString("You Win!", SCREEN_W / 2, SCREEN_H / 2);
-    if (Start.wasJustPressed()) {
-      currentBreakoutState = BREAKOUT_HOMESCREEN;
-      tft.fillScreen(TFT_BLACK);
-    }
-    break;
+  case BREAKOUT_WIN:{
+    // ENDSCREEN HANDLING
+    std::vector<String> playerNames = {settings.name, "Win"};
+    std::vector<int> playerScores = {score, -1};
 
-  case BREAKOUT_GAMEOVER:
-    tft.setTextDatum(MC_DATUM);
-    tft.setTextColor(TFT_RED);
-    tft.setTextSize(3);
-    tft.fillScreen(TFT_BLACK);
-    tft.drawString("Game Over", SCREEN_W / 2, SCREEN_H / 2);
-    if (Start.wasJustPressed()) {
+    EndScreen endScreen(playerNames, playerScores, false, settings.name,
+                        score);
+    if (endScreen.handleUserInput()) {
+          currentBreakoutState = BREAKOUT_PLAYING;
+          paddle.x = SCREEN_W / 2 - PADDLE_WIDTH / 2;
+          lives = 3;
+          score = 0;
+          lastLives = -1;
+          lastScore = -1;
+          initBricks();
+          resetBall(); // handleUserInput returns true : game restarts
+    } else {
       currentBreakoutState = BREAKOUT_HOMESCREEN;
-      tft.fillScreen(TFT_BLACK);
+      drawBreakoutHomeScreen(); // handleUserInput returns false : returns to game
+                             // menu
     }
     break;
+  }
+
+  case BREAKOUT_GAMEOVER: {
+    // ENDSCREEN HANDLING
+    std::vector<String> playerNames = {settings.name};
+    std::vector<int> playerScores = {score};
+
+    EndScreen endScreen(playerNames, playerScores, false, settings.name,
+                        score);
+    if (endScreen.handleUserInput()) {
+          currentBreakoutState = BREAKOUT_PLAYING;
+          paddle.x = SCREEN_W / 2 - PADDLE_WIDTH / 2;
+          lives = 3;
+          score = 0;
+          lastLives = -1;
+          lastScore = -1;
+          initBricks();
+          resetBall(); // handleUserInput returns true : game restarts
+    } else {
+      currentBreakoutState = BREAKOUT_HOMESCREEN;
+      drawBreakoutHomeScreen(); // handleUserInput returns false : returns to game
+                             // menu
+    }
+    break;
+  }
 
   case BREAKOUT_GAMEOVER_SCREEN:
     if (millis() - breakout_lastButtonPressTime > 150) {
@@ -405,9 +432,14 @@ void updateBall(Ball *b, Paddle *paddle) {
   b->x += b->vx;
   b->y += b->vy;
 
-  // Wall collision
-  if (b->x <= 0 || b->x + b->w >= SCREEN_W) {
-    b->vx *= -1;
+  // Wall collision //
+  if(b->x <= 0){ // Left Wall
+    b->x = 0;
+    b->vx = abs(b->vx);
+    playBounceSound();
+  }else if(b->x + b->w >= SCREEN_W){ // Right Wall
+    b->x = b->x - b->w;
+    b->vx = -abs(b->vx);
     playBounceSound();
   }
 
@@ -434,6 +466,12 @@ void updateBall(Ball *b, Paddle *paddle) {
                      (paddle->w / 2.0f);
     hitRatio =
         constrain(hitRatio, -0.9f, 0.9f); // Prevent flat horizontal bounces
+    
+    // Prevent center hits from going straight up/down
+    if (abs(hitRatio) < 0.1f) {
+      // Add small random offset to break center deadlock
+      hitRatio = (random(0, 2) == 0) ? -0.15f : 0.15f;
+    }
 
     b->vx = hitRatio * ballSpeed;
     b->vy = -sqrt(ballSpeed * ballSpeed - b->vx * b->vx);
