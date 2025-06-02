@@ -33,9 +33,6 @@ void JpegDrawing::jpegRender(int xpos, int ypos) {
   uint32_t max_y = JpegDec.height;
 
   if (!buffer_created) {
-    Serial.printf("Free heap: %u\n", ESP.getFreeHeap());
-    Serial.println(max_x);
-    Serial.println(max_y);
     createBuffer(max_x, max_y);
     x_pos = xpos;
     y_pos = ypos;
@@ -91,22 +88,21 @@ JpegDrawing::JpegDrawing(TFT_eSPI &tft) : tft(tft), sprite(&tft) {
 
 void JpegDrawing::drawSdJpeg(const char *filename, int xpos, int ypos) {
   std::string key(filename);
-  
+
   if (spriteCache.count(key)) {
-    //Set cached sprite location
+    // Set cached sprite location
     x_pos = xpos;
     y_pos = ypos;
 
-    TFT_eSprite* cached = spriteCache[key];
+    TFT_eSprite *cached = spriteCache[key];
 
     // Reuse internal sprite buffer
     createBuffer(cached->width(), cached->height());
 
-    //Replace w/ cached sprite - will then be able to call pushSprite(...)
+    // Replace w/ cached sprite - will then be able to call pushSprite(...)
     cached->pushToSprite(&sprite, 0, 0);
     return;
   }
-
 
   // Open the named file (the Jpeg decoder library will close it)
   File jpegFile =
@@ -248,9 +244,10 @@ void JpegDrawing::setFirst(bool value) { first = value; } // IMPORTANT
 
 void JpegDrawing::addToCache(const char *path) {
   std::string key(path);
-  if (spriteCache.count(key)) return;
+  if (spriteCache.count(key))
+    return;
 
-  TFT_eSprite* cached = new TFT_eSprite(&tft);
+  TFT_eSprite *cached = new TFT_eSprite(&tft);
   cached->setColorDepth(sprite.getColorDepth());
   cached->createSprite(sprite.width(), sprite.height());
   cached->setSwapBytes(sprite.getSwapBytes());
@@ -268,5 +265,6 @@ void JpegDrawing::clearCache() {
   spriteCache.clear();
 }
 
-
-
+TFT_eSprite *JpegDrawing::getSprite() {
+  return &sprite; // Assuming `sprite` is your TFT_eSprite inside JpegDrawing
+}

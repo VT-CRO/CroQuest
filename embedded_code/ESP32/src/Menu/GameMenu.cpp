@@ -11,6 +11,8 @@
 #include "Menu/GameSetup.hpp"
 #include "SettingsMenu/Settings/Settings.hpp"
 
+bool shouldExitToMenu = false;
+
 using namespace MenuLayout; // Use layout constants
 static bool inSettingsMode = false;
 

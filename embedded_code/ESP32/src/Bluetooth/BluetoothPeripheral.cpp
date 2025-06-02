@@ -129,26 +129,37 @@ void BluetoothPeripheral::ServerCallbacks::onDisconnect(
   Serial.println("🔌 Disconnected.");
   ConnectionScreen::showMessage("Disconnected from Host");
 
+  delay(1000); // Optional: brief pause before returning
+
+  shouldExitToMenu = true; // Triggers exit in runTicTacToe()
+
   if (parent->advertising) {
-    delay(1000);
-    parent->advertising->start();
+    parent->advertising->start(); // Optional: resume advertising if desired
   }
 }
 
 // ###################### Send Messages #####################
-void BluetoothPeripheral::sendAction(const std::string &message) {
+bool BluetoothPeripheral::sendAction(const std::string &message) {
   if (!characteristic) {
     Serial.println("⚠️ Cannot send: characteristic is null.");
-    return;
+    return false;
   }
 
   try {
     characteristic->setValue(message);
-    characteristic->notify();
-    delay(50);
+    bool success = characteristic->notify();
+
+    if (!success) {
+      Serial.println("❌ Notify failed — client likely disconnected.");
+      return false;
+    }
+
+    delay(50); // optional, helps reduce congestion
     Serial.print("📤 Sent action: ");
     Serial.println(message.c_str());
+    return true;
   } catch (...) {
     Serial.println("❌ Exception while sending action.");
+    return false;
   }
 }

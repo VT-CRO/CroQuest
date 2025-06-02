@@ -5,7 +5,7 @@
 #include <TFT_eSPI.h>
 
 // Flag to track exit request
-static bool shouldExitToMenu = false;
+extern bool shouldExitToMenu;
 
 // Internal debounce timer
 inline bool checkStartButtonAndExit(TFT_eSPI &tft) {

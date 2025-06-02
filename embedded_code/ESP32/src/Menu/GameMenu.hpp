@@ -13,6 +13,8 @@
 // #include "SettingsMenu/BrightnessMenu/Brightness.hpp"
 #include "SettingsMenu/Settings/Settings.hpp"
 
+extern bool shouldExitToMenu;
+
 // === Game Data Structure ===
 struct GameBox {
   const char *name;

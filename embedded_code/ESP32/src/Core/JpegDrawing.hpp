@@ -22,15 +22,17 @@ private:
 
   bool using_cached_data = false;
 
-  //Cached Sprites
-  std::map<std::string, TFT_eSprite*> spriteCache;
+  // Cached Sprites
+  std::map<std::string, TFT_eSprite *> spriteCache;
 
   bool createBuffer(int width, int height);
   void jpegRender(int xpos, int ypos);
-  
+
 public:
   // Constructor
   JpegDrawing(TFT_eSPI &tft);
+
+  TFT_eSprite *getSprite();
 
   // Public struct for image information
   struct ImageInfo {

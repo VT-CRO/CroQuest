@@ -51,6 +51,10 @@ enum State {
 bool multiplayerMode = false;
 static bool firstFrame = false;
 
+// Bluetooth Turns
+char localPlayerSymbol = 'X'; // default for host
+
+// Assets
 const char *BOARD_PATH = "/tic_tac_toe_assets/board.jpg";
 const char *X_PATH = "/tic_tac_toe_assets/x.jpg";
 const char *O_PATH = "/tic_tac_toe_assets/o.jpg";
@@ -205,7 +209,7 @@ void handleTicTacToeFrame() {
 
           // Now safely show code
           HostGame::showCode(String(code.c_str()));
-          HostGame::loopUntilConnected();
+          // HostGame::loopUntilConnected();
 
           // Check if user exited
           if (getExitFlag()) {
@@ -219,6 +223,8 @@ void handleTicTacToeFrame() {
           multiplayerMode = true;
 
           if (!BluetoothManager::getCentral().getConnectedClients().empty()) {
+            localPlayerSymbol = 'X';
+
             game_state = HOST_SCREEN;
             tft.fillScreen(orange_color);
             drawAllPlaying();
@@ -290,88 +296,103 @@ void handleTicTacToeFrame() {
   }
 
   if (game_state == HOST_SCREEN || game_state == MULTIPLAYER_PLAYING) {
-    if (!roundEnded && millis() - lastMoveTime > moveDelay / 2) {
-      if (up.isPressed() && cursorIndex >= 3) {
-        cursorIndex -= 3;
-        lastMoveTime = millis();
-      } else if (down.isPressed() && cursorIndex <= 5) {
-        cursorIndex += 3;
-        lastMoveTime = millis();
-      } else if (left.isPressed() && cursorIndex % 3 != 0) {
-        cursorIndex -= 1;
-        lastMoveTime = millis();
-      } else if (right.isPressed() && cursorIndex % 3 != 2) {
-        cursorIndex += 1;
-        lastMoveTime = millis();
-      }
-    }
+    if (localPlayerSymbol == currentPlayer) {
 
-    bool selectPressed = A.wasJustPressed();
-
-    if (!roundEnded && selectPressed && !buttonPreviouslyPressed &&
-        board[cursorIndex] == "**") {
-      if (moveCount >= 6) {
-        int oldIndex = moveQueue[0].index;
-        board[oldIndex] = "**";
-        for (int i = 1; i < 6; i++)
-          moveQueue[i - 1] = moveQueue[i];
-        moveCount = 5;
-      }
-
-      playMoveSound();
-
-      board[cursorIndex] = String(currentPlayer);
-      moveQueue[moveCount].index = cursorIndex;
-      moveQueue[moveCount].symbol = currentPlayer;
-      moveCount++;
-
-      currentPlayer = (currentPlayer == 'X') ? 'O' : 'X';
-      checkWinner();
-
-      drawAllPlaying();
-      drawWinLine();
-      if (roundEnded) {
-        playWinSound();
-        drawWinnerMessage();
-      }
-
-      // After move, send state
-      String newState = generateTicTacToeStateString();
-
-      Serial.println("HOST SENDING: ");
-      Serial.println(newState);
-
-      if (game_state == HOST_SCREEN) {
-        BluetoothCentral &central = BluetoothManager::getCentral();
-        for (auto *client : central.getConnectedClients()) {
-          central.sendToDevice(client, newState.c_str());
+      // Allow moving the selector
+      if (!roundEnded && millis() - lastMoveTime > moveDelay / 2) {
+        if (up.isPressed() && cursorIndex >= 3) {
+          cursorIndex -= 3;
+          lastMoveTime = millis();
+        } else if (down.isPressed() && cursorIndex <= 5) {
+          cursorIndex += 3;
+          lastMoveTime = millis();
+        } else if (left.isPressed() && cursorIndex % 3 != 0) {
+          cursorIndex -= 1;
+          lastMoveTime = millis();
+        } else if (right.isPressed() && cursorIndex % 3 != 2) {
+          cursorIndex += 1;
+          lastMoveTime = millis();
         }
-      } else if (game_state == MULTIPLAYER_PLAYING) {
+      }
+
+      bool selectPressed = A.wasJustPressed();
+
+      if (localPlayerSymbol != currentPlayer) {
+        Serial.printf("⏳ Not your turn. You are '%c' and it's '%c'\n",
+                      localPlayerSymbol, currentPlayer);
+        return;
+      }
+
+      if (!roundEnded && selectPressed && !buttonPreviouslyPressed &&
+          board[cursorIndex] == "**") {
+        if (moveCount >= 6) {
+          int oldIndex = moveQueue[0].index;
+          board[oldIndex] = "**";
+          for (int i = 1; i < 6; i++)
+            moveQueue[i - 1] = moveQueue[i];
+          moveCount = 5;
+        }
+
+        playMoveSound();
+
+        board[cursorIndex] = String(currentPlayer);
+        moveQueue[moveCount].index = cursorIndex;
+        moveQueue[moveCount].symbol = currentPlayer;
+        moveCount++;
+
+        currentPlayer = (currentPlayer == 'X') ? 'O' : 'X';
+        checkWinner();
+
+        drawAllPlaying();
+        drawWinLine();
+        if (roundEnded) {
+          playWinSound();
+          drawWinnerMessage();
+        }
+
+        // After move, send state
+        String newState = generateTicTacToeStateString();
 
         Serial.println("HOST SENDING: ");
         Serial.println(newState);
 
-        BluetoothPeripheral &peripheral = BluetoothManager::getPeripheral();
-        peripheral.sendAction(newState.c_str());
+        if (game_state == HOST_SCREEN) {
+          BluetoothCentral &central = BluetoothManager::getCentral();
+          for (auto *client : central.getConnectedClients()) {
+            if (!central.sendToDevice(client, newState.c_str())) {
+              Serial.println("❌ Failed to notify client. Disconnecting...");
+              ConnectionScreen::showMessage("Peripheral disconnected");
+              shouldExitToMenu = true;
+              return;
+            }
+          }
+        } else if (game_state == MULTIPLAYER_PLAYING) {
+          BluetoothPeripheral &peripheral = BluetoothManager::getPeripheral();
+          if (!peripheral.sendAction(newState.c_str())) {
+            ConnectionScreen::showMessage("Disconnected (Send Failed)");
+            shouldExitToMenu = true;
+            return;
+          }
+        }
+
+        delay(400);
+      } else if (!roundEnded && selectPressed && !buttonPreviouslyPressed &&
+                 board[cursorIndex] != "**") {
+        playErrorSound();
       }
 
-      delay(400);
-    } else if (!roundEnded && selectPressed && !buttonPreviouslyPressed &&
-               board[cursorIndex] != "**") {
-      playErrorSound();
-    }
+      buttonPreviouslyPressed = selectPressed;
 
-    buttonPreviouslyPressed = selectPressed;
-
-    // Redraw when moving or selecting
-    if (cursorIndex != lastCursor || selectPressed) {
-      drawAllPlaying();
-      drawWinLine();
-      if (roundEnded) {
-        playWinSound();
-        drawWinnerMessage();
+      // Redraw when moving or selecting
+      if (cursorIndex != lastCursor || selectPressed) {
+        drawAllPlaying();
+        drawWinLine();
+        if (roundEnded) {
+          playWinSound();
+          drawWinnerMessage();
+        }
+        lastCursor = cursorIndex;
       }
-      lastCursor = cursorIndex;
     }
   }
 
@@ -529,6 +550,7 @@ void handleTicTacToeFrame() {
       BluetoothManager::initPeripheral(tft);
       BluetoothPeripheral &peripheral = BluetoothManager::getPeripheral();
       peripheral.beginAdvertising(enteredCode);
+      localPlayerSymbol = 'O';
 
       pad.clearCode();
     }
@@ -582,6 +604,12 @@ void checkWinner() {
 
 // ========== Selector ========== //
 void highlightCursor(int index) {
+
+  if (index < 0 || index > 8) {
+    Serial.printf("⚠️ Invalid cursor index: %d\n", index);
+    return;
+  }
+
   int row = index / 3;
   int col = index % 3;
 
@@ -924,10 +952,28 @@ void drawHomescreenSelect() {
 
 // ========== Draw Moves ========== //
 void drawAllPlaying() {
+
   drawScoreboard();
   drawGrid();
+
   drawing.pushSprite();
-  highlightCursor(cursorIndex);
+
+  bool showCursor = false;
+
+  // Multiplayer: show cursor only if it's your turn and game is not over
+  if (multiplayerMode) {
+    showCursor = (localPlayerSymbol == currentPlayer && !roundEnded);
+  }
+  // SinglePlayer: always show cursor unless game ended
+  else {
+    showCursor = !roundEnded;
+  }
+
+  if (showCursor) {
+    highlightCursor(cursorIndex);
+  }
+
+  drawing.pushSprite();
 }
 
 // ========== Create Grid ========== //
@@ -1056,11 +1102,17 @@ String generateTicTacToeStateString() {
 // ========== Reads Tic Tac Toe State String ========== //
 void readTicTacToeString(String oldState, const char *data) {
   String input = String(data);
-  input.trim();              // Clean newline characters
-  input.replace("ttt@", ""); // Remove prefix
+  input.trim();
+  input.replace("ttt@", "");
 
-  // Example:
-  // 0,X,1,MGH;\n1,O,0,CRO;\n5;\nX;\nX0,**,...;\n4;
+  // === Clear Board and Queue ===
+  for (int i = 0; i < 9; i++)
+    board[i] = "**";
+  for (int i = 0; i < 6; i++) {
+    moveQueue[i].index = -1;
+    moveQueue[i].symbol = '*';
+  }
+  moveCount = 0;
 
   int line = 0;
   int i = 0;
@@ -1073,30 +1125,32 @@ void readTicTacToeString(String oldState, const char *data) {
 
     switch (line) {
     case 0:
-      break; // Player X info — optional
+      break; // Player X info
     case 1:
-      break; // Player O info — optional
+      break; // Player O info
     case 2:
-      break; // Best-of — optional
+      break; // Best-of
     case 3:
       currentPlayer = part.charAt(0);
       break;
+
     case 4: {
-      // Board state: X0,**,**,...
+      // Board state with aging: e.g., X0,O2,**,**,**,**,**,**,**;
       int moveIndex = 0;
-      moveCount = 0;
       for (int j = 0; j < 9; j++) {
         int comma = part.indexOf(',', moveIndex);
         String cell =
             part.substring(moveIndex, comma == -1 ? part.length() : comma);
 
-        if (cell != "**") {
+        if (cell != "**" && cell.length() == 2) {
           char symbol = cell.charAt(0);
-          board[j] = String(symbol);
+          int age = cell.charAt(1) - '0';
 
-          moveQueue[moveCount].index = j;
-          moveQueue[moveCount].symbol = symbol;
-          moveCount++;
+          board[j] = String(symbol);
+          moveQueue[age].index = j;
+          moveQueue[age].symbol = symbol;
+          if (age >= moveCount)
+            moveCount = age + 1;
         } else {
           board[j] = "**";
         }
@@ -1105,19 +1159,44 @@ void readTicTacToeString(String oldState, const char *data) {
       }
       break;
     }
+
     case 5:
-      cursorIndex = part.toInt();
+
+      // Only update cursorIndex if this ESP is the active player
+      if (localPlayerSymbol != currentPlayer) {
+        cursorIndex = part.toInt();
+      }
       break;
     }
 
     line++;
   }
 
+  // ✅ Redraw with full state
   checkWinner();
   drawAllPlaying();
   drawWinLine();
+
   if (roundEnded) {
     playWinSound();
     drawWinnerMessage();
+  }
+
+  // Enable multiplayer mode when parsing a multiplayer update
+  multiplayerMode = true;
+
+  // 🧪 Optional debug output
+  Serial.println("📋 Parsed board:");
+  for (int k = 0; k < 9; ++k) {
+    Serial.print(board[k]);
+    Serial.print(" ");
+    if (k % 3 == 2)
+      Serial.println();
+  }
+
+  Serial.println("🧠 Parsed moveQueue:");
+  for (int k = 0; k < moveCount; ++k) {
+    Serial.printf("Move %d: %c at %d\n", k, moveQueue[k].symbol,
+                  moveQueue[k].index);
   }
 }

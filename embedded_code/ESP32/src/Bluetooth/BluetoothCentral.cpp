@@ -73,6 +73,18 @@ void BluetoothCentral::scanAndConnectLoop(const std::string &accessCode) {
   Serial.println("✅ Scan-and-connect loop complete.");
 }
 
+// ###################### In case of Disconnect #####################
+class MyClientCallbacks : public NimBLEClientCallbacks {
+  void onDisconnect(NimBLEClient *client, int reason) override {
+    Serial.println("🔌 Peripheral disconnected.");
+    ConnectionScreen::showMessage("Peripheral disconnected.");
+
+    delay(1000); // Optional delay to let user see the message
+
+    shouldExitToMenu = true; // Trigger return to home menu
+  }
+};
+
 // ###################### Connect to All Devices #####################
 void BluetoothCentral::connectToDevices() {
   this->connectedClients.clear();
@@ -89,6 +101,9 @@ void BluetoothCentral::connectToDevices() {
                 device.getAddress().toString().c_str());
 
   NimBLEClient *client = NimBLEDevice::createClient();
+
+  client->setClientCallbacks(new MyClientCallbacks());
+
   if (client->connect(&device)) {
     Serial.printf("✅ Connected to %s\n", device.getName().c_str());
     this->connectedClients.push_back(client);
@@ -156,22 +171,35 @@ void BluetoothCentral::pollDevices() {}
 
 // ###################### Send Message to Specific Device
 // #####################
-void BluetoothCentral::sendToDevice(NimBLEClient *client,
+bool BluetoothCentral::sendToDevice(NimBLEClient *client,
                                     const std::string &message) {
-  if (!client || !client->isConnected())
-    return;
+  if (!client || !client->isConnected()) {
+    Serial.println("❌ Cannot send: client is null or disconnected.");
+    return false;
+  }
 
   NimBLERemoteService *service = client->getService(SERVICE_UUID);
-  if (!service)
-    return;
+  if (!service) {
+    Serial.println("❌ Cannot send: service not found.");
+    return false;
+  }
 
-  NimBLERemoteCharacteristic *charac =
+  NimBLERemoteCharacteristic *characteristic =
       service->getCharacteristic(CHARACTERISTIC_UUID);
-  if (charac && charac->canWrite()) {
-    charac->writeValue(message, false);
-    // Serial.printf("📤 Sent to [%s]: %s\n",
-    //               client->getPeerAddress().toString().c_str(),
-    //               message.c_str());
+  if (!characteristic || !characteristic->canNotify()) {
+    Serial.println("❌ Cannot send: invalid characteristic.");
+    return false;
+  }
+
+  try {
+    characteristic->writeValue(
+        message); // or setValue + notify() depending on setup
+    Serial.print("📤 Sent to client: ");
+    Serial.println(message.c_str());
+    return true;
+  } catch (...) {
+    Serial.println("❌ Exception while sending to client.");
+    return false;
   }
 }
 

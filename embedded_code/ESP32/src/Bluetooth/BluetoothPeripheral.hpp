@@ -28,7 +28,7 @@ public:
   setResponseHandler(std::function<std::string(const std::string &)> handler);
 
   // ###################### Send Messages #####################
-  void sendAction(const std::string &message);
+  bool sendAction(const std::string &message);
 
 private:
   TFT_eSPI &tft;

@@ -12,6 +12,7 @@
 #include "BluetoothManager.hpp"
 #include "ConnectionScreen.hpp"
 #include "Core/Buttons.hpp"
+#include "Menu/MenuReturn.hpp"
 
 // Include games
 #include "Games/tic_tac_toe/TicTacToe.hpp"
@@ -33,7 +34,7 @@ public:
   void pollDevices();
 
   // #################### Send Message to Specific Device ###################
-  void sendToDevice(NimBLEClient *client, const std::string &message);
+  bool sendToDevice(NimBLEClient *client, const std::string &message);
 
   // ###################### Disconnect from ALL Devices #####################
   void disconnectAll();
