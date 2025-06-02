@@ -1,16 +1,17 @@
-// GameSetup.cpp
+// Menu/GameSetup.cpp
 
 #include "GameSetup.hpp"
 #include <Arduino.h>
 
 // Include Games
 #include "Games/breakout/Breakout.hpp"
+#include "Games/chess/Chess.hpp"
+#include "Games/memory/memory.hpp"
 #include "Games/pong/Pong.hpp"
 #include "Games/simon/Simon.hpp"
 #include "Games/snake/Snake.hpp"
-#include "Games/tic_tac_toe/TicTacToe.hpp"
 #include "Games/tetris/Tetris.hpp"
-#include "Games/memory/memory.hpp"
+#include "Games/tic_tac_toe/TicTacToe.hpp"
 
 // Include games headers here
 // #include "Games/Tetris/Tetris.hpp"
@@ -38,11 +39,11 @@ void launchGameByName(const char *name) {
   } else if (strcmp(name, "Tetris") == 0) {
     runTetris();
   } else if (strcmp(name, "Chess") == 0) {
-    // launchChess();
+    runChess();
   } else if (strcmp(name, "Checkers") == 0) {
-    // launchCheckers();
+    // runCheckers();
   } else if (strcmp(name, "UNO") == 0) {
-    // launchUNO();
+    // runUNO();
   } else {
     Serial.println("Unknown game name.");
   }
