@@ -26,6 +26,9 @@ void checkWinner();
 void clearCursor(int index);
 void highlightCursor(int index);
 int findBestMove(char aiSymbol, char playerSymbol);
+void resetBoardState(bool clearScreen);
+void resetToSinglePlayerDefaults();
+void resetMultiplayerState(bool clearScreen);
 
 // ========== Game States ==========
 enum State {
@@ -50,6 +53,9 @@ enum State {
 // Logic
 bool multiplayerMode = false;
 static bool firstFrame = false;
+bool ticTacToeStateChanged = false;
+
+int lastCursor = -1;
 
 // Bluetooth Turns
 char localPlayerSymbol = 'X'; // default for host
@@ -89,6 +95,9 @@ uint16_t orange_color = tft.color565(0xFF, 0x70, 0x00);
 int xWins = 0;
 int oWins = 0;
 
+// update
+volatile bool update = false;
+
 // TODO: Numpad w/ pointers to functions & Game State are temporary)
 static NumPad<State> pad(drawHomeScreen, drawAllPlaying, &game_state,
                          HOMESCREEN, SINGLE_PLAYER);
@@ -119,6 +128,9 @@ void runTicTacToe() {
   drawing.clearCache();
   drawing.clearSprite();
   drawing.deleteSprite();
+
+  // clear update bool
+  update = false;
 
   // reset game
   for (int i = 0; i < 9; i++)
@@ -160,21 +172,20 @@ void handleTicTacToeFrame() {
   if (checkStartButtonAndExit(tft))
     return;
 
-  // ================== HOMESCREEN State ===================
+  // ================== HOMESCREEN State =================== //
   if (game_state == HOMESCREEN) {
-    firstFrame = true;
     if (millis() - lastMoveTime > moveDelay / 2) {
-
       if (A.wasJustPressed()) {
-
         if (selection == 0) {
+          resetMultiplayerState(true);
+
           game_state = SINGLE_PLAYER;
-          // Clear the screen with orange background
+          firstFrame = true;
           tft.fillScreen(orange_color);
-          // Draw initial screen
-          drawAllPlaying();
 
         } else if (selection == 1) {
+          resetMultiplayerState(true);
+
           game_state = MULTIPLAYER_SELECTION;
           drawHomescreenSelect();
         }
@@ -183,16 +194,16 @@ void handleTicTacToeFrame() {
       if (up.isPressed()) {
         selection = 0;
         drawHomescreenSelect();
+
       } else if (down.isPressed()) {
         selection = 1;
         drawHomescreenSelect();
       }
       lastMoveTime = millis();
     }
-    firstFrame = true;
   }
 
-  // ================== MULTIPLAYER_SELECTION State ===================
+  // ================== MULTIPLAYER_SELECTION State =================== //
   else if (game_state == MULTIPLAYER_SELECTION) {
     if (!roundEnded && millis() - lastMoveTime > moveDelay) {
       if (A.wasJustPressed()) {
@@ -209,7 +220,6 @@ void handleTicTacToeFrame() {
 
           // Now safely show code
           HostGame::showCode(String(code.c_str()));
-          // HostGame::loopUntilConnected();
 
           // Check if user exited
           if (getExitFlag()) {
@@ -268,22 +278,22 @@ void handleTicTacToeFrame() {
     }
   }
 
-  // ================== HOST_SCREEN State ===================
+  // ================== HOST_SCREEN State =================== //
   else if (game_state == HOST_SCREEN) {
 
     BluetoothCentral &central = BluetoothManager::getCentral();
 
-    // Receive updates from client (if there are any)
-    central.pollDevices();
+    // // Receive updates from client (if there are any)
+    // central.pollDevices();
 
-    // Send all the game state to peripheral devices
-    String gameState = generateTicTacToeStateString();
-    for (auto *client : central.getConnectedClients()) {
-      central.sendToDevice(client, gameState.c_str());
-    }
+    // // Send all the game state to peripheral devices
+    // String gameState = generateTicTacToeStateString();
+    // for (auto *client : central.getConnectedClients()) {
+    //   central.sendToDevice(client, gameState.c_str());
+    // }
   }
 
-  // ================== MULTIPLAYER_PLAYING State ===================
+  // ================== MULTIPLAYER_PLAYING State =================== //
   else if (game_state == MULTIPLAYER_PLAYING) {
 
     if (firstFrame) {
@@ -296,108 +306,173 @@ void handleTicTacToeFrame() {
   }
 
   if (game_state == HOST_SCREEN || game_state == MULTIPLAYER_PLAYING) {
-    if (localPlayerSymbol == currentPlayer) {
 
-      // Allow moving the selector
-      if (!roundEnded && millis() - lastMoveTime > moveDelay / 2) {
-        if (up.isPressed() && cursorIndex >= 3) {
-          cursorIndex -= 3;
-          lastMoveTime = millis();
-        } else if (down.isPressed() && cursorIndex <= 5) {
-          cursorIndex += 3;
-          lastMoveTime = millis();
-        } else if (left.isPressed() && cursorIndex % 3 != 0) {
-          cursorIndex -= 1;
-          lastMoveTime = millis();
-        } else if (right.isPressed() && cursorIndex % 3 != 2) {
-          cursorIndex += 1;
-          lastMoveTime = millis();
-        }
+    // ✅ Draw if Bluetooth state just changed
+    if (ticTacToeStateChanged) {
+      drawAllPlaying();
+      drawWinLine();
+      if (roundEnded) {
+        playWinSound();
+        drawWinnerMessage();
+      }
+      lastCursor = cursorIndex;
+      ticTacToeStateChanged = false;
+    }
+
+    // Used for updating the screen after a player wins
+    if (update) {
+      drawAllPlaying();
+      drawWinLine();
+      if (roundEnded) {
+        playWinSound();
+        drawWinnerMessage();
+      }
+      update = false;
+    }
+
+    tft.setTextSize(2);
+    tft.setTextDatum(MC_DATUM);
+
+    if (currentPlayer == 'O' && game_state == HOST_SCREEN ||
+        currentPlayer == 'X' && game_state == MULTIPLAYER_PLAYING) {
+      tft.drawString("Waiting...", tft.width() / 2, tft.height() - 10);
+    } else if (currentPlayer == 'X' && game_state == HOST_SCREEN) {
+      tft.drawString(" X's Turn ", tft.width() / 2, tft.height() - 10);
+    } else if (currentPlayer == 'O' && game_state == MULTIPLAYER_PLAYING) {
+      tft.drawString(" O's Turn  ", tft.width() / 2, tft.height() - 10);
+    }
+
+    // Handle movement
+    if (!roundEnded && millis() - lastMoveTime > moveDelay / 2) {
+      if (up.isPressed() && cursorIndex >= 3) {
+        cursorIndex -= 3;
+        lastMoveTime = millis();
+      } else if (down.isPressed() && cursorIndex <= 5) {
+        cursorIndex += 3;
+        lastMoveTime = millis();
+      } else if (left.isPressed() && cursorIndex % 3 != 0) {
+        cursorIndex -= 1;
+        lastMoveTime = millis();
+      } else if (right.isPressed() && cursorIndex % 3 != 2) {
+        cursorIndex += 1;
+        lastMoveTime = millis();
+      }
+    }
+
+    // Handle Selection
+    bool selectPressed = A.wasJustPressed();
+
+    if (localPlayerSymbol != currentPlayer) {
+      Serial.printf("⏳ Not your turn. You are '%c' and it's '%c'\n",
+                    localPlayerSymbol, currentPlayer);
+      return;
+    }
+
+    // All move/selection logic
+    if (!roundEnded && selectPressed && !buttonPreviouslyPressed &&
+        board[cursorIndex] == "**") {
+      if (moveCount >= 6) {
+        int oldIndex = moveQueue[0].index;
+        board[oldIndex] = "**";
+        for (int i = 1; i < 6; i++)
+          moveQueue[i - 1] = moveQueue[i];
+        moveCount = 5;
       }
 
-      bool selectPressed = A.wasJustPressed();
+      playMoveSound();
 
-      if (localPlayerSymbol != currentPlayer) {
-        Serial.printf("⏳ Not your turn. You are '%c' and it's '%c'\n",
-                      localPlayerSymbol, currentPlayer);
-        return;
+      board[cursorIndex] = String(currentPlayer);
+      moveQueue[moveCount].index = cursorIndex;
+      moveQueue[moveCount].symbol = currentPlayer;
+      moveCount++;
+
+      currentPlayer = (currentPlayer == 'X') ? 'O' : 'X';
+      checkWinner();
+
+      drawAllPlaying();
+      drawWinLine();
+      if (roundEnded) {
+        playWinSound();
+        drawWinnerMessage();
       }
 
-      if (!roundEnded && selectPressed && !buttonPreviouslyPressed &&
-          board[cursorIndex] == "**") {
-        if (moveCount >= 6) {
-          int oldIndex = moveQueue[0].index;
-          board[oldIndex] = "**";
-          for (int i = 1; i < 6; i++)
-            moveQueue[i - 1] = moveQueue[i];
-          moveCount = 5;
-        }
+      // After move, send state
+      String newState = generateTicTacToeStateString();
 
-        playMoveSound();
+      Serial.println("HOST SENDING: ");
+      Serial.println(newState);
 
-        board[cursorIndex] = String(currentPlayer);
-        moveQueue[moveCount].index = cursorIndex;
-        moveQueue[moveCount].symbol = currentPlayer;
-        moveCount++;
-
-        currentPlayer = (currentPlayer == 'X') ? 'O' : 'X';
-        checkWinner();
-
-        drawAllPlaying();
-        drawWinLine();
-        if (roundEnded) {
-          playWinSound();
-          drawWinnerMessage();
-        }
-
-        // After move, send state
-        String newState = generateTicTacToeStateString();
-
-        Serial.println("HOST SENDING: ");
-        Serial.println(newState);
-
-        if (game_state == HOST_SCREEN) {
-          BluetoothCentral &central = BluetoothManager::getCentral();
-          for (auto *client : central.getConnectedClients()) {
-            if (!central.sendToDevice(client, newState.c_str())) {
-              Serial.println("❌ Failed to notify client. Disconnecting...");
-              ConnectionScreen::showMessage("Peripheral disconnected");
-              shouldExitToMenu = true;
-              return;
-            }
-          }
-        } else if (game_state == MULTIPLAYER_PLAYING) {
-          BluetoothPeripheral &peripheral = BluetoothManager::getPeripheral();
-          if (!peripheral.sendAction(newState.c_str())) {
-            ConnectionScreen::showMessage("Disconnected (Send Failed)");
+      if (game_state == HOST_SCREEN) {
+        BluetoothCentral &central = BluetoothManager::getCentral();
+        for (auto *client : central.getConnectedClients()) {
+          if (!central.sendToDevice(client, newState.c_str())) {
+            Serial.println("❌ Failed to notify client. Disconnecting...");
+            ConnectionScreen::showMessage("Peripheral disconnected");
             shouldExitToMenu = true;
             return;
           }
         }
-
-        delay(400);
-      } else if (!roundEnded && selectPressed && !buttonPreviouslyPressed &&
-                 board[cursorIndex] != "**") {
-        playErrorSound();
-      }
-
-      buttonPreviouslyPressed = selectPressed;
-
-      // Redraw when moving or selecting
-      if (cursorIndex != lastCursor || selectPressed) {
-        drawAllPlaying();
-        drawWinLine();
-        if (roundEnded) {
-          playWinSound();
-          drawWinnerMessage();
+      } else if (game_state == MULTIPLAYER_PLAYING) {
+        BluetoothPeripheral &peripheral = BluetoothManager::getPeripheral();
+        if (!peripheral.sendAction(newState.c_str())) {
+          ConnectionScreen::showMessage("Disconnected (Send Failed)");
+          shouldExitToMenu = true;
+          return;
         }
-        lastCursor = cursorIndex;
       }
+
+      delay(400);
+    } else if (!roundEnded && selectPressed && !buttonPreviouslyPressed &&
+               board[cursorIndex] != "**") {
+      playErrorSound();
+    }
+
+    buttonPreviouslyPressed = selectPressed;
+
+    // Redraw when moving or selecting
+    if (cursorIndex != lastCursor || selectPressed) {
+      drawAllPlaying();
+      drawWinLine();
+      if (roundEnded) {
+        playWinSound();
+        drawWinnerMessage();
+      }
+      lastCursor = cursorIndex;
+    }
+
+    // Auto Restart with Bluetooth sync
+    if (roundEnded && millis() - winTime >= 5000 && xWins < 2 && oWins < 2) {
+
+      resetBoardState(true);
+      drawAllPlaying();
+
+      // Send reset state to the other device
+      String resetState = generateTicTacToeStateString();
+      if (game_state == HOST_SCREEN) {
+        BluetoothCentral &central = BluetoothManager::getCentral();
+        for (auto *client : central.getConnectedClients()) {
+          central.sendToDevice(client, resetState.c_str());
+        }
+      } else if (game_state == MULTIPLAYER_PLAYING) {
+        BluetoothPeripheral &peripheral = BluetoothManager::getPeripheral();
+        peripheral.sendAction(resetState.c_str());
+      }
+    } else if (xWins >= 2 || oWins >= 2) {
+      game_state = GAMEOVER_SCREEN;
+      resetBoardState(true);
     }
   }
 
-  // ================== SINGLE_PLAYER State ===================
+  // ================== SINGLE_PLAYER State =================== //
   else if (game_state == SINGLE_PLAYER) {
+
+    if (firstFrame) {
+      resetToSinglePlayerDefaults();
+      resetBoardState(true);
+      drawAllPlaying();
+      firstFrame = false;
+    }
+
     if (!roundEnded && millis() - lastMoveTime > moveDelay / 2) {
       if (up.isPressed() && cursorIndex >= 3) {
         cursorIndex -= 3;
@@ -434,12 +509,13 @@ void handleTicTacToeFrame() {
       moveQueue[moveCount].symbol = currentPlayer;
       moveCount++;
 
-      currentPlayer = (currentPlayer == 'X') ? 'O' : 'X';
+      currentPlayer = 'O';
       checkWinner();
 
       // Player's move render before AI thinks
       drawAllPlaying();
       drawWinLine();
+
       if (roundEnded) {
         playWinSound();
         drawWinnerMessage();
@@ -474,6 +550,7 @@ void handleTicTacToeFrame() {
         drawAllPlaying();
         drawWinLine();
         playWinSound();
+
         if (roundEnded) {
           playWinSound();
           drawWinnerMessage();
@@ -487,42 +564,28 @@ void handleTicTacToeFrame() {
     if (cursorIndex != lastCursor || selectPressed) {
       drawAllPlaying();
       drawWinLine();
+
       if (roundEnded) {
         playWinSound();
         drawWinnerMessage();
       }
       lastCursor = cursorIndex;
     }
+
     // Auto Restart
     if (roundEnded && millis() - winTime >= 5000 && xWins < 2 && oWins < 2) {
-      for (int i = 0; i < 9; i++)
-        board[i] = "**";
-      currentPlayer = 'X';
-      cursorIndex = 0;
-      lastCursor = -1;
-      winner = 'N';
-      winCombo[0] = winCombo[1] = winCombo[2] = -1;
-      roundEnded = false;
-      moveCount = 0;
-      tft.fillScreen(orange_color);
+      resetBoardState(true);
       drawAllPlaying();
+
     } else if (xWins >= 2 || oWins >= 2) {
       game_state = GAMEOVER_SCREEN;
-      for (int i = 0; i < 9; i++)
-        board[i] = "**";
-      currentPlayer = 'X';
-      cursorIndex = 0;
-      lastCursor = -1;
-      winner = 'N';
-      winCombo[0] = winCombo[1] = winCombo[2] = -1;
-      roundEnded = false;
-      moveCount = 0;
+      resetBoardState(true);
       // Clear the screen with orange background
       tft.fillScreen(orange_color);
     }
   }
 
-  // ================== GAMEOVER_SCREEN State ===================
+  // ================== GAMEOVER_SCREEN State =================== //
   else if (game_state == GAMEOVER_SCREEN) {
     drawEndScreen();
     if (millis() - lastMoveTime > moveDelay) {
@@ -538,7 +601,7 @@ void handleTicTacToeFrame() {
     }
   }
 
-  // ================== BLUETOOTH_NUMPAD State ===================
+  // ================== BLUETOOTH_NUMPAD State =================== //
   else if (game_state == BLUETOOTH_NUMPAD) {
     pad.handleButtonInput(&lastMoveTime, moveDelay);
 
@@ -669,6 +732,56 @@ int findBestMove(char aiSymbol, char playerSymbol) {
 
   // If somehow none of these work
   return -1;
+}
+
+// ========== Reset Board ========== //
+void resetBoardState(bool clearScreen = true) {
+  for (int i = 0; i < 9; i++)
+    board[i] = "**";
+  currentPlayer = 'X';
+  cursorIndex = 0;
+  lastCursor = -1;
+  winner = 'N';
+  winCombo[0] = winCombo[1] = winCombo[2] = -1;
+  roundEnded = false;
+  moveCount = 0;
+  if (clearScreen)
+    tft.fillScreen(orange_color);
+}
+
+// ========== Reset Single Player ========== //
+void resetToSinglePlayerDefaults() {
+  multiplayerMode = false;
+  localPlayerSymbol = 'X';
+  ticTacToeStateChanged = false;
+  update = false;
+  cursorIndex = 0;
+  lastCursor = -1;
+}
+
+// ========== Reset Multiplayer ========== //
+void resetMultiplayerState(bool clearScreen = true) {
+  multiplayerMode = false;
+  xWins = 0;
+  oWins = 0;
+  roundEnded = false;
+  winner = 'N';
+  winCombo[0] = winCombo[1] = winCombo[2] = -1;
+  moveCount = 0;
+  cursorIndex = 0;
+  lastCursor = -1;
+  currentPlayer = 'X';
+
+  for (int i = 0; i < 9; ++i)
+    board[i] = "**";
+
+  for (int i = 0; i < 6; ++i) {
+    moveQueue[i].index = -1;
+    moveQueue[i].symbol = '*';
+  }
+
+  if (clearScreen)
+    tft.fillScreen(orange_color);
 }
 
 // ####################################################################################################
@@ -956,7 +1069,8 @@ void drawAllPlaying() {
   drawScoreboard();
   drawGrid();
 
-  drawing.pushSprite();
+  drawing.pushSprite(); // Needed so the selector does not disappear on
+                        // singleplayer
 
   bool showCursor = false;
 
@@ -1096,6 +1210,14 @@ String generateTicTacToeStateString() {
   // Cursor index
   state += String(cursorIndex) + ";\n";
 
+  // Winner + win combo
+  if (winner == 'X' || winner == 'O' || winner == 'D') {
+    state += String(winner) + ";" + String(winCombo[0]) + "," +
+             String(winCombo[1]) + "," + String(winCombo[2]) + ";\n";
+  } else {
+    state += "N;\n"; // 'N' for no winner yet
+  }
+
   return state;
 }
 
@@ -1160,7 +1282,7 @@ void readTicTacToeString(String oldState, const char *data) {
       break;
     }
 
-    case 5:
+    case 5: {
 
       // Only update cursorIndex if this ESP is the active player
       if (localPlayerSymbol != currentPlayer) {
@@ -1169,21 +1291,37 @@ void readTicTacToeString(String oldState, const char *data) {
       break;
     }
 
+    case 6: {
+      int sep = part.indexOf(';');
+      if (sep != -1) {
+        winner = part.substring(0, sep).charAt(0);
+
+        if (winner == 'X' || winner == 'O' || winner == 'D') {
+          roundEnded = true;
+          winTime = millis();
+
+          String comboStr = part.substring(sep + 1);
+          int comma1 = comboStr.indexOf(',');
+          int comma2 = comboStr.lastIndexOf(',');
+
+          winCombo[0] = comboStr.substring(0, comma1).toInt();
+          winCombo[1] = comboStr.substring(comma1 + 1, comma2).toInt();
+          winCombo[2] = comboStr.substring(comma2 + 1).toInt();
+        } else {
+          winner = 'N';
+          roundEnded = false;
+          winCombo[0] = winCombo[1] = winCombo[2] = -1;
+        }
+      }
+      break;
+    }
+    }
     line++;
-  }
-
-  // ✅ Redraw with full state
-  checkWinner();
-  drawAllPlaying();
-  drawWinLine();
-
-  if (roundEnded) {
-    playWinSound();
-    drawWinnerMessage();
   }
 
   // Enable multiplayer mode when parsing a multiplayer update
   multiplayerMode = true;
+  ticTacToeStateChanged = true;
 
   // 🧪 Optional debug output
   Serial.println("📋 Parsed board:");

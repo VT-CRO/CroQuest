@@ -447,6 +447,7 @@ static void singlePieceLogic() {
         lastButtonPressTime = millis();
 
         bottomCollision = true;
+        return;
       }
     }
     // Speeds up falling pieces
@@ -498,6 +499,7 @@ static void clearRow() {
         grid[currentPiece.y + y][x] = 0;
         drawBlock(x, currentPiece.y + y, TFT_BLACK);
       }
+      playClearSound();
     }
   }
 
@@ -514,7 +516,6 @@ static void clearRow() {
       }
       lines++;
       score += 100;
-      playClearSound();
     }
   }
   drawLines();

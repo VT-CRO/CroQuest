@@ -19,6 +19,8 @@ extern TFT_eSPI tft;
 extern JpegDrawing drawing;
 extern Button A, B, up, down, left, right;
 
+extern bool ticTacToeStateChanged;
+
 struct Move {
   int index;
   char symbol;

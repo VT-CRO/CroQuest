@@ -62,6 +62,11 @@ static void drawTiles();
 static void showHomeScreen();
 static void clearAllCursors();
 
+//sounds
+static void playGameOverSound();
+static void playLevelCompleteSound();
+
+
 // --- Cursor State ---
 static int cursorRow = 0, cursorCol = 0;
 
@@ -69,6 +74,9 @@ void runMemory() {
 
   resetExitFlag(); // Restes flag for Main Menu
   currentState = HOMESCREEN;
+
+  //reset level
+  currentLevel = 0;
 
   showHomeScreen();
   for (;;) {
@@ -78,6 +86,7 @@ void runMemory() {
       return;
 
     if (currentState == HOMESCREEN && B.wasJustPressed()) {
+      backAudio();
       Serial.println("Returning to menu from Tic Tac Toe");
       delay(500);
       return;
@@ -95,6 +104,7 @@ static void runMemoryFrame() {
   case HOMESCREEN:
     if (millis() - lastButtonPressTime > buttonDebounceDelay) {
       if (A.wasJustPressed()) {
+        playPressSound();
         showLevelIntroScreen();
         loadLevel(currentLevel);
         currentState = PLAYING;
@@ -105,6 +115,7 @@ static void runMemoryFrame() {
   case PLAYING: {
     if (waitingForWinChoice) {
       if (left.isPressed()) {
+        backAudio();
         waitingForWinChoice = false;
         showLevelIntroScreen();
         loadLevel(currentLevel);
@@ -113,6 +124,7 @@ static void runMemoryFrame() {
       }
 
       if (right.isPressed()) {
+        playPressSound();
         waitingForWinChoice = false;
 
         if (currentLevel == NUM_LEVELS - 1) {
@@ -325,24 +337,28 @@ static void handleInput() {
   int val34 = analogRead(34);
 
   if (right.isPressed() && cursorCol < cardCols - 1) {
+    playSelectBeep();
     clearCursor();
     cursorCol++;
     drawCursor();
   }
 
   else if (up.isPressed() && cursorRow > 0) {
+    playSelectBeep();
     clearCursor();
     cursorRow--;
     drawCursor();
   }
 
   if (down.isPressed() && cursorRow < cardRows - 1) {
+    playSelectBeep();
     clearCursor();
     cursorRow++;
     drawCursor();
   }
 
   else if (left.isPressed() && cursorCol > 0) {
+    playSelectBeep();
     clearCursor();
     cursorCol--;
     drawCursor();
@@ -351,6 +367,7 @@ static void handleInput() {
   delay(100);
 
   if (!lockInput && A.wasJustPressed()) {
+    playPressSound();
     if (!flipped[cursorRow][cursorCol]) {
       flipCard(cursorRow, cursorCol);
       movesThisLevel++;
@@ -438,6 +455,7 @@ static void checkWinCondition() {
     tft.drawString("LEFT: Replay", tft.width() / 2, tft.height() / 2 + 20);
     tft.drawString("RIGHT: Next", tft.width() / 2, tft.height() / 2 + 45);
   }
+  playLevelCompleteSound();
   movesThisLevel = 0;
 }
 
@@ -487,6 +505,7 @@ static void updateTimerDisplay()
 
 
 static void triggerGameOver() {
+  playGameOverSound();
   currentState = ENDSCREEN;
   gameOver = true;
   currentLevel = 0;
@@ -528,4 +547,27 @@ static void drawTiles(){
     }
   }
 
+}
+
+static void playLevelCompleteSound() {
+  const int noteDuration = 100; // milliseconds
+
+  int melody[] = { 523, 659, 784, 1046 }; // C5, E5, G5, C6
+  for (int i = 0; i < 4; i++) {
+    playTone(melody[i], volume);
+    delay(noteDuration);
+  }
+  playTone(0, 0); // Stop tone
+}
+
+static void playGameOverSound() {
+  const int volume = 80; // Percent
+  const int noteDuration = 150; // milliseconds
+
+  int melody[] = { 659, 523, 392, 261 }; // E5, C5, G4, C4
+  for (int i = 0; i < 4; i++) {
+    playTone(melody[i], volume);
+    delay(noteDuration);
+  }
+  playTone(0, 0); // Stop tone
 }

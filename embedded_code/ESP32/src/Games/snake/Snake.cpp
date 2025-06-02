@@ -66,9 +66,13 @@ void showHomeScreen();
 void playGameOverSound();
 void playEatSound();
 
+//Caching
+void snakeHeadAssetsToCache();
+
 // GAME STATE
 enum GameState { HOMESCREEN, PLAYING, GAMEOVERSCREEN };
 static enum GameState gameState = HOMESCREEN;
+
 
 // Initializing game
 void runSnake() {
@@ -76,8 +80,16 @@ void runSnake() {
   resetExitFlag();        // Resets flag for Main Menu
   gameState = HOMESCREEN; // Ensure correct starting state
 
-  tft.setRotation(3);
+  // Sprite Setup : clear cache and add the snake parts into
+  // cache to speed up the start of the game
+  drawing.clearCache();
+  drawing.clearSprite();
+  drawing.deleteSprite();
+
   tft.fillScreen(TFT_BLACK);
+  // Now to add to the cache
+  snakeHeadAssetsToCache();
+
 
   // read high score
   File file = SD.open("/snake/highscore.txt", "r");
@@ -99,10 +111,17 @@ void runSnake() {
     if (gameState == HOMESCREEN) {
       // Start game
       if (A.wasJustPressed()) {
+        // Change the color of the Press A to start text to white
+        tft.setTextColor(TFT_WHITE);
+        tft.setTextSize(2);
+        tft.drawString("Press A to start", tft.width() / 2, tft.height() - 50);
+        // Delay added to show A was pressed
+        delay(200);
+        
         gameState = PLAYING;
         playPressSound();
         resetGame();
-      } else if (B.isPressed()) {
+      } else if (B.wasJustPressed()) {
         backAudio();
         break;
       }
@@ -117,6 +136,13 @@ void runSnake() {
     } else if (gameState == GAMEOVERSCREEN) {
       // Go to game menu
       if (B.wasJustPressed()) {
+        // Highlights the text to show it was pressed
+        tft.setTextColor(TFT_WHITE);
+        tft.setTextSize(2);
+        tft.drawString("Press B to return to menu", tft.width() / 2,
+                 tft.height() - 30);
+        delay(200);
+
         gameState = HOMESCREEN;
         backAudio();
         tft.fillScreen(TFT_BLACK);
@@ -124,6 +150,11 @@ void runSnake() {
       }
       // restart game
       else if (A.wasJustPressed()) {
+        // Highlights the text to show it was pressed
+        tft.setTextColor(TFT_WHITE);
+        tft.setTextSize(2);
+        tft.drawString("Press A to restart", tft.width() / 2, tft.height() - 60);
+        delay(200);
         gameState = PLAYING;
         playPressSound();
         resetGame();
@@ -418,8 +449,12 @@ void moveSnake() {
 
   // Calling game over if any collision occurs
   if (gameOver) {
-    // plays gameover sound
-    playGameOverSound();
+    // The gameover sound is kinda long. 
+    // If there's no sound it may seem unresponsive
+    if(volume > 0){
+        // plays gameover sound
+        playGameOverSound();
+    }
     if (score > highScore) {
       highScore = score;
       File file = SD.open("/snake/highscore.txt", FILE_WRITE);
@@ -441,7 +476,6 @@ void moveSnake() {
   drawing.pushSprite(false, true, 0x1F);
 
   // Draw Body part (previous location of the head)
-  //  drawTile(snake[1].x, snake[1].y, tft.color565(77, 134, 214));
   Direction fromDir = snake[1].direction;
   Direction toDir = snake[0].direction;
   std::string turnPath;
@@ -559,7 +593,7 @@ void showCreditsScreen() {
   delay(1000);
 
   // --- Press A to start ---
-  tft.setTextColor(TFT_WHITE);
+  tft.setTextColor(tft.color565(150, 150, 150)); // light grey
   tft.setTextSize(2);
   tft.drawString("Press A to start", tft.width() / 2, tft.height() - 50);
 }
@@ -596,7 +630,7 @@ void showHomeScreen() {
                  tft.height() / 2 + 10);
 
   // Draw the "Press A to start" prompt
-  tft.setTextColor(TFT_WHITE);
+  tft.setTextColor(tft.color565(150, 150, 150)); // light grey
   tft.setTextSize(2);
   tft.drawString("Press A to start", tft.width() / 2, tft.height() - 50);
 }
@@ -619,7 +653,7 @@ void gameOverScreen() {
                  tft.height() / 2 + 20);
 
   // Action prompts in white, lower on the screen
-  tft.setTextColor(TFT_WHITE);
+  tft.setTextColor(tft.color565(150, 150, 150));
   tft.setTextSize(2);
   tft.drawString("Press A to restart", tft.width() / 2, tft.height() - 60);
   tft.drawString("Press B to return to menu", tft.width() / 2,
@@ -649,4 +683,49 @@ void playEatSound() {
   playTone(1000, volume); // quick blip at 1kHz
   delay(30);              // very short duration
   playTone(0, 0);         // stop sound
+}
+
+// Caches all snake head assets
+// This'll make the beginning of the game a bit faster
+// though the startup will increase as a result
+// Caching everything at the start increased the startup noticably
+void snakeHeadAssetsToCache() {
+    const char* assetPaths[] = {
+        // "/snake/assets/turn_up_right_or_left_down_light.jpg",
+        // "/snake/assets/turn_up_left_or_right_down_light.jpg",
+        // "/snake/assets/turn_left_up_or_down_right_light.jpg",
+        // "/snake/assets/turn_right_up_or_down_left_light.jpg",
+
+        // "/snake/assets/turn_up_right_or_left_down_dark.jpg",
+        // "/snake/assets/turn_up_left_or_right_down_dark.jpg",
+        // "/snake/assets/turn_left_up_or_down_right_dark.jpg",
+        // "/snake/assets/turn_right_up_or_down_left_dark.jpg",
+
+        "/snake/assets/open_up.jpg",
+        "/snake/assets/open_down.jpg",
+        "/snake/assets/open_left.jpg",
+        "/snake/assets/open_right.jpg",
+
+        "/snake/assets/closed_up.jpg",
+        "/snake/assets/closed_down.jpg",
+        "/snake/assets/closed_left.jpg",
+        "/snake/assets/closed_right.jpg",
+
+        // "/snake/assets/tail_up_light.jpg",
+        // "/snake/assets/tail_down_light.jpg",
+        // "/snake/assets/tail_left_light.jpg",
+        // "/snake/assets/tail_right_light.jpg",
+
+        // "/snake/assets/tail_up_dark.jpg",
+        // "/snake/assets/tail_down_dark.jpg",
+        // "/snake/assets/tail_left_dark.jpg",
+        // "/snake/assets/tail_right_dark.jpg",
+        "/snake/assets/apple.jpg",
+        "/snake/assets/body.jpg"
+    };
+
+    for (const char* path : assetPaths) {
+        drawing.drawSdJpeg(path, 0, 0);
+        drawing.addToCache(path);
+    }
 }

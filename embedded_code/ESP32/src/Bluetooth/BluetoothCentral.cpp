@@ -130,13 +130,16 @@ void BluetoothCentral::connectToDevices() {
 
             // 🧠 Step 1: Apply the new state to the host
             readTicTacToeString("", msg.c_str());
+            ticTacToeStateChanged = true;
 
             // 🧼 Step 2: Recalculate and sanitize the game state
             // String confirmedState = generateTicTacToeStateString();
 
             // 🖼️ Step 3: Draw the updated board
-            drawAllPlaying();
-            drawWinLine();
+
+            // I've also commented out these lines, and will only call them in
+            // TictacToe Unless there is a better solution drawAllPlaying();
+            // drawWinLine();
 
             // 📣 Step 4: Re-broadcast the updated board state to all clients
             BluetoothCentral &central = BluetoothManager::getCentral();

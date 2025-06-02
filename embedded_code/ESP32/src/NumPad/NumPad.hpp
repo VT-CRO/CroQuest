@@ -273,13 +273,11 @@ void NumPad<EnumType>::handleButtonInput(unsigned long *lastMoveTime,
                                          const long moveDelay) {
   if (millis() - *lastMoveTime > moveDelay) {
     // Press Logic
-    if (!A.isPressed() && !pressed) {
+    if (A.wasJustPressed()) {
       modButtonState(NumPad::NONE, NumPad::PRESSED);
-      pressed = true;
       *lastMoveTime = millis();
-    } else if (A.isPressed() && pressed) {
+    } else if (!A.wasJustPressed()) {
       modButtonState(NumPad::NONE, NumPad::SELECTED);
-      pressed = false;
     }
     if (up.isPressed()) {
       // Back button selection logic to
