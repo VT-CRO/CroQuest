@@ -205,6 +205,9 @@ static void runMemoryFrame() {
       // loadLevel(currentLevel);
       currentState = PLAYING; // handleUserInput returns true : game restarts
     } else {
+      if(endScreen.exit){ // exit to menu
+        return;
+      }
       currentState = HOMESCREEN;
       showHomeScreen(); // handleUserInput returns false : returns to game menu
       delay(300);

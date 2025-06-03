@@ -203,15 +203,18 @@ void handleBreakoutFrame() {
     EndScreen endScreen(playerNames, playerScores, false, settings.name,
                         score);
     if (endScreen.handleUserInput()) {
-          currentBreakoutState = BREAKOUT_PLAYING;
-          paddle.x = SCREEN_W / 2 - PADDLE_WIDTH / 2;
-          lives = 3;
-          score = 0;
-          lastLives = -1;
-          lastScore = -1;
-          initBricks();
-          resetBall(); // handleUserInput returns true : game restarts
+      currentBreakoutState = BREAKOUT_PLAYING;
+      paddle.x = SCREEN_W / 2 - PADDLE_WIDTH / 2;
+      lives = 3;
+      score = 0;
+      lastLives = -1;
+      lastScore = -1;
+      initBricks();
+      resetBall(); // handleUserInput returns true : game restarts
     } else {
+      if(endScreen.exit){ // exit to menu
+        return;
+      }
       currentBreakoutState = BREAKOUT_HOMESCREEN;
       drawBreakoutHomeScreen(); // handleUserInput returns false : returns to game
                              // menu
@@ -236,6 +239,9 @@ void handleBreakoutFrame() {
           initBricks();
           resetBall(); // handleUserInput returns true : game restarts
     } else {
+      if(endScreen.exit){ // exit to menu
+        return;
+      }
       currentBreakoutState = BREAKOUT_HOMESCREEN;
       drawBreakoutHomeScreen(); // handleUserInput returns false : returns to game
                              // menu

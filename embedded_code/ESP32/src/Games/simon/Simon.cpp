@@ -237,6 +237,9 @@ void handleSimonFrame() {
     if (endScreen.handleUserInput()) {
       simonStartNewGame(); // handleUserInput returns true : game restarts
     } else {
+      if(endScreen.exit){ // exit to menu
+        return;
+      }
       simon_game_state = SIMON_HOMESCREEN;
       drawSimonHomeScreen(); // handleUserInput returns false : returns to game
                              // menu

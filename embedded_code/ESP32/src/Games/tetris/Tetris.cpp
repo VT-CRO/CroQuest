@@ -211,8 +211,9 @@ void runTetris() {
 
   // Loop
   while (true) {
-    handleTetrisFrame();
-
+    
+    handleTetrisFrame();    
+  
     if (getExitFlag())
       return;
 
@@ -304,6 +305,9 @@ static void handleTetrisFrame() {
       startNewGame();
       currentState = PLAYING; // handleUserInput returns true : game restarts
     } else {
+      if(endScreen.exit){ // exit to menu
+        return;
+      }
       currentState = HOMESCREEN;
       // Clear Screen
       tft.fillScreen(TFT_BLACK);
