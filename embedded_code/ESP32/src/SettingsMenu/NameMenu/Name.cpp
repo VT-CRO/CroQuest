@@ -45,7 +45,7 @@ void runNameMenu() {
   tft.drawString("Edit Name", SCREEN_WIDTH / 2, 40, 4);
   tft.setTextSize(1);
   tft.drawString(
-      "Use LEFT/RIGHT to select, UP/DOWN to change letter, A to return",
+      "Use LEFT/RIGHT to select, UP/DOWN to change letter, [B] to return",
       SCREEN_WIDTH / 2, SCREEN_HEIGHT - 20, 1);
 
   // Prints initial layout
@@ -79,7 +79,7 @@ void runNameMenu() {
       handleDrawing(settings.name, DOWN_SELECTED);
       scrollingAudio();
       delay(150);
-    } else if (A.wasJustPressed()) {
+    } else if (B.wasJustPressed()) {
       std::string currentName(settings.name, 5);
 
       if (isProhibitedName(currentName)) {

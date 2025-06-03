@@ -46,7 +46,7 @@ void runAudioMenu() {
 
   tft.setTextSize(1);
   tft.setTextDatum(BC_DATUM);
-  tft.drawString("Use LEFT/RIGHT to adjust, A to return", tft.width() / 2,
+  tft.drawString("Use LEFT/RIGHT to adjust, [B] to return", tft.width() / 2,
                  tft.height() - 10);
 
   // Main loop
@@ -69,7 +69,7 @@ void runAudioMenu() {
         sliderSound();
         delay(150);
       }
-    } else if (A.wasJustPressed()) {
+    } else if (B.wasJustPressed()) {
       backAudio();
       break;
     }
