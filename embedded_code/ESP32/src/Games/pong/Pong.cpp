@@ -90,6 +90,11 @@ void runPong() {
   buttonAPressed = false;
   buttonBPressed = false;
 
+  //clear sprite and cache
+  drawing.clearCache();
+  drawing.clearSprite();
+  drawing.deleteSprite();
+
   // Debounce window to ignore early A presses
   unsigned long enterTime = millis();
 
