@@ -17,7 +17,7 @@ bool JpegDrawing::createBuffer(int width, int height) {
     sprite.setSwapBytes(true);
 
     // Fill with background color
-    sprite.fillSprite(TFT_BLACK);
+    // sprite.fillSprite(TFT_BLACK);
     return true;
   } else {
     Serial.println("ERROR: Buffer allocation failed!");

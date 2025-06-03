@@ -16,8 +16,6 @@ private:
   bool buffer_created;
   int buffer_width;
   int buffer_height;
-  int x_pos;
-  int y_pos;
   bool first = true;
 
   bool using_cached_data = false;
@@ -25,7 +23,6 @@ private:
   // Cached Sprites
   std::map<std::string, TFT_eSprite *> spriteCache;
 
-  bool createBuffer(int width, int height);
   void jpegRender(int xpos, int ypos);
 
 public:
@@ -33,6 +30,11 @@ public:
   JpegDrawing(TFT_eSPI &tft);
 
   TFT_eSprite *getSprite();
+
+  int x_pos;
+  int y_pos;
+
+  bool createBuffer(int width, int height);
 
   // Public struct for image information
   struct ImageInfo {

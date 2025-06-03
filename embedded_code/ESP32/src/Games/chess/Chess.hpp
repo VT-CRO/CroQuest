@@ -8,6 +8,7 @@
 #include "JoinHost/JoinHost.hpp"
 #include "Menu/MenuReturn.hpp"
 #include "NumPad/NumPad.hpp"
+#include <JPEGDecoder.h>
 #include <TFT_eSPI.h>
 
 // ========== API ==========
