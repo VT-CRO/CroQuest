@@ -649,45 +649,44 @@ void drawSimonTriangleOverlay(int buttonId) {
 
 void drawPlayerStatusTable() {
   if(strcmp(multiplayerMode.c_str(), "NONE") == 0){
-
-    const int startX = diskSize + 20;
+    const int startX = SCREEN_WIDTH - 160; // "-" Move more to the left
     const int startY = 20;
     const int nameHeight = 20;
     const int checkSize = 12;
     const int checkSpacing = 16;
     const int maxPerRow = 6;
-  
+
     tft.setTextDatum(TL_DATUM);
     tft.setTextSize(1);
     tft.setTextColor(TFT_WHITE, TFT_BLACK);
-  
+
     for (int i = 0; i < 1; i++) { // 1 for now (P1)
       int nameX = startX;
       int nameY = startY + i * (nameHeight + 50);
       String name = "P" + String(i + 1);
       tft.drawString(name, nameX, nameY);
-  
+
       // Draw green checks for levels passed
       for (int lvl = 0; lvl < playerLevels[i]; lvl++) {
         int row = lvl / maxPerRow;
         int col = lvl % maxPerRow;
-  
+
         int checkX = nameX + col * (checkSize + checkSpacing);
         int checkY = nameY + nameHeight + 5 + row * (checkSize + 10);
-  
+
         tft.fillCircle(checkX, checkY, checkSize / 2, TFT_GREEN);
         tft.drawCircle(checkX, checkY, checkSize / 2, TFT_WHITE);
       }
-  
+
       // Red X if the player failed
       if (playerFailed) {
         int failIndex = playerLevels[i];
         int row = failIndex / maxPerRow;
         int col = failIndex % maxPerRow;
-  
+
         int failX = nameX + col * (checkSize + checkSpacing);
         int failY = nameY + nameHeight + 5 + row * (checkSize + 10);
-  
+
         tft.fillCircle(failX, failY, checkSize / 2, TFT_RED);
         tft.drawCircle(failX, failY, checkSize / 2, TFT_WHITE);
         tft.drawLine(failX - 3, failY - 3, failX + 3, failY + 3, TFT_WHITE);
