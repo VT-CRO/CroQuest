@@ -3,6 +3,11 @@
 #include "BluetoothCentral.hpp"
 #include "ConnectionScreen.hpp"
 
+//Simon funcs + state
+extern bool simonStateChanged;
+extern void readSimonString(String oldState, const char *data);
+extern String generateSimonString(String mode = "full");
+
 BluetoothCentral::BluetoothCentral(TFT_eSPI &display) : tft(display) {}
 
 // ####################################################################################################
@@ -144,6 +149,19 @@ void BluetoothCentral::connectToDevices() {
             // 📣 Step 4: Re-broadcast the updated board state to all clients
             BluetoothCentral &central = BluetoothManager::getCentral();
             String confirmedState = String(msg.c_str());
+            for (auto *client : central.getConnectedClients()) {
+              central.sendToDevice(client, confirmedState.c_str());
+            }
+          }else if (msg.rfind("s@", 0) == 0) {
+            Serial.println("PERIPHERAL SENT SIMON: ");
+            Serial.println(msg.c_str());
+
+            readSimonString("", msg.c_str());
+            simonStateChanged = true;
+
+            //Sends updated state to all peripherals
+            BluetoothCentral &central = BluetoothManager::getCentral();
+            String confirmedState = generateSimonString();
             for (auto *client : central.getConnectedClients()) {
               central.sendToDevice(client, confirmedState.c_str());
             }

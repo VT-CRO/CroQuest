@@ -86,6 +86,23 @@ static NumPad<SimonState> pad(drawSimonHomeScreen, simonStartNewGame,
                               &simon_game_state, SIMON_HOMESCREEN,
                               SIMON_STATE_WATCH);
 
+
+// Multiplayer
+bool simonStateChanged = false;
+struct SimonPlayer {
+  int id;               // Unique identifier
+  String name = "";          // Display name of the player
+  int score = 0;             // Current score
+  String status = "idle";    // e.g., "idle", "ready", "playing", "eliminated"
+  SimonPlayer(int id_, const String &name_, int score_, const String &status_)
+    : id(id_), name(name_), score(score_), status(status_) {}
+};
+
+static SimonPlayer currentPlayer = SimonPlayer(atoi(generate6DigitCode().c_str()), String(settings.name), 0, String("idle"));
+std::vector<SimonPlayer> simonPlayers;
+static String multiplayerMode = "NONE";
+static bool update = false;
+
 // ======================== Game Entry ========================
 void runSimon() {
 
@@ -122,6 +139,11 @@ void runSimon() {
   // Set initial state
   simon_game_state = SIMON_HOMESCREEN;
   drawSimonHomeScreen();
+
+  currentPlayer = SimonPlayer(atoi(generate6DigitCode().c_str()), String(settings.name), 0, String("idle"));
+  update = false;
+  //reset multiplayer flag
+  multiplayerMode = "NONE";
 
   // Main game loop
   while (true) {
@@ -193,8 +215,43 @@ void handleSimonFrame() {
         }
       } else if (A.wasJustPressed()) {
         if (simonsubselection == 0) {
-          tft.fillScreen(TFT_BLUE);
-          simon_game_state = SIMON_JOIN_SCREEN;
+          
+          // HOST = CENTRAL
+          BluetoothManager::initCentral(tft);
+          BluetoothCentral &central = BluetoothManager::getCentral();
+
+          std::string code = generate6DigitCode();
+
+          // Set the screen for HostGame
+          HostGame::init(tft);
+
+          // Now safely show code
+          HostGame::showCode(String(code.c_str()));
+
+          central.scanAndConnectLoop(code);
+
+          multiplayerMode = "HOST";
+
+          if (!BluetoothManager::getCentral().getConnectedClients().empty()) {
+
+            // Flush any held buttons to prevent input carryover
+            delay(300); // debounce delay
+            while (A.isPressed() || up.isPressed() || down.isPressed() ||
+                   left.isPressed() || right.isPressed()) {
+              delay(10);
+            }
+
+            currentPlayer.status = "ready";
+            simonPlayers.push_back(currentPlayer);
+
+            simonStartNewGame(); // Start a new game
+
+          } else {
+            simon_game_state = SIMON_MULTIPLAYER_SELECTION;
+            ConnectionScreen::showMessage("Connection failed.\nTry again.");
+            delay(1000);
+            drawSimonHomeScreen();
+          }
         } else {
           pad.numPadSetup();
           simon_game_state = SIMON_BLUETOOTH_NUMPAD;
@@ -211,12 +268,31 @@ void handleSimonFrame() {
     break;
 
   case SIMON_STATE_WATCH:
+    // update peripheral data
+    if(strcmp(multiplayerMode.c_str(), "PERIPHERAL") == 0)
+      BluetoothManager::getPeripheral().update();
+
+    if(update){
+      drawSimonGameScreen();   // Redraw disk
+      drawSimonScore();        // Show updated score
+      drawPlayerStatusTable(); // Draw updated check marks
+      update = false;
+    }
+    
     if (millis() - lastSequenceTime > sequenceDisplayDelay) {
       simonPlaySequence();
     }
     break;
 
   case SIMON_STATE_PLAY:
+    if(strcmp(multiplayerMode.c_str(), "PERIPHERAL") == 0)
+      BluetoothManager::getPeripheral().update();
+    if(update){
+      drawSimonGameScreen();   // Redraw disk
+      drawSimonScore();        // Show updated score
+      drawPlayerStatusTable(); // Draw updated check marks
+      update = false;
+    }    
     for (int i = 0; i < 4; i++) {
       if (simonButtons[i]->wasJustPressed()) {
         lastButtonPressTime = millis();
@@ -255,6 +331,27 @@ void handleSimonFrame() {
 
   case SIMON_BLUETOOTH_NUMPAD:
     pad.handleButtonInput(&lastButtonPressTime, buttonDebounceDelay / 2);
+    std::string enteredCode = pad.getCode();
+    
+    if (enteredCode.length() == 6 && pad.wasEnterPressed()) {
+
+      // JOIN = PERIPHERAL
+      BluetoothManager::initPeripheral(tft);
+      BluetoothPeripheral &peripheral = BluetoothManager::getPeripheral();
+      peripheral.beginAdvertising(enteredCode);
+
+      pad.clearCode();
+      delay(1000);
+
+      multiplayerMode = "PERIPHERAL";
+
+      currentPlayer.status = "ready";
+      String ready = generateSimonString(String("status"));
+
+      BluetoothManager::getPeripheral().sendAction(ready.c_str());
+
+      simonStartNewGame();
+    }
     break;
   }
 }
@@ -338,6 +435,12 @@ void simonCheckInput(int buttonPressed) {
       simonLevelUp(); // Full pattern matched
     }
   } else {
+    // Send eliminated status
+    if(strcmp(multiplayerMode.c_str(), "PERIPHERAL") == 0){
+      currentPlayer.status = "eliminated";
+      BluetoothManager::getPeripheral().sendAction(generateSimonString(String("status")).c_str());
+    }
+
     playerFailed = true;     // Mark failure
     drawPlayerStatusTable(); // Shows table
     delay(400);              // Let player visualize the table
@@ -359,6 +462,23 @@ void simonCheckInput(int buttonPressed) {
 void simonLevelUp() {
   // UPDATES PLAYER SCORE HERE
   playerScore++; // Count 1 point for this correct input
+
+    //Add to score if peripheral
+    if(strcmp(multiplayerMode.c_str(), "PERIPHERAL") == 0){
+      BluetoothManager::getPeripheral().sendAction(generateSimonString(String("input")).c_str());
+    }else if(strcmp(multiplayerMode.c_str(), "HOST") == 0){
+      for (auto &p : simonPlayers) {
+        if (p.id == currentPlayer.id) {
+            p.score = playerScore;
+            break;
+          }
+      }
+      BluetoothCentral &central = BluetoothManager::getCentral();
+      String confirmedState = generateSimonString();
+      for (auto *client : central.getConnectedClients()) {
+        central.sendToDevice(client, confirmedState.c_str());
+      }
+    }
 
   playerLevels[0]++; // Only P1 for now
 
@@ -528,48 +648,86 @@ void drawSimonTriangleOverlay(int buttonId) {
 }
 
 void drawPlayerStatusTable() {
-  const int startX = SCREEN_WIDTH - 160; // "-" Move more to the left
-  const int startY = 20;
-  const int nameHeight = 20;
-  const int checkSize = 12;
-  const int checkSpacing = 16;
-  const int maxPerRow = 6;
+  if(strcmp(multiplayerMode.c_str(), "NONE") == 0){
 
-  tft.setTextDatum(TL_DATUM);
-  tft.setTextSize(1);
-  tft.setTextColor(TFT_WHITE, TFT_BLACK);
-
-  for (int i = 0; i < 1; i++) { // 1 for now (P1)
-    int nameX = startX;
-    int nameY = startY + i * (nameHeight + 50);
-    String name = "P" + String(i + 1);
-    tft.drawString(name, nameX, nameY);
-
-    // Draw green checks for levels passed
-    for (int lvl = 0; lvl < playerLevels[i]; lvl++) {
-      int row = lvl / maxPerRow;
-      int col = lvl % maxPerRow;
-
-      int checkX = nameX + col * (checkSize + checkSpacing);
-      int checkY = nameY + nameHeight + 5 + row * (checkSize + 10);
-
-      tft.fillCircle(checkX, checkY, checkSize / 2, TFT_GREEN);
-      tft.drawCircle(checkX, checkY, checkSize / 2, TFT_WHITE);
+    const int startX = diskSize + 20;
+    const int startY = 20;
+    const int nameHeight = 20;
+    const int checkSize = 12;
+    const int checkSpacing = 16;
+    const int maxPerRow = 6;
+  
+    tft.setTextDatum(TL_DATUM);
+    tft.setTextSize(1);
+    tft.setTextColor(TFT_WHITE, TFT_BLACK);
+  
+    for (int i = 0; i < 1; i++) { // 1 for now (P1)
+      int nameX = startX;
+      int nameY = startY + i * (nameHeight + 50);
+      String name = "P" + String(i + 1);
+      tft.drawString(name, nameX, nameY);
+  
+      // Draw green checks for levels passed
+      for (int lvl = 0; lvl < playerLevels[i]; lvl++) {
+        int row = lvl / maxPerRow;
+        int col = lvl % maxPerRow;
+  
+        int checkX = nameX + col * (checkSize + checkSpacing);
+        int checkY = nameY + nameHeight + 5 + row * (checkSize + 10);
+  
+        tft.fillCircle(checkX, checkY, checkSize / 2, TFT_GREEN);
+        tft.drawCircle(checkX, checkY, checkSize / 2, TFT_WHITE);
+      }
+  
+      // Red X if the player failed
+      if (playerFailed) {
+        int failIndex = playerLevels[i];
+        int row = failIndex / maxPerRow;
+        int col = failIndex % maxPerRow;
+  
+        int failX = nameX + col * (checkSize + checkSpacing);
+        int failY = nameY + nameHeight + 5 + row * (checkSize + 10);
+  
+        tft.fillCircle(failX, failY, checkSize / 2, TFT_RED);
+        tft.drawCircle(failX, failY, checkSize / 2, TFT_WHITE);
+        tft.drawLine(failX - 3, failY - 3, failX + 3, failY + 3, TFT_WHITE);
+        tft.drawLine(failX - 3, failY + 3, failX + 3, failY - 3, TFT_WHITE);
+      }
     }
+  }else{
+    const int startX = diskSize + 60;  // Right of the disk
+    int startY = 5;                    // Initial vertical position
+    const int minBoxWidth = 100;       // Minimum width
+    const int boxHeight = 50;
+    const int padding = 8;
+    const int spacing = 10;
 
-    // Red X if the player failed
-    if (playerFailed) {
-      int failIndex = playerLevels[i];
-      int row = failIndex / maxPerRow;
-      int col = failIndex % maxPerRow;
+    for (size_t i = 0; i < simonPlayers.size(); ++i) {
+      const SimonPlayer &player = simonPlayers[i];
 
-      int failX = nameX + col * (checkSize + checkSpacing);
-      int failY = nameY + nameHeight + 5 + row * (checkSize + 10);
+      // Set text settings before measuring
+      tft.setTextSize(2);
+      tft.setTextDatum(TL_DATUM);
 
-      tft.fillCircle(failX, failY, checkSize / 2, TFT_RED);
-      tft.drawCircle(failX, failY, checkSize / 2, TFT_WHITE);
-      tft.drawLine(failX - 3, failY - 3, failX + 3, failY + 3, TFT_WHITE);
-      tft.drawLine(failX - 3, failY + 3, failX + 3, failY - 3, TFT_WHITE);
+      // Measure text width
+      int nameWidth = tft.textWidth(player.name);
+      int scoreWidth = tft.textWidth(String(player.score));
+
+      // Calculate dynamic box width
+      int contentWidth = max(nameWidth, scoreWidth);
+      int boxWidth = max(minBoxWidth, contentWidth + 2 * padding);
+
+      // Draw box
+      tft.fillRoundRect(startX, startY, boxWidth, boxHeight, 8, TFT_BLACK);
+      tft.drawRoundRect(startX, startY, boxWidth, boxHeight, 8, TFT_YELLOW);
+
+      // Draw name and score
+      tft.setTextColor(TFT_YELLOW, TFT_BLACK);
+      tft.drawString(player.name, startX + padding, startY + padding);
+      tft.drawString(String(player.score), startX + padding, startY + padding + 22);
+
+      // Move down for the next player
+      startY += boxHeight + spacing;
     }
   }
 }
@@ -620,4 +778,169 @@ void drawSimonScore() {
   // Draw score string
   String scoreText = "Score: " + String(playerScore);
   tft.drawString(scoreText, 10, 10);
+}
+
+// ========== Generate Simon State String ========== //
+String generateSimonString(String mode) {
+    if (mode == "full") {
+        String state = "s@state:";
+        for (size_t i = 0; i < simonPlayers.size(); ++i) {
+            const SimonPlayer &p = simonPlayers[i];
+            state += String(p.id) + ":" + p.name + ":" + String(p.score) + ":" + p.status;
+            if (i < simonPlayers.size() - 1) state += ",";
+        }
+        Serial.println("📤 Generated Simon State: " + state);
+        return state;
+    } 
+    else if (mode == "input") {
+        String state = "s@input:" + String(currentPlayer.id);
+        Serial.println("📤 Generated Simon Input: " + state);
+        return state;
+    } 
+    else if (mode == "status") {
+        String state = "s@status:" + String(currentPlayer.id) + ":" + currentPlayer.name + ":" + currentPlayer.status;
+        Serial.println("📤 Generated Simon Status: " + state);
+        return state;
+    } 
+    else {
+        Serial.println("⚠️ Invalid mode for generateSimonString(): " + mode);
+        return "";
+    }
+}
+
+// ========== Parse Simon State String ========== //
+void readSimonString(String oldState, const char *data) {
+    if (data == nullptr) {
+        Serial.println("⚠️ Null data received in readSimonString");
+        return;
+    }
+    
+    String input = String(data);
+    input.trim();
+    
+    if (input.length() == 0) {
+        Serial.println("⚠️ Empty input received in readSimonString");
+        return;
+    }
+    
+    if (input.startsWith("s@state:")) {
+        input.replace("s@state:", "");
+        std::vector<SimonPlayer> newPlayers;
+        
+        if (input.length() == 0) {
+            // Empty state - clear all players
+            simonPlayers = newPlayers;
+            Serial.println("✅ Cleared all players (empty state).");
+            return;
+        }
+        
+        int start = 0;
+        while (start < (int)input.length()) {
+            int end = input.indexOf(',', start);
+            if (end == -1) end = input.length();
+            
+            String part = input.substring(start, end);
+            part.trim(); // Remove any whitespace
+            
+            if (part.length() == 0) {
+                start = end + 1;
+                continue;
+            }
+            
+            int first = part.indexOf(':');
+            int second = part.indexOf(':', first + 1);
+            int third = part.indexOf(':', second + 1);
+            
+            if (first > 0 && second > first && third > second) {
+                String idStr = part.substring(0, first);
+                String name = part.substring(first + 1, second);
+                String scoreStr = part.substring(second + 1, third);
+                String status = part.substring(third + 1);
+                
+                // Validate numeric conversions
+                int id = idStr.toInt();
+                int score = scoreStr.toInt();
+                
+                // Basic validation
+                if (id > 0 && name.length() > 0) {
+                    newPlayers.push_back(SimonPlayer(id, name, score, status));
+                } else {
+                    Serial.println("⚠️ Invalid player data: " + part);
+                }
+            } else {
+                Serial.println("⚠️ Malformed player data: " + part);
+            }
+            start = end + 1;
+        }
+        
+        simonPlayers = newPlayers;
+        Serial.println("✅ Processed full state update with " + String(newPlayers.size()) + " players.");
+        update = true;
+    } 
+    else if (input.startsWith("s@input:")) {
+        input.replace("s@input:", "");
+        int id = input.toInt();
+        
+        if (id <= 0) {
+            Serial.println("⚠️ Invalid player ID in input: " + input);
+            return;
+        }
+        
+        bool found = false;
+        for (auto &p : simonPlayers) {
+            if (p.id == id) {
+                p.score += 1;
+                Serial.printf("✅ Player %d input processed: new score = %d\n", id, p.score);
+                found = true;
+                break;
+            }
+        }
+        
+        if (!found) {
+            Serial.printf("⚠️ Player %d not found for input processing\n", id);
+        }
+        update = true;
+    } 
+    else if (input.startsWith("s@status:")) {
+        input.replace("s@status:", "");
+        int first = input.indexOf(':');
+        int second = input.indexOf(':', first + 1);
+        
+        if (first != -1 && second != -1) {
+            String idStr = input.substring(0, first);
+            String name = input.substring(first + 1, second);
+            String status = input.substring(second + 1);
+            
+            int id = idStr.toInt();
+            
+            if (id <= 0 || name.length() == 0) {
+                Serial.println("⚠️ Invalid status data: " + input);
+                return;
+            }
+            
+            bool found = false;
+            for (auto &p : simonPlayers) {
+                if (p.id == id) {
+                    p.status = status;
+                    p.name = name;
+                    Serial.printf("✅ Player %d (%s) status updated to %s\n", id, name.c_str(), status.c_str());
+                    found = true;
+                    break;
+                }
+            }
+            
+            if (!found) {
+                // New player joining
+                SimonPlayer newPlayer(id, name, 0, status);
+                simonPlayers.push_back(newPlayer);
+                Serial.printf("👤 New player added: ID=%d, Name=%s, Status=%s\n", id, name.c_str(), status.c_str());
+            }
+            update = true;
+        } else {
+            Serial.println("⚠️ Malformed status string: " + input);
+        }
+    } 
+    else {
+        Serial.println("⚠️ Unrecognized Simon string format: " + input);
+    }
 }
