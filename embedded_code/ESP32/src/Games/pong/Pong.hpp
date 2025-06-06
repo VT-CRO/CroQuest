@@ -1,7 +1,10 @@
 #pragma once
 
+#include "Bluetooth/BluetoothManager.hpp"
 #include "Core/Buttons.hpp"
 #include "Core/JpegDrawing.hpp"
+#include "HostGame/HostGame.hpp"
+#include "JoinHost/JoinHost.hpp"
 #include "Menu/MenuReturn.hpp"
 #include "NumPad/NumPad.hpp"
 #include <TFT_eSPI.h>
@@ -14,3 +17,4 @@ extern Button A, B, up, down, left, right;
 
 //============ API ==============
 void runPong();
+void handlePongFrame();

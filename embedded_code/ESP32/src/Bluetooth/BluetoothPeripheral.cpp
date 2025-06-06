@@ -138,7 +138,7 @@ void BluetoothPeripheral::ServerCallbacks::onDisconnect(
   }
 }
 
-// ###################### Send Messages #####################
+// ###################### Send Arrays #####################
 bool BluetoothPeripheral::sendAction(const std::string &message) {
   if (!characteristic) {
     Serial.println("⚠️ Cannot send: characteristic is null.");
@@ -162,4 +162,29 @@ bool BluetoothPeripheral::sendAction(const std::string &message) {
     Serial.println("❌ Exception while sending action.");
     return false;
   }
+}
+
+// ###################### Read Messages #####################
+std::string BluetoothPeripheral::readMessage() {
+  if (!characteristic)
+    return "";
+
+  try {
+    std::string val = characteristic->getValue();
+    if (!val.empty() && val != lastHostMessage) {
+      lastHostMessage = val;
+      Serial.print("📥 Peripheral read: ");
+      Serial.println(val.c_str());
+      return val;
+    }
+  } catch (...) {
+    Serial.println("❌ Error while reading characteristic.");
+  }
+
+  return "";
+}
+
+// ###################### Send Messages #####################
+void BluetoothPeripheral::sendMessage(const std::string &message) {
+  sendAction(message);
 }

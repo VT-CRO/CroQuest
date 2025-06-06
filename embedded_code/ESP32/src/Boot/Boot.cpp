@@ -11,7 +11,7 @@
 
 #include "SettingsMenu/AudioMenu/Audio.hpp"
 
-extern int& volume;
+extern int &volume;
 
 // ======================== Global Display Instance ========================
 TFT_eSPI tft = TFT_eSPI(); // Shared display object
@@ -33,6 +33,7 @@ void initBoot() {
   digitalWrite(5, HIGH);
 
   if (!SD.begin(5)) {
+
     Serial.println("Card Mount Failed");
     tft.fillScreen(TFT_RED);
     tft.setTextColor(TFT_WHITE, TFT_RED);

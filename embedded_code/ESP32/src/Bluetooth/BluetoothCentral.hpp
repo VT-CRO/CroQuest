@@ -39,6 +39,15 @@ public:
   // ###################### Disconnect from ALL Devices #####################
   void disconnectAll();
 
+  // ###################### Update Poll #####################
+  void update();
+
+  // ###################### Send Messages (not array) #####################
+  void sendMessage(const std::string &msg);
+
+  // ###################### Read Messages #####################
+  std::string readMessage();
+
   // ###################### Get Connected Clients #####################
   const std::vector<NimBLEClient *> &getConnectedClients() const;
 

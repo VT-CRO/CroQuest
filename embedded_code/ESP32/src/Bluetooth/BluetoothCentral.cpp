@@ -216,11 +216,13 @@ void BluetoothCentral::disconnectAll() {
   this->connectedClients.clear();
 }
 
+// ###################### Getter of Connected Clients #####################
 const std::vector<NimBLEClient *> &
 BluetoothCentral::getConnectedClients() const {
   return connectedClients;
 }
 
+// ###################### Cleans Format of arrays #####################
 std::string BluetoothCentral::sanitize(const std::string &input) {
   size_t start = input.find_first_not_of(" \n\r\t");
   size_t end = input.find_last_not_of(" \n\r\t");
@@ -233,4 +235,22 @@ std::string BluetoothCentral::sanitize(const std::string &input) {
     c = tolower(c);
   }
   return trimmed;
+}
+
+// ###################### Update Poll #####################
+void BluetoothCentral::update() {
+  // No-op for now, or you can implement polling logic here if needed
+}
+
+// ###################### Read Messages #####################
+std::string BluetoothCentral::readMessage() {
+  // You can extend this to poll a characteristic, but for now return empty
+  return "";
+}
+
+// ###################### Send Messages (not array) #####################
+void BluetoothCentral::sendMessage(const std::string &msg) {
+  for (auto *client : this->connectedClients) {
+    sendToDevice(client, msg);
+  }
 }

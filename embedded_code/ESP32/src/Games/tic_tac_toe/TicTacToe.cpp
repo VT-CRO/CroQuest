@@ -152,7 +152,7 @@ void runTicTacToe() {
 
     // keep support for exiting with B from homescreen
     if (game_state == HOMESCREEN && B.wasJustPressed()) {
-      Serial.println("Returning to menu from Tic Tac Toe");
+      Serial.println("Returning to menu");
       delay(500);
       return;
     }
@@ -278,15 +278,6 @@ void handleTicTacToeFrame() {
   else if (game_state == HOST_SCREEN) {
 
     BluetoothCentral &central = BluetoothManager::getCentral();
-
-    // // Receive updates from client (if there are any)
-    // central.pollDevices();
-
-    // // Send all the game state to peripheral devices
-    // String gameState = generateTicTacToeStateString();
-    // for (auto *client : central.getConnectedClients()) {
-    //   central.sendToDevice(client, gameState.c_str());
-    // }
   }
 
   // ================== MULTIPLAYER_PLAYING State =================== //

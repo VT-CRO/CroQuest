@@ -30,6 +30,12 @@ public:
   // ###################### Send Messages #####################
   bool sendAction(const std::string &message);
 
+  // ###################### Read Messages #####################
+  std::string readMessage(); // Expose message reading
+
+  // ###################### Send Messages #####################
+  void sendMessage(const std::string &message); // Alias to sendAction
+
 private:
   TFT_eSPI &tft;
   NimBLEServer *server = nullptr;
