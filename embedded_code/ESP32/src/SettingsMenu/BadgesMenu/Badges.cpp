@@ -87,7 +87,7 @@ void runBadgesMenu() {
 
     tft.setTextDatum(BC_DATUM);
     tft.setTextSize(1);
-    tft.drawString("[A] to go back", tft.width() / 2, tft.height() - 5);
+    tft.drawString("[B] to go back", tft.width() / 2, tft.height() - 5);
   };
 
   auto drawStaticLayout = [&]() {
@@ -111,7 +111,7 @@ void runBadgesMenu() {
     // Draw footer
     tft.setTextDatum(BC_DATUM);
     tft.setTextSize(1);
-    tft.drawString("[A] to go back", tft.width() / 2, tft.height() - 5);
+    tft.drawString("[B] to go back", tft.width() / 2, tft.height() - 5);
   };
 
   auto drawSelectorAndDescription = [&](int index, int prevIndex) {
@@ -169,7 +169,7 @@ void runBadgesMenu() {
     } else if (down.wasJustPressed()) {
       if (selectedIndex + colCount < badgeCount)
         selectedIndex += colCount;
-    } else if (A.wasJustPressed()) {
+    } else if (B.wasJustPressed()) {
       break;
     }
 

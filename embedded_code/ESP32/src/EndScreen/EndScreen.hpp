@@ -13,9 +13,11 @@ public:
     // RETURN VALUE == TRUE reset game, else return to main menu
     bool handleUserInput();
 
+    bool exit; // If true exit to menu
+
     // Constructor
     EndScreen(std::vector<String>& names, std::vector<int>& scores, bool multiplayer, char * playerName, int score)
-        : playerNames(names), playerScores(scores), multiplayer(multiplayer), playerName(playerName), score(score) {}
+        : playerNames(names), playerScores(scores), multiplayer(multiplayer), playerName(playerName), score(score) {exit = false;}
 private:
     enum State {SCORE_BOARD, ENDSCREEN}; 
     State currentState = SCORE_BOARD;
@@ -26,7 +28,6 @@ private:
     std::vector<int>& playerScores;
     char * playerName;
     int score;
-
 
     void drawingSelections(uint16_t bgcolor);
     void scoreBoardScreen();

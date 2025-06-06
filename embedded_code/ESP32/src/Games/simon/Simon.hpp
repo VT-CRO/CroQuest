@@ -9,6 +9,10 @@
 // ========== API ==========
 void runSimon();
 void handleSimonFrame();
+extern void readSimonString(String oldState, const char *data);
+extern String generateSimonString(String mode = "full");
+
+extern bool simonStateChanged;
 
 // ========== Game States ==========
 enum SimonState {
@@ -19,7 +23,8 @@ enum SimonState {
   SIMON_JOIN_SCREEN,
   SIMON_LEVELUP,
   SIMON_STATE_WATCH,
-  SIMON_STATE_PLAY
+  SIMON_STATE_PLAY,
+  SIMON_MULTIPLAYER_PLAYING,
 };
 
 // Button identifiers

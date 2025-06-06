@@ -2,6 +2,9 @@
 
 #include "BluetoothPeripheral.hpp"
 
+//Simon func
+extern void readSimonString(String oldState, const char *data);
+
 static bool bleInitialized = false;
 
 BluetoothPeripheral::BluetoothPeripheral(TFT_eSPI &display) : tft(display) {}
@@ -92,6 +95,8 @@ void BluetoothPeripheral::update() {
   // Check if it's a Tic Tac Toe game state
   if (received.rfind("ttt@", 0) == 0) {
     readTicTacToeString("", received.c_str());
+  }else if (received.rfind("s@", 0) == 0) {
+    readSimonString("", received.c_str());
   } else {
     Serial.println("⚠️ Unknown message format, ignored.");
   }

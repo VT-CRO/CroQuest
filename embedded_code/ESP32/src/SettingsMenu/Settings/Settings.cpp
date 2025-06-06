@@ -152,6 +152,10 @@ void runSettings() {
       }
 
       delay(200);
+    }else if(B.isPressed()){
+      saveToSettingsFile("/settings.bin");
+      backAudio();
+      break;
     }
 
     delay(10);

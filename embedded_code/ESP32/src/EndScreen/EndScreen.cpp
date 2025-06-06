@@ -162,6 +162,13 @@ bool EndScreen::handleUserInput(){
     unsigned long buttonDebounceDelay = 200;
     for(;;){
         if (millis() - lastButtonPressTime > buttonDebounceDelay){
+            // start button pressed
+            if(checkStartButtonAndExit(tft)){
+                exit = true;
+                return false; // function returns false and exit is set to true -> exit to menu
+            }
+
+
             switch(currentState){
                 // SCOREBOARD DISPLAYED
                 case SCORE_BOARD:
