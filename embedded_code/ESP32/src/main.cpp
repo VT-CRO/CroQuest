@@ -9,6 +9,7 @@
 #include "Core/BrightnessControl.hpp"
 #include "Core/Buttons.hpp"
 #include "Menu/GameMenu.hpp"
+#include "Notifications/Notification.hpp"
 #include "SettingsMenu/Settings/Settings.hpp" // for `settings.brightness`
 
 GameMenu menu(&tft);                    // Create a GameMenu instance
@@ -50,4 +51,8 @@ void setup() {
 void loop() {
   updateAllButtons();
   menu.handleInput();
+
+  if (currentMenuState == STATE_MENU) {
+    notification.update();
+  }
 }

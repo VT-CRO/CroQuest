@@ -20,6 +20,9 @@ enum GameState {
 //  Global Definitions
 // ####################################################################################################
 
+// Badge
+static int consecutiveWins = 0;
+
 // Multiplayer
 static bool firstFrame = false;
 static bool multiplayerMode = false;
@@ -162,6 +165,8 @@ void runPong() {
 
 // ========== Manual Loop ========== //
 void handlePongFrame() {
+
+  consecutiveWins = 0;
 
   static unsigned long lastMoveTime = 0;
 
@@ -743,6 +748,10 @@ static void drawHomeSelection() {
 
 // Draws the end screen
 static void draw_endscreen(int score0, int score1) {
+
+  bool playerWon = score1 >= GAME_WON; // Assuming player is on the right
+  bool aiWon = score0 >= GAME_WON;
+
   // Clear screen
   tft.fillScreen(TFT_BLACK);
 
@@ -777,6 +786,23 @@ static void draw_endscreen(int score0, int score1) {
   tft.setCursor(scoreX, 120);  // Main position
   tft.print(scorestr0);
   tft.print(scorestr1);
+
+  if (!multiplayerMode) {
+    if (playerWon && !aiWon) {
+      consecutiveWins++;
+    } else {
+      consecutiveWins = 0; // Reset on loss or multiplayer
+    }
+
+    if (consecutiveWins >= 3 && !badgeProgress[1]) {
+      badgeProgress[1] = true;
+      isUnlocked[1] = true;
+      saveBadgeProgress();
+      hasPendingNotification = true;
+      pendingNotificationMessage = "Pong Badge Unlocked!";
+      pendingNotificationDuration = 3000;
+    }
+  }
 
   // Instructions for restart and home screen with buttons
 

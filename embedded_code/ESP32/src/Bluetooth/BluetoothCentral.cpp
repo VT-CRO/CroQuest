@@ -3,7 +3,7 @@
 #include "BluetoothCentral.hpp"
 #include "ConnectionScreen.hpp"
 
-//Simon funcs + state
+// Simon funcs + state
 extern bool simonStateChanged;
 extern void readSimonString(String oldState, const char *data);
 extern String generateSimonString(String mode = "full");
@@ -152,14 +152,14 @@ void BluetoothCentral::connectToDevices() {
             for (auto *client : central.getConnectedClients()) {
               central.sendToDevice(client, confirmedState.c_str());
             }
-          }else if (msg.rfind("s@", 0) == 0) {
+          } else if (msg.rfind("s@", 0) == 0) {
             Serial.println("PERIPHERAL SENT SIMON: ");
             Serial.println(msg.c_str());
 
             readSimonString("", msg.c_str());
             simonStateChanged = true;
 
-            //Sends updated state to all peripherals
+            // Sends updated state to all peripherals
             BluetoothCentral &central = BluetoothManager::getCentral();
             String confirmedState = generateSimonString();
             for (auto *client : central.getConnectedClients()) {

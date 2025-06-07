@@ -10,6 +10,7 @@
 #include <TFT_eSPI.h>
 
 #include "SettingsMenu/AudioMenu/Audio.hpp"
+#include "SettingsMenu/BadgesMenu/Badges.hpp"
 
 extern int &volume;
 
@@ -39,6 +40,12 @@ void initBoot() {
     tft.setTextColor(TFT_WHITE, TFT_RED);
     tft.setTextSize(2);
     tft.drawString("SD Card Mount Failed", 10, 10, 2);
+    tft.drawString("Restart CroQuest.", 10, 50, 2);
+    delay(3600);
+
+  } else {
+    // TODO: Reset badge progress for testing. REMOVE IT LATER
+    resetBadgeProgress();
   }
 }
 

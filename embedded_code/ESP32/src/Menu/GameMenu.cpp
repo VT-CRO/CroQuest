@@ -25,6 +25,12 @@ GameMenu::GameMenu(TFT_eSPI *tft) : tft(tft), selectedIndex(0), drawer(*tft) {
   gameBoxes[8] = {"Chess", 0, 0}; // Top row
   gameBoxes[9] = {"Checkers", 0, 1};
   gameBoxes[10] = {"UNO", 0, 2};
+
+  // ====== Show a notification if any new badge was unlocked ======
+  if (hasPendingNotification) {
+    notification.show(pendingNotificationMessage, pendingNotificationDuration);
+    hasPendingNotification = false; // reset
+  }
 }
 
 // ###################### Draw Screen ######################
@@ -85,6 +91,8 @@ void GameMenu::drawPage() {
     tft->drawRoundRect(x - i, y - i, ICON_SIZE + 2 * i, ICON_SIZE + 2 * i,
                        SELECTOR_RADIUS, TFT_WHITE);
   }
+
+  processPendingNotification();
 }
 
 // ###################### Handle Input User ######################

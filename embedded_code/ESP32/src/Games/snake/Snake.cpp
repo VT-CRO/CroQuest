@@ -66,13 +66,12 @@ void showHomeScreen();
 void playGameOverSound();
 void playEatSound();
 
-//Caching
+// Caching
 void snakeHeadAssetsToCache();
 
 // GAME STATE
 enum GameState { HOMESCREEN, PLAYING, GAMEOVERSCREEN };
 static enum GameState gameState = HOMESCREEN;
-
 
 // Initializing game
 void runSnake() {
@@ -89,7 +88,6 @@ void runSnake() {
   tft.fillScreen(TFT_BLACK);
   // Now to add to the cache
   snakeHeadAssetsToCache();
-
 
   // read high score
   File file = SD.open("/snake/highscore.txt", "r");
@@ -117,7 +115,7 @@ void runSnake() {
         tft.drawString("Press A to start", tft.width() / 2, tft.height() - 50);
         // Delay added to show A was pressed
         delay(200);
-        
+
         gameState = PLAYING;
         playPressSound();
         resetGame();
@@ -140,7 +138,7 @@ void runSnake() {
         tft.setTextColor(TFT_WHITE);
         tft.setTextSize(2);
         tft.drawString("Press B to return to menu", tft.width() / 2,
-                 tft.height() - 30);
+                       tft.height() - 30);
         delay(200);
 
         gameState = HOMESCREEN;
@@ -153,7 +151,8 @@ void runSnake() {
         // Highlights the text to show it was pressed
         tft.setTextColor(TFT_WHITE);
         tft.setTextSize(2);
-        tft.drawString("Press A to restart", tft.width() / 2, tft.height() - 60);
+        tft.drawString("Press A to restart", tft.width() / 2,
+                       tft.height() - 60);
         delay(200);
         gameState = PLAYING;
         playPressSound();
@@ -186,7 +185,7 @@ void handleButtonInputs() {
       direction = LEFT;
   }
 
-  // delay(20);
+  delay(10);
 }
 
 // Method for drawing a single tile
@@ -329,6 +328,15 @@ void moveSnake() {
     snakeLength++;
     score++;
 
+    // Unlock badge 0 if score >= x
+    if (score >= 150 && !badgeProgress[0]) {
+      badgeProgress[0] = true;
+      isUnlocked[0] = true;
+      saveBadgeProgress();
+
+      triggerNotification("Snake Badge Unlocked!", 3000);
+    }
+
     tft.fillRect(0, 0, tft.width(), TILE_SIZE * 2 - 4,
                  tft.color565(50, 50, 50)); // Clear top row
     drawScores();
@@ -449,11 +457,11 @@ void moveSnake() {
 
   // Calling game over if any collision occurs
   if (gameOver) {
-    // The gameover sound is kinda long. 
+    // The gameover sound is kinda long.
     // If there's no sound it may seem unresponsive
-    if(volume > 0){
-        // plays gameover sound
-        playGameOverSound();
+    if (volume > 0) {
+      // plays gameover sound
+      playGameOverSound();
     }
     if (score > highScore) {
       highScore = score;
@@ -690,42 +698,36 @@ void playEatSound() {
 // though the startup will increase as a result
 // Caching everything at the start increased the startup noticably
 void snakeHeadAssetsToCache() {
-    const char* assetPaths[] = {
-        // "/snake/assets/turn_up_right_or_left_down_light.jpg",
-        // "/snake/assets/turn_up_left_or_right_down_light.jpg",
-        // "/snake/assets/turn_left_up_or_down_right_light.jpg",
-        // "/snake/assets/turn_right_up_or_down_left_light.jpg",
+  const char *assetPaths[] = {
+      // "/snake/assets/turn_up_right_or_left_down_light.jpg",
+      // "/snake/assets/turn_up_left_or_right_down_light.jpg",
+      // "/snake/assets/turn_left_up_or_down_right_light.jpg",
+      // "/snake/assets/turn_right_up_or_down_left_light.jpg",
 
-        // "/snake/assets/turn_up_right_or_left_down_dark.jpg",
-        // "/snake/assets/turn_up_left_or_right_down_dark.jpg",
-        // "/snake/assets/turn_left_up_or_down_right_dark.jpg",
-        // "/snake/assets/turn_right_up_or_down_left_dark.jpg",
+      // "/snake/assets/turn_up_right_or_left_down_dark.jpg",
+      // "/snake/assets/turn_up_left_or_right_down_dark.jpg",
+      // "/snake/assets/turn_left_up_or_down_right_dark.jpg",
+      // "/snake/assets/turn_right_up_or_down_left_dark.jpg",
 
-        "/snake/assets/open_up.jpg",
-        "/snake/assets/open_down.jpg",
-        "/snake/assets/open_left.jpg",
-        "/snake/assets/open_right.jpg",
+      "/snake/assets/open_up.jpg", "/snake/assets/open_down.jpg",
+      "/snake/assets/open_left.jpg", "/snake/assets/open_right.jpg",
 
-        "/snake/assets/closed_up.jpg",
-        "/snake/assets/closed_down.jpg",
-        "/snake/assets/closed_left.jpg",
-        "/snake/assets/closed_right.jpg",
+      "/snake/assets/closed_up.jpg", "/snake/assets/closed_down.jpg",
+      "/snake/assets/closed_left.jpg", "/snake/assets/closed_right.jpg",
 
-        // "/snake/assets/tail_up_light.jpg",
-        // "/snake/assets/tail_down_light.jpg",
-        // "/snake/assets/tail_left_light.jpg",
-        // "/snake/assets/tail_right_light.jpg",
+      // "/snake/assets/tail_up_light.jpg",
+      // "/snake/assets/tail_down_light.jpg",
+      // "/snake/assets/tail_left_light.jpg",
+      // "/snake/assets/tail_right_light.jpg",
 
-        // "/snake/assets/tail_up_dark.jpg",
-        // "/snake/assets/tail_down_dark.jpg",
-        // "/snake/assets/tail_left_dark.jpg",
-        // "/snake/assets/tail_right_dark.jpg",
-        "/snake/assets/apple.jpg",
-        "/snake/assets/body.jpg"
-    };
+      // "/snake/assets/tail_up_dark.jpg",
+      // "/snake/assets/tail_down_dark.jpg",
+      // "/snake/assets/tail_left_dark.jpg",
+      // "/snake/assets/tail_right_dark.jpg",
+      "/snake/assets/apple.jpg", "/snake/assets/body.jpg"};
 
-    for (const char* path : assetPaths) {
-        drawing.drawSdJpeg(path, 0, 0);
-        drawing.addToCache(path);
-    }
+  for (const char *path : assetPaths) {
+    drawing.drawSdJpeg(path, 0, 0);
+    drawing.addToCache(path);
+  }
 }

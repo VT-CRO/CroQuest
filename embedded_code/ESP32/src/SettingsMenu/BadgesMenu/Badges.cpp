@@ -2,182 +2,355 @@
 
 #include "SettingsMenu/BadgesMenu/Badges.hpp"
 
+// ####################################################################################################
+//  Global Definitions
+// ####################################################################################################
+
+const int badgeSize = 90;
+const int spacing = 25;
+const int rowCount = 2;
+const int colCount = 4;
+const int rowSpacing = 25;
+const int descBoxHeight = 25;
+const int footerHeight = 10;
+
+const int topPadding = 10;
+const int bottomPadding = 20;
+const int leftPadding = 30;
+const int rightPadding = 10;
+
+const int page1Count = 8;
+const int page2Count = 2;
+int currentPage = 0;
+
+bool badgeProgress[badgeCount];
+bool isUnlocked[badgeCount] = {false};
+
+static int startX = 0;
+static int startY = 0;
+static int gridHeight = 0;
+
+const char *badgePaths[badgeCount] = {
+    "/badges/assets/0.jpg", "/badges/assets/1.jpg", "/badges/assets/2.jpg",
+    "/badges/assets/3.jpg", "/badges/assets/4.jpg", "/badges/assets/5.jpg",
+    "/badges/assets/6.jpg", "/badges/assets/7.jpg", "/badges/assets/8.jpg",
+    "/badges/assets/8.jpg"};
+
+const char *badgeDescriptions[badgeCount] = {
+
+    "Eat 150 apples in Snake",
+    "Perfect Pong 3 times",
+    "Perfect Tic Tac Toe 3 times",
+    "Reach Level 25 in Simon",
+    "Win 10 matches of Connect 4",
+    "Perfect Breakout 3 times",
+    "Win Matching in less than 150 seconds",
+    "Reach 5000 points in Tetris",
+    "Captured the Queen",
+    "Get all 9 badges!"};
+
+// ####################################################################################################
+//  Setup
+// ####################################################################################################
+
+// ========== Run Badges <enu ========== //
 void runBadgesMenu() {
 
-  const int badgeCount = 10;
-  const int badgeSize = 64;
-  const int spacing = 16;
-  const int rowCount = 2;
-  const int colCount = 5;
-  const int descBoxHeight = 40;
-  const int footerHeight = 10;
-  const int bottomPadding = 20;
+  loadBadgeProgress();
 
-  const int gridHeight =
-      rowCount * badgeSize + (rowCount - 1) * spacing + bottomPadding;
-  const int startY =
-      (tft.height() - gridHeight - descBoxHeight - footerHeight) / 2;
-  const int startX =
-      (tft.width() - (colCount * badgeSize + (colCount - 1) * spacing)) / 2;
-
-  const char *badgePaths[badgeCount] = {
-      "/badges/level1.jpg", "/badges/level2.jpg", "/badges/level3.jpg",
-      "/badges/level4.jpg", "/badges/level5.jpg", "/badges/level6.jpg",
-      "/badges/level7.jpg", "/badges/level8.jpg", "/badges/level9.jpg",
-      "/badges/level10.jpg"};
-
-  // TODO: Add the actual badge images to the SD card in the /badges directory
-  const char *badgeDescriptions[badgeCount] = {
-      "Change your name.",
-      "Eat 150 apples in Snake",
-      "Perfect Pong 5 times.",
-      "Perfect Tic Tac Toe 5 times.",
-      "Reach Level 25 in Simon",
-      "Win 10 matches of Connect 4.",
-      "Perfect Breakout 5 times",
-      "Win Matching in less than 150 seconds.",
-      "Reach 4000 points in Tetris.",
-      "Get all 9 badges!"};
+  gridHeight = rowCount * badgeSize + (rowCount - 1) * spacing + bottomPadding;
+  startY = (tft.height() - gridHeight - descBoxHeight - footerHeight) / 2 +
+           topPadding;
+  startX = ((tft.width() - leftPadding - rightPadding) -
+            (colCount * badgeSize + (colCount - 1) * spacing)) /
+               2 +
+           leftPadding - 30;
 
   int selectedIndex = 0;
+  int xOffset = 15; // selector
+  int yOffset = 20; // selector
 
-  // Description Box variables
-  int descX = 20;
-  int descY = tft.height() - descBoxHeight - 20;
-  int descW = tft.width() - 40;
-  int descH = descBoxHeight;
+  const int descX = 20;
+  const int descY = tft.height() - descBoxHeight - 17;
+  const int descW = tft.width() - 40;
+  const int descH = descBoxHeight;
 
-  auto drawBadges = [&]() {
-    tft.fillScreen(SETTINGS_BG_COLOR);
-    tft.setTextDatum(TC_DATUM);
-    tft.setTextColor(TFT_WHITE);
-    tft.setTextSize(2);
-    tft.drawString("Your Badges", tft.width() / 2, 20);
+  const int extraWidth = 10;
+  const int extraHeight = 10;
 
-    for (int i = 0; i < badgeCount; i++) {
-      int row = i / colCount;
-      int col = i % colCount;
-      int x = startX + col * (badgeSize + spacing);
-      int y = startY + row * (badgeSize + spacing);
-
-      drawSdJpeg(badgePaths[i], x, y);
-
-      // Selector border
-      if (i == selectedIndex) {
-        for (int j = 0; j < 3; j++) {
-          tft.drawRoundRect(x - j, y - j, badgeSize + 2 * j, badgeSize + 2 * j,
-                            4, TFT_WHITE);
-        }
-
-        // ==== Description Box ====
-
-        // Draw white border around the description box
-        tft.drawRoundRect(descX - 1, descY - 1, descW + 2, descH + 2, 6,
-                          TFT_WHITE);
-
-        // Fill balck background inside
-        tft.fillRect(descX, descY, descW, descH, TFT_BLACK);
-        tft.setTextDatum(CC_DATUM);
-        tft.setTextColor(TFT_WHITE);
-        tft.setTextSize(1);
-        tft.drawString(badgeDescriptions[i], tft.width() / 2,
-                       tft.height() - descBoxHeight);
-      }
-    }
-
-    tft.setTextDatum(BC_DATUM);
-    tft.setTextSize(1);
-    tft.drawString("[B] to go back", tft.width() / 2, tft.height() - 5);
-  };
-
-  auto drawStaticLayout = [&]() {
-    tft.fillScreen(SETTINGS_BG_COLOR);
-    tft.setTextDatum(TC_DATUM);
-    tft.setTextColor(TFT_WHITE);
-    tft.setTextSize(2);
-    tft.drawString("Your Badges", tft.width() / 2, 20);
-
-    for (int i = 0; i < badgeCount; i++) {
-      int row = i / colCount;
-      int col = i % colCount;
-      int x = startX + col * (badgeSize + spacing);
-      int y = startY + row * (badgeSize + spacing);
-      drawSdJpeg(badgePaths[i], x, y);
-    }
-
-    // Draw description box border (once)
-    tft.drawRoundRect(descX - 1, descY - 1, descW + 2, descH + 2, 6, TFT_WHITE);
-
-    // Draw footer
-    tft.setTextDatum(BC_DATUM);
-    tft.setTextSize(1);
-    tft.drawString("[B] to go back", tft.width() / 2, tft.height() - 5);
-  };
-
-  auto drawSelectorAndDescription = [&](int index, int prevIndex) {
-    // Clear previous selector
-    if (prevIndex >= 0) {
-      int pr = prevIndex / colCount;
-      int pc = prevIndex % colCount;
-      int px = startX + pc * (badgeSize + spacing);
-      int py = startY + pr * (badgeSize + spacing);
-
-      // Clear previous selector
-      tft.fillRect(px - 3, py - 3, badgeSize + 6, badgeSize + 6,
-                   SETTINGS_BG_COLOR);
-
-      // Redraw badge icon
-      drawSdJpeg(badgePaths[prevIndex], px, py); // redraw icon
-    }
-
-    // Draw new selector
-    int row = index / colCount;
-    int col = index % colCount;
-    int x = startX + col * (badgeSize + spacing);
-    int y = startY + row * (badgeSize + spacing);
-
-    for (int j = 0; j < 3; j++) {
-      tft.drawRoundRect(x - j, y - j, badgeSize + 2 * j, badgeSize + 2 * j, 4,
-                        TFT_WHITE);
-    }
-
-    // Update description (clear only the inside)
-    tft.fillRect(descX, descY, descW, descH, TFT_BLACK);
-    tft.setTextDatum(CC_DATUM);
-    tft.setTextColor(TFT_WHITE);
-    tft.setTextSize(1);
-    tft.drawString(badgeDescriptions[index], tft.width() / 2,
-                   descY + descH / 2);
-  };
-
-  drawStaticLayout();
-  drawSelectorAndDescription(selectedIndex, -1);
+  drawBadges(selectedIndex, xOffset, yOffset, extraWidth, extraHeight, descX,
+             descY, descW, descH);
 
   while (true) {
     int previousIndex = selectedIndex;
+    int pageCount = (currentPage == 0) ? page1Count : page2Count;
 
+    // ========== LEFT ========== //
     if (left.wasJustPressed()) {
-      if (selectedIndex % colCount > 0)
+      if (selectedIndex % colCount > 0) {
         selectedIndex--;
+      } else {
+        if (currentPage == 0) {
+          if (selectedIndex == 0) {
+            currentPage = 1;
+            selectedIndex = 9;
+            drawBadges(selectedIndex, xOffset, yOffset, extraWidth, extraHeight,
+                       descX, descY, descW, descH);
+            drawSelectorAndDescription(selectedIndex, -1, xOffset, yOffset,
+                                       extraWidth, extraHeight, descX, descY,
+                                       descW, descH);
+          } else {
+            selectedIndex--;
+          }
+        } else {
+          currentPage = 0;
+          selectedIndex = 7;
+          drawBadges(selectedIndex, xOffset, yOffset, extraWidth, extraHeight,
+                     descX, descY, descW, descH);
+          drawSelectorAndDescription(selectedIndex, -1, xOffset, yOffset,
+                                     extraWidth, extraHeight, descX, descY,
+                                     descW, descH);
+        }
+      }
+      playSelectBeep();
+
+      // ========== RIGHT ========== //
     } else if (right.wasJustPressed()) {
-      if (selectedIndex % colCount < colCount - 1 &&
-          selectedIndex + 1 < badgeCount)
+      int pageEnd = (currentPage == 0) ? page1Count : badgeCount;
+      if ((selectedIndex + 1) % colCount != 0 && selectedIndex + 1 < pageEnd) {
         selectedIndex++;
+      } else {
+        if (currentPage == 0) {
+          if (selectedIndex == 3) {
+            selectedIndex = 4;
+          } else {
+            currentPage = 1;
+            selectedIndex = 8;
+            drawBadges(selectedIndex, xOffset, yOffset, extraWidth, extraHeight,
+                       descX, descY, descW, descH);
+            drawSelectorAndDescription(selectedIndex, -1, xOffset, yOffset,
+                                       extraWidth, extraHeight, descX, descY,
+                                       descW, descH);
+          }
+        } else {
+          currentPage = 0;
+          selectedIndex = 0;
+          drawBadges(selectedIndex, xOffset, yOffset, extraWidth, extraHeight,
+                     descX, descY, descW, descH);
+          drawSelectorAndDescription(selectedIndex, -1, xOffset, yOffset,
+                                     extraWidth, extraHeight, descX, descY,
+                                     descW, descH);
+        }
+      }
+      playSelectBeep();
+
+      // ========== UP ========== //
     } else if (up.wasJustPressed()) {
-      if (selectedIndex - colCount >= 0)
+      if (selectedIndex - colCount >= ((currentPage == 0) ? 0 : page1Count))
         selectedIndex -= colCount;
+      playSelectBeep();
+
+      // ========== DOWN ========== //
     } else if (down.wasJustPressed()) {
-      if (selectedIndex + colCount < badgeCount)
+      if (selectedIndex + colCount <
+          ((currentPage == 0) ? page1Count : badgeCount))
         selectedIndex += colCount;
+      playSelectBeep();
+
     } else if (B.wasJustPressed()) {
       break;
     }
 
     if (selectedIndex != previousIndex) {
-      drawSelectorAndDescription(selectedIndex, previousIndex);
+      drawSelectorAndDescription(selectedIndex, previousIndex, xOffset, yOffset,
+                                 extraWidth, extraHeight, descX, descY, descW,
+                                 descH);
       delay(150);
     }
 
+    notification.update();
     delay(10);
   }
+}
+
+// ####################################################################################################
+//  Logic
+// ####################################################################################################
+
+// ========== Load Badges ========== //
+void loadBadgeProgress() {
+  File file = SD.open("/badges/save.dat", FILE_READ);
+  if (!file) {
+    Serial.println("No save file found. Using default locked state.");
+    return;
+  }
+
+  for (int i = 0; i < badgeCount && file.available(); i++) {
+    isUnlocked[i] = file.read() == 1;
+  }
+
+  file.close();
+  Serial.println("Badge progress loaded.");
+}
+
+// ========== Saves New Badge ========== //
+void saveBadgeProgress() {
+  if (!SD.exists("/badges")) {
+    SD.mkdir("/badges");
+  }
+
+  File file = SD.open("/badges/save.dat", FILE_WRITE);
+  if (!file) {
+    Serial.println("Failed to open save file for writing.");
+    return;
+  }
+
+  for (int i = 0; i < badgeCount; i++) {
+    file.write(isUnlocked[i] ? 1 : 0);
+  }
+
+  file.close();
+  Serial.println("Badge progress saved.");
+}
+
+void resetBadgeProgress() {
+  File file = SD.open("/badges/save.dat", FILE_WRITE);
+  if (!file) {
+    Serial.println("❌ Failed to open save file to reset.");
+    return;
+  }
+
+  for (int i = 0; i < badgeCount; i++) {
+    file.write(0); // 0 = locked
+    isUnlocked[i] = false;
+    badgeProgress[i] = false;
+  }
+
+  file.close();
+  Serial.println("✅ Badge progress reset.");
+}
+
+// ####################################################################################################
+//  Drawing
+// ####################################################################################################
+
+// ========== Draw the Badges ========== //
+void drawBadges(int selectedIndex, int xOffset, int yOffset, int extraWidth,
+                int extraHeight, int descX, int descY, int descW, int descH) {
+  tft.fillScreen(SETTINGS_BG_COLOR);
+
+  // Clear badge area
+  tft.fillRect(0, 0, tft.width(), tft.height() - descBoxHeight - footerHeight,
+               SETTINGS_BG_COLOR);
+
+  tft.setTextDatum(TC_DATUM);
+  tft.setTextColor(TFT_WHITE);
+  tft.setTextSize(2);
+  tft.drawString("BADGES", tft.width() / 2, 20);
+
+  int start = (currentPage == 0) ? 0 : page1Count;
+  int end = (currentPage == 0) ? page1Count : badgeCount;
+  int localIndex = 0;
+
+  for (int i = start; i < end; i++) {
+    int row = localIndex / colCount;
+    int col = localIndex % colCount;
+    int x = startX + col * (badgeSize + spacing);
+    int y = startY + row * (badgeSize + rowSpacing);
+
+    const char *path =
+        isUnlocked[i] ? badgePaths[i] : "/badges/assets/empty.jpg";
+    drawSdJpeg(path, x, y);
+
+    localIndex++;
+  }
+
+  if (selectedIndex >= start && selectedIndex < end) {
+    int localIndex = selectedIndex - start;
+    int selRow = localIndex / colCount;
+    int selCol = localIndex % colCount;
+    int selX = startX + selCol * (badgeSize + spacing);
+    int selY = startY + selRow * (badgeSize + rowSpacing);
+
+    int selectorBottom = selY + badgeSize + extraHeight;
+    int descTop = descY - 2;
+
+    if (selectorBottom < descTop) {
+      for (int j = 0; j < 3; j++) {
+        tft.drawRoundRect(selX - j + xOffset - extraWidth / 2,
+                          selY - j + yOffset - extraHeight / 2,
+                          badgeSize + 2 * j + extraWidth,
+                          badgeSize + 2 * j + extraHeight, 6, TFT_WHITE);
+      }
+    }
+  }
+
+  tft.drawRoundRect(descX - 1, descY - 1, descW + 2, descH + 2, 6, TFT_WHITE);
+  tft.fillRect(descX, descY, descW, descH, TFT_BLACK);
+  tft.setTextDatum(CC_DATUM);
+  tft.setTextColor(TFT_WHITE);
+  tft.setTextSize(1);
+  tft.drawString(badgeDescriptions[selectedIndex], tft.width() / 2,
+                 tft.height() - descBoxHeight);
+
+  tft.setTextDatum(BC_DATUM);
+  tft.setTextSize(1);
+  tft.drawString("[B] to go back", tft.width() / 2, tft.height() - 5);
+}
+
+// ========== Draw Selector ========== //
+void drawSelectorAndDescription(int index, int prevIndex, int xOffset,
+                                int yOffset, int extraWidth, int extraHeight,
+                                int descX, int descY, int descW, int descH) {
+  int descTop = descY - 2;
+
+  // ===== Clear previous selector =====
+  if (prevIndex >= 0) {
+    int localPrev = prevIndex - ((currentPage == 0) ? 0 : page1Count);
+    int pr = localPrev / colCount;
+    int pc = localPrev % colCount;
+
+    int px = startX + pc * (badgeSize + spacing);
+    int py = startY + pr * (badgeSize + rowSpacing);
+
+    int selectorBottom = py + badgeSize + extraHeight;
+
+    if (selectorBottom < descTop) {
+      tft.drawRoundRect(px + xOffset - extraWidth / 2,
+                        py + yOffset - extraHeight / 2, badgeSize + extraWidth,
+                        badgeSize + extraHeight, 6, SETTINGS_BG_COLOR);
+    }
+
+    if ((currentPage == 0 && prevIndex < page1Count) ||
+        (currentPage == 1 && prevIndex >= page1Count)) {
+      const char *path = isUnlocked[prevIndex] ? badgePaths[prevIndex]
+                                               : "/badges/assets/empty.jpg";
+      drawSdJpeg(path, px, py);
+    }
+  }
+
+  // ===== Draw new selector =====
+  int localIndex = index - ((currentPage == 0) ? 0 : page1Count);
+  int row = localIndex / colCount;
+  int col = localIndex % colCount;
+
+  int x = startX + col * (badgeSize + spacing);
+  int y = startY + row * (badgeSize + rowSpacing);
+
+  for (int j = 0; j < 3; j++) {
+    int borderY = y - j + yOffset - extraHeight / 2;
+    int borderH = badgeSize + 2 * j + extraHeight;
+
+    if (borderY + borderH < descTop) {
+      tft.drawRoundRect(x - j + xOffset - extraWidth / 2, borderY,
+                        badgeSize + 2 * j + extraWidth, borderH, 6, TFT_WHITE);
+    }
+  }
+
+  // ===== Update description box =====
+  tft.fillRect(descX, descY, descW, descH, TFT_BLACK);
+  tft.setTextDatum(CC_DATUM);
+  tft.setTextColor(TFT_WHITE);
+  tft.setTextSize(1);
+  tft.drawString(badgeDescriptions[index], tft.width() / 2, descY + descH / 2);
 }

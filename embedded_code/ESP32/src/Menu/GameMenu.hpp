@@ -10,7 +10,7 @@
 #include "Core/Buttons.hpp"
 #include "Core/JpegDrawing.hpp"
 #include "Menu/GameSetup.hpp"
-// #include "SettingsMenu/BrightnessMenu/Brightness.hpp"
+#include "Notifications/NotificationManager.hpp"
 #include "SettingsMenu/Settings/Settings.hpp"
 
 // === Global Flags ===

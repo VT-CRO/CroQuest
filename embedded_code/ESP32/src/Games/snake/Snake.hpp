@@ -2,7 +2,9 @@
 #include "Core/Buttons.hpp"
 #include "Core/JpegDrawing.hpp"
 #include "Menu/MenuReturn.hpp"
+#include "Notifications/NotificationManager.hpp"
 #include "NumPad/NumPad.hpp"
+#include "SettingsMenu/BadgesMenu/Badges.hpp"
 #include <TFT_eSPI.h>
 
 // ========== Globals ==========
