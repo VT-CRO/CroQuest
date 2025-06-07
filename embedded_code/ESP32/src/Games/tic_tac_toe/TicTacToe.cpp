@@ -212,10 +212,10 @@ void handleTicTacToeFrame() {
           std::string code = generate6DigitCode();
 
           // Set the screen for HostGame
-          HostGame::init(tft);
+          // HostGame::init(tft);
 
           // Now safely show code
-          HostGame::showCode(String(code.c_str()));
+          // HostGame::showCode(String(code.c_str()));
 
           // Check if user exited
           if (getExitFlag()) {
@@ -224,7 +224,7 @@ void handleTicTacToeFrame() {
             return;
           }
 
-          central.scanAndConnectLoop(code);
+          // central.scanAndConnectLoop(code);
 
           multiplayerMode = true;
 

@@ -102,6 +102,10 @@ static SimonPlayer currentPlayer = SimonPlayer(atoi(generate6DigitCode().c_str()
 std::vector<SimonPlayer> simonPlayers;
 static String multiplayerMode = "NONE";
 static bool update = false;
+std::vector<String> playerNames;
+int code_selection = 1;
+std::string code;
+static bool scanningStarted = false;
 
 // ======================== Game Entry ========================
 void runSimon() {
@@ -144,6 +148,7 @@ void runSimon() {
   update = false;
   //reset multiplayer flag
   multiplayerMode = "NONE";
+  code_selection = 1;
 
   // Main game loop
   while (true) {
@@ -215,43 +220,25 @@ void handleSimonFrame() {
         }
       } else if (A.wasJustPressed()) {
         if (simonsubselection == 0) {
-          
+          // Add Host
+          currentPlayer.status = "idle";
+          simonPlayers.push_back(currentPlayer);
+
+          // Create player name vector
+          for (const auto &player : simonPlayers) {
+            playerNames.push_back(player.name);
+          }
+
           // HOST = CENTRAL
           BluetoothManager::initCentral(tft);
           BluetoothCentral &central = BluetoothManager::getCentral();
 
-          std::string code = generate6DigitCode();
-
-          // Set the screen for HostGame
-          HostGame::init(tft);
-
-          // Now safely show code
-          HostGame::showCode(String(code.c_str()));
-
-          central.scanAndConnectLoop(code);
+          code = generate6DigitCode();
 
           multiplayerMode = "HOST";
+          HostGame::showCode(code, code_selection, playerNames, true);
 
-          if (!BluetoothManager::getCentral().getConnectedClients().empty()) {
-
-            // Flush any held buttons to prevent input carryover
-            delay(300); // debounce delay
-            while (A.isPressed() || up.isPressed() || down.isPressed() ||
-                   left.isPressed() || right.isPressed()) {
-              delay(10);
-            }
-
-            currentPlayer.status = "ready";
-            simonPlayers.push_back(currentPlayer);
-
-            simonStartNewGame(); // Start a new game
-
-          } else {
-            simon_game_state = SIMON_MULTIPLAYER_SELECTION;
-            ConnectionScreen::showMessage("Connection failed.\nTry again.");
-            delay(1000);
-            drawSimonHomeScreen();
-          }
+          simon_game_state = SIMON_HOST_CODE;
         } else {
           pad.numPadSetup();
           simon_game_state = SIMON_BLUETOOTH_NUMPAD;
@@ -264,6 +251,91 @@ void handleSimonFrame() {
         drawSimonHomeSelection();
       }
       lastButtonPressTime = millis();
+    }
+    break;
+  
+  case SIMON_HOST_CODE:
+    if(strcmp(multiplayerMode.c_str(), "HOST") == 0){
+
+      // Modifying selection
+      if(up.isPressed()){
+        if(code_selection != 0){
+          code_selection = 0;
+          HostGame::showCode(code, code_selection, playerNames, true);
+        }
+      }else if(down.isPressed()){
+        if(code_selection != 1){
+          code_selection = 1;
+          HostGame::showCode(code, code_selection, playerNames, true);
+        }
+
+      }
+
+        if(BluetoothManager::getCentral().getConnectedClients().empty()){
+          BluetoothManager::getCentral().scanAndConnectLoop(code);    
+        }
+
+              // Checks if the game should be started
+        if(A.wasJustPressed()){
+          if(code_selection == 1){
+            Serial.println(BluetoothManager::getCentral().getConnectedClients().empty());
+            if (!BluetoothManager::getCentral().getConnectedClients().empty()) {
+  
+              // Flush any held buttons to prevent input carryover
+              delay(300); // debounce delay
+              while (A.isPressed() || up.isPressed() || down.isPressed() ||
+                      left.isPressed() || right.isPressed()) {
+                delay(10);
+              }
+
+              for (auto &p : simonPlayers) {
+                if (p.id == currentPlayer.id) {
+                  p.status = "ready";
+                  break;
+                }
+              }
+
+              BluetoothCentral &central = BluetoothManager::getCentral();
+              String confirmedState = generateSimonString();
+              for (auto *client : central.getConnectedClients()) {
+                central.sendToDevice(client, confirmedState.c_str());
+              }
+
+
+              scanningStarted = false;
+              simonStartNewGame(); // Start a new game
+  
+            } else {
+              simon_game_state = SIMON_MULTIPLAYER_SELECTION;
+              ConnectionScreen::showMessage("Connection failed.\nTry again.");
+              delay(1000);
+              drawSimonHomeScreen();
+              // WILL ALSO NEED TO CLEAN UP BLUETOOTH STRUCTURES
+            }
+          }
+          else{
+            drawSimonHomeScreen();
+            simon_game_state = SIMON_HOMESCREEN;
+            code_selection = 1;
+            // WILL ALSO NEED TO CLEAN UP BLUETOOTH STRUCTURES
+          }
+        }
+    }else{
+      BluetoothManager::getPeripheral().update();
+      if(A.wasJustPressed()){
+        pad.numPadSetup();
+        simon_game_state = SIMON_BLUETOOTH_NUMPAD;
+      }
+      bool starting = true;
+      for (auto &p : simonPlayers) {
+        if(strcmp(p.status.c_str(), "ready")){
+          starting = false;
+        }
+      }
+
+      if(starting){
+        simonStartNewGame();
+      }
     }
     break;
 
@@ -350,7 +422,8 @@ void handleSimonFrame() {
 
       BluetoothManager::getPeripheral().sendAction(ready.c_str());
 
-      simonStartNewGame();
+      simon_game_state = SIMON_HOST_CODE;
+      HostGame::showCode(enteredCode, 0, playerNames, false);
     }
     break;
   }

@@ -44,6 +44,7 @@ void BluetoothManager::stopScan() {
       scanner->stop();
       Serial.println("🛑 BLE Scan stopped.");
       ConnectionScreen::showMessage("Stopped scanning.");
+      (*central).scanComplete = true;
     }
   }
 }

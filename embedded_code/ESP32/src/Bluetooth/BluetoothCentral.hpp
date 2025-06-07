@@ -19,7 +19,10 @@
 
 class BluetoothCentral {
 public:
+  volatile bool scanComplete;
   BluetoothCentral(TFT_eSPI &display);
+
+  void onScanComplete(const NimBLEScanResults& results, int reason);
 
   // ###################### Start Scanning #####################
   void beginScan(const std::string &accessCode);
@@ -61,7 +64,7 @@ private:
   public:
     ScanCallbacks(BluetoothCentral *parent) : parent(parent) {}
     void onResult(const NimBLEAdvertisedDevice *advertisedDevice) override;
-
+    void onScanEnd(const NimBLEScanResults& results, int reason) override;
   private:
     BluetoothCentral *parent;
   };

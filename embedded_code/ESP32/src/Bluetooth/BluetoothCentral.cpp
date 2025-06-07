@@ -8,7 +8,7 @@ extern bool simonStateChanged;
 extern void readSimonString(String oldState, const char *data);
 extern String generateSimonString(String mode = "full");
 
-BluetoothCentral::BluetoothCentral(TFT_eSPI &display) : tft(display) {}
+BluetoothCentral::BluetoothCentral(TFT_eSPI &display) : tft(display) {this->scanComplete = true;}
 
 // ####################################################################################################
 //  Scan Callbacks
@@ -29,10 +29,33 @@ void BluetoothCentral::ScanCallbacks::onResult(
       // ✅ Add match and stop scanning immediately
       parent->foundDevices.push_back(*advertisedDevice);
       NimBLEDevice::getScan()->stop(); // ✅ prevents repeat matches
+      parent->scanComplete = true;
     } else {
       Serial.println("🚫 Code did not match");
     }
   }
+}
+
+void BluetoothCentral::onScanComplete(const NimBLEScanResults& results, int reason) {
+  Serial.printf("Scan finished. Reason: %d, Found %d devices total\n", 
+                reason, results.getCount());
+  
+  if (!foundDevices.empty()) {
+    Serial.println("✅ Target device found, proceeding with connection");
+    connectToDevices();
+  } else {
+    Serial.println("❌ No matching devices found");
+    ConnectionScreen::showMessage("No devices found\nwith matching code");
+  }
+
+  scanComplete = true;
+}
+
+void BluetoothCentral::ScanCallbacks::onScanEnd(const NimBLEScanResults& results, int reason){
+  Serial.printf("🏁 Scan ended! Reason: %d, Found %d devices\n", 
+                reason, results.getCount());
+  parent->onScanComplete(results, reason);
+  Serial.println(BluetoothManager::getCentral().getConnectedClients().empty());
 }
 
 // ###################### Start Scanning #####################
@@ -45,7 +68,7 @@ void BluetoothCentral::beginScan(const std::string &accessCode) {
   NimBLEScan *scanner = NimBLEDevice::getScan();
   scanner->setScanCallbacks(new ScanCallbacks(this));
   scanner->setActiveScan(true);
-  scanner->start(0, false); // Scan continuously
+  scanner->start(1000, false); // Scan continuously
 
   ConnectionScreen::showMessage("Scanning...\nAccess Code:\n" +
                                 String(accessCode.c_str()));
@@ -53,6 +76,12 @@ void BluetoothCentral::beginScan(const std::string &accessCode) {
 
 // ###################### Keep Scanning for more Players #####################
 void BluetoothCentral::scanAndConnectLoop(const std::string &accessCode) {
+  if (!scanComplete || !BluetoothManager::getCentral().getConnectedClients().empty()) {
+    return; // wait until onResult sets - scanComplete = true
+  }else if(scanComplete){
+     connectToDevices();
+  }
+  Serial.println(BluetoothManager::getCentral().getConnectedClients().empty());
   this->targetCode = accessCode;
   this->foundDevices.clear();
   Serial.println("🔄 Starting scan-and-connect loop...");
@@ -61,21 +90,12 @@ void BluetoothCentral::scanAndConnectLoop(const std::string &accessCode) {
                                 String(this->targetCode.c_str()));
   beginScan(this->targetCode);
 
+    scanComplete = false;
   // ✅ Wait until scan stops due to onResult()
-  while (NimBLEDevice::getScan()->isScanning()) {
+  if(NimBLEDevice::getScan()->isScanning()) {
     delay(100);
+    return;
   }
-
-  Serial.println("⏹ Scan stopped.");
-
-  if (!foundDevices.empty()) {
-    connectToDevices();
-  } else {
-    Serial.println("⚠️ No matching devices found.");
-    ConnectionScreen::showMessage("No devices found.\nTry again.");
-  }
-
-  Serial.println("✅ Scan-and-connect loop complete.");
 }
 
 // ###################### In case of Disconnect #####################
