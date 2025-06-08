@@ -7,7 +7,9 @@
 #include "HostGame/HostGame.hpp"
 #include "JoinHost/JoinHost.hpp"
 #include "Menu/MenuReturn.hpp"
+#include "Notifications/NotificationManager.hpp"
 #include "NumPad/NumPad.hpp"
+#include "SettingsMenu/BadgesMenu/Badges.hpp"
 #include <TFT_eSPI.h>
 
 // ========== API ==========
@@ -25,6 +27,13 @@ struct Move {
   int index;
   char symbol;
 };
+
+struct TicTacToeSession {
+  int consecutiveWins = 0;
+  bool badgeUnlocked = false;
+};
+
+extern TicTacToeSession session;
 
 String generateTicTacToeStateString();
 

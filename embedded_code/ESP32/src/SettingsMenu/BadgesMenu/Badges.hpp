@@ -12,6 +12,7 @@ const int badgeCount = 10;
 
 extern bool badgeProgress[badgeCount];
 extern bool isUnlocked[badgeCount];
+extern bool allBadgesEarned;
 
 // ========== Run Badges menu ========== //
 void runBadgesMenu();
@@ -34,14 +35,21 @@ void saveBadgeProgress();
 // ========== Reset Badges ========== //
 void resetBadgeProgress();
 
+// ========== Unlock Final Badge ========== //
+void checkFinalBadgeUnlock();
+
 /**
 IMPORTANT: HOW TO UNLOCK BADGES
 
-    if (score >= 150 && !badgeProgress[X]) {
-      badgeProgress[X] = true;
-      isUnlocked[X] = true;
+    // Badges Implementation
+    if (consecutiveWins >= 3 && !badgeProgress[1]) {
+      badgeProgress[1] = true;
+      isUnlocked[1] = true;
       saveBadgeProgress();
 
-      triggerNotification("{Game} Badge Unlocked!", 3000);
+      // Add to notifications array for Main Menu
+      hasPendingNotification = true;
+      pendingNotificationMessage = "Pong Badge Unlocked!";
+      pendingNotificationDuration = 3000;
 
 */

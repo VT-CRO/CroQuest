@@ -13,21 +13,31 @@ void Notification::show(const String &msg, uint32_t durationMs) {
   startTime = millis();
   visible = true;
 
-  // Compute centered position
-  int shadowOffset = 3;
-  boxW = 260;
-  boxH = 40;
-  boxY = 27;
-  boxX = (tft.width() - boxW) / 2;
+  // === Text settings ===
+  tft.setTextSize(2);
+  tft.setTextFont(1); // Ensure consistent font
+  tft.setTextDatum(MC_DATUM);
 
-  // Allocate sprite to include shadow area
+  int padding = 20;
+  int minWidth = 180;
+  int maxWidth = tft.width() - 40;
+
+  // === Calculate text width ===
+  int textW = tft.textWidth(message);
+  boxW = constrain(textW + padding, minWidth, maxWidth);
+  boxH = 40;
+
+  // === Center the box ===
+  int shadowOffset = 3;
+  boxX = (tft.width() - boxW) / 2;
+  boxY = 27;
+
   int spriteW = boxW + shadowOffset;
   int spriteH = boxH + shadowOffset;
 
+  // === Save background behind notification ===
   bg.setColorDepth(16);
   bg.createSprite(spriteW, spriteH);
-
-  // Save the background including shadow area
   uint16_t *buffer = (uint16_t *)malloc(spriteW * spriteH * sizeof(uint16_t));
   if (buffer) {
     tft.readRect(boxX, boxY, spriteW, spriteH, buffer);
@@ -44,10 +54,8 @@ void Notification::show(const String &msg, uint32_t durationMs) {
   tft.fillRoundRect(boxX, boxY, boxW, boxH, 6, bgColor);
   tft.drawRoundRect(boxX, boxY, boxW, boxH, 6, TFT_WHITE);
 
-  // === Draw text ===
+  // === Draw message ===
   tft.setTextColor(TFT_GREEN, bgColor);
-  tft.setTextDatum(MC_DATUM);
-  tft.setTextSize(2);
   tft.drawString(message, boxX + boxW / 2, boxY + boxH / 2);
 
   delay(3600);

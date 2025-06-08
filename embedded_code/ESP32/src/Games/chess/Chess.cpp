@@ -72,6 +72,8 @@ static int cursorY = 0;
 
 bool whiteTurn = true;
 
+bool enemyQueenCaptured = false;
+
 int selectedRow = -1;
 int selectedCol = -1;
 bool hasSelection = false;
@@ -215,6 +217,25 @@ void handleSelection() {
     // === 3. Check if clicked square is a valid move ===
     for (auto &move : possibleMoves) {
       if (move.first == cursorY && move.second == cursorX) {
+
+        // Check piece to be captured
+        char capturedPiece = chessBoard[cursorY][cursorX];
+
+        // ===== Badge: Capture the Queen =====
+        if (!enemyQueenCaptured && capturedPiece == 'q') {
+          enemyQueenCaptured = true;
+
+          if (!badgeProgress[8]) {
+            badgeProgress[8] = true;
+            isUnlocked[8] = true;
+            saveBadgeProgress();
+            checkFinalBadgeUnlock();
+
+            hasPendingNotification = true;
+            pendingNotificationMessage = "Chess Badge Unlocked!";
+            pendingNotificationDuration = 3000;
+          }
+        }
 
         // Move the piece
         char movedPiece = chessBoard[selectedRow][selectedCol];

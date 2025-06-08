@@ -46,6 +46,8 @@ int breakout_selection = 0;
 int breakout_subselection = 0;
 BreakoutState currentBreakoutState = BREAKOUT_HOMESCREEN;
 
+BreakoutSession breakout_session;
+
 // Numpad
 static NumPad<BreakoutState> pad(
     drawBreakoutHomeScreen, // What to show when exiting pad
@@ -71,7 +73,7 @@ void runBreakout() {
   breakout_subselection = 0;
   breakoutGameOverSelection = 0;
 
-  //clear sprite and cache
+  // clear sprite and cache
   drawing.clearCache();
   drawing.clearSprite();
   drawing.deleteSprite();
@@ -195,13 +197,12 @@ void handleBreakoutFrame() {
     }
     break;
 
-  case BREAKOUT_WIN:{
+  case BREAKOUT_WIN: {
     // ENDSCREEN HANDLING
     std::vector<String> playerNames = {settings.name, "Win"};
     std::vector<int> playerScores = {score, -1};
 
-    EndScreen endScreen(playerNames, playerScores, false, settings.name,
-                        score);
+    EndScreen endScreen(playerNames, playerScores, false, settings.name, score);
     if (endScreen.handleUserInput()) {
       currentBreakoutState = BREAKOUT_PLAYING;
       paddle.x = SCREEN_W / 2 - PADDLE_WIDTH / 2;
@@ -212,12 +213,12 @@ void handleBreakoutFrame() {
       initBricks();
       resetBall(); // handleUserInput returns true : game restarts
     } else {
-      if(endScreen.exit){ // exit to menu
+      if (endScreen.exit) { // exit to menu
         return;
       }
       currentBreakoutState = BREAKOUT_HOMESCREEN;
-      drawBreakoutHomeScreen(); // handleUserInput returns false : returns to game
-                             // menu
+      drawBreakoutHomeScreen(); // handleUserInput returns false : returns to
+                                // game menu
     }
     break;
   }
@@ -227,24 +228,23 @@ void handleBreakoutFrame() {
     std::vector<String> playerNames = {settings.name};
     std::vector<int> playerScores = {score};
 
-    EndScreen endScreen(playerNames, playerScores, false, settings.name,
-                        score);
+    EndScreen endScreen(playerNames, playerScores, false, settings.name, score);
     if (endScreen.handleUserInput()) {
-          currentBreakoutState = BREAKOUT_PLAYING;
-          paddle.x = SCREEN_W / 2 - PADDLE_WIDTH / 2;
-          lives = 3;
-          score = 0;
-          lastLives = -1;
-          lastScore = -1;
-          initBricks();
-          resetBall(); // handleUserInput returns true : game restarts
+      currentBreakoutState = BREAKOUT_PLAYING;
+      paddle.x = SCREEN_W / 2 - PADDLE_WIDTH / 2;
+      lives = 3;
+      score = 0;
+      lastLives = -1;
+      lastScore = -1;
+      initBricks();
+      resetBall(); // handleUserInput returns true : game restarts
     } else {
-      if(endScreen.exit){ // exit to menu
+      if (endScreen.exit) { // exit to menu
         return;
       }
       currentBreakoutState = BREAKOUT_HOMESCREEN;
-      drawBreakoutHomeScreen(); // handleUserInput returns false : returns to game
-                             // menu
+      drawBreakoutHomeScreen(); // handleUserInput returns false : returns to
+                                // game menu
     }
     break;
   }
@@ -426,10 +426,32 @@ void updateBreakoutGame() {
       break;
   }
 
-  if (allCleared)
-    currentBreakoutState = BREAKOUT_WIN;
-}
+  if (allCleared) {
 
+    // ===== Track Consecutive Perfect Wins =====
+    if (true) { // If testing change this to "true"
+      breakout_session.consecutiveWins++;
+
+      // ===== Unlock Badge after 3 perfect matches =====
+      if (breakout_session.consecutiveWins >= 0 && !badgeProgress[5] &&
+          !breakout_session.badgeUnlocked) {
+        badgeProgress[5] = true;
+        isUnlocked[5] = true;
+        saveBadgeProgress();
+        checkFinalBadgeUnlock();
+        breakout_session.badgeUnlocked = true;
+
+        hasPendingNotification = true;
+        pendingNotificationMessage = "Breakout Badge Unlocked!";
+        pendingNotificationDuration = 3000;
+      }
+    } else {
+      breakout_session.consecutiveWins = 0; // reset if not perfect
+    }
+
+    currentBreakoutState = BREAKOUT_WIN;
+  }
+}
 // ========== Update Ball Status ========== //
 void updateBall(Ball *b, Paddle *paddle) {
   prev_ball = *b;
@@ -439,11 +461,11 @@ void updateBall(Ball *b, Paddle *paddle) {
   b->y += b->vy;
 
   // Wall collision //
-  if(b->x <= 0){ // Left Wall
+  if (b->x <= 0) { // Left Wall
     b->x = 0;
     b->vx = abs(b->vx);
     playBounceSound();
-  }else if(b->x + b->w >= SCREEN_W){ // Right Wall
+  } else if (b->x + b->w >= SCREEN_W) { // Right Wall
     b->x = b->x - b->w;
     b->vx = -abs(b->vx);
     playBounceSound();
@@ -472,7 +494,7 @@ void updateBall(Ball *b, Paddle *paddle) {
                      (paddle->w / 2.0f);
     hitRatio =
         constrain(hitRatio, -0.9f, 0.9f); // Prevent flat horizontal bounces
-    
+
     // Prevent center hits from going straight up/down
     if (abs(hitRatio) < 0.1f) {
       // Add small random offset to break center deadlock

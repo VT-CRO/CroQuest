@@ -34,18 +34,62 @@ void initBoot() {
   digitalWrite(5, HIGH);
 
   if (!SD.begin(5)) {
-
     Serial.println("Card Mount Failed");
-    tft.fillScreen(TFT_RED);
-    tft.setTextColor(TFT_WHITE, TFT_RED);
-    tft.setTextSize(2);
-    tft.drawString("SD Card Mount Failed", 10, 10, 2);
-    tft.drawString("Restart CroQuest.", 10, 50, 2);
-    delay(3600);
 
+    // ---------- Gradient Red Background ----------
+    for (int y = 0; y < tft.height(); y++) {
+      uint8_t base = 80;
+      uint8_t offset = y / 3;
+      uint16_t color = tft.color565(base + offset, base + offset,
+                                    base + offset); // lighter gradient
+      tft.drawFastHLine(0, y, tft.width(), color);
+    }
+
+    // ---------- Larger Center Panel with Shadow ----------
+    int boxX = 20;
+    int boxY = 30;
+    int boxW = 440; // wider panel
+    int boxH = 260; // taller panel
+    int radius = 12;
+
+    // Shadow
+    tft.fillRoundRect(boxX + 4, boxY + 4, boxW, boxH, radius, TFT_DARKGREY);
+
+    // Main panel
+    tft.fillRoundRect(boxX, boxY, boxW, boxH, radius, TFT_BLACK);
+    tft.drawRoundRect(boxX, boxY, boxW, boxH, radius, TFT_WHITE);
+
+    // ---------- Title ----------
+    tft.setTextColor(TFT_RED, TFT_BLACK);
+    tft.setTextSize(4);
+    tft.drawCentreString("SD ERROR", tft.width() / 2, boxY + 20, 2);
+
+    // ---------- Message Text ----------
+    tft.setTextColor(TFT_WHITE, TFT_BLACK);
+    tft.setTextSize(2);
+    tft.drawCentreString("Could not mount SD card", tft.width() / 2, boxY + 80,
+                         2);
+    tft.drawCentreString("Please check the card and", tft.width() / 2,
+                         boxY + 110, 2);
+    tft.drawCentreString("try again.", tft.width() / 2, boxY + 135, 2);
+
+    tft.drawCentreString("Restarting CroQuest", tft.width() / 2, boxY + 175, 2);
+
+    // ---------- Animated Dots ----------
+    int dotsY = boxY + 195; // moved lower
+    for (int i = 0; i < 3; i++) {
+      tft.drawCentreString(".", (tft.width() / 2 + i * 10) - 10, dotsY + 20, 2);
+      delay(500);
+    }
+
+    delay(4000);
+
+    // ---------- Restart ----------
+    initBoot();
   } else {
+    Serial.println("hello");
     // TODO: Reset badge progress for testing. REMOVE IT LATER
-    resetBadgeProgress();
+    // resetBadgeProgress();
   }
 }
 

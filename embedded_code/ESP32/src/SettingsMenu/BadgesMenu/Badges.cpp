@@ -10,7 +10,7 @@ const int badgeSize = 90;
 const int spacing = 25;
 const int rowCount = 2;
 const int colCount = 4;
-const int rowSpacing = 25;
+const int rowSpacing = 22;
 const int descBoxHeight = 25;
 const int footerHeight = 10;
 
@@ -25,6 +25,7 @@ int currentPage = 0;
 
 bool badgeProgress[badgeCount];
 bool isUnlocked[badgeCount] = {false};
+bool allBadgesEarned = false;
 
 static int startX = 0;
 static int startY = 0;
@@ -34,16 +35,16 @@ const char *badgePaths[badgeCount] = {
     "/badges/assets/0.jpg", "/badges/assets/1.jpg", "/badges/assets/2.jpg",
     "/badges/assets/3.jpg", "/badges/assets/4.jpg", "/badges/assets/5.jpg",
     "/badges/assets/6.jpg", "/badges/assets/7.jpg", "/badges/assets/8.jpg",
-    "/badges/assets/8.jpg"};
+    "/badges/assets/9.jpg"};
 
 const char *badgeDescriptions[badgeCount] = {
 
     "Eat 150 apples in Snake",
-    "Perfect Pong 3 times",
+    "Perfect Pong",
     "Perfect Tic Tac Toe 3 times",
     "Reach Level 25 in Simon",
     "Win 10 matches of Connect 4",
-    "Perfect Breakout 3 times",
+    "Perfect Breakout 2 times",
     "Win Matching in less than 150 seconds",
     "Reach 5000 points in Tetris",
     "Captured the Queen",
@@ -179,18 +180,64 @@ void runBadgesMenu() {
 
 // ========== Load Badges ========== //
 void loadBadgeProgress() {
-  File file = SD.open("/badges/save.dat", FILE_READ);
-  if (!file) {
-    Serial.println("No save file found. Using default locked state.");
+  if (!SD.exists("/badges/save.dat")) {
+    Serial.println("Badge save file not found. Initializing new progress.");
+    for (int i = 0; i < badgeCount; i++) {
+      badgeProgress[i] = false;
+      isUnlocked[i] = false;
+    }
     return;
   }
 
-  for (int i = 0; i < badgeCount && file.available(); i++) {
-    isUnlocked[i] = file.read() == 1;
+  File file = SD.open("/badges/save.dat", FILE_READ);
+  if (!file) {
+    Serial.println("Failed to open badge save file.");
+    return;
+  }
+
+  for (int i = 0; i < badgeCount; i++) {
+    int b = file.read();
+    badgeProgress[i] = (b == 1);
+    isUnlocked[i] = (b == 1);
   }
 
   file.close();
   Serial.println("Badge progress loaded.");
+
+  // Auto-check final badge (index 9)
+  bool allUnlocked = true;
+  for (int i = 0; i < 9; i++) {
+    if (!badgeProgress[i]) {
+      allUnlocked = false;
+      break;
+    }
+  }
+
+  if (allUnlocked && !badgeProgress[9]) {
+    badgeProgress[9] = true;
+    isUnlocked[9] = true;
+
+    hasPendingNotification = true;
+    pendingNotificationMessage = "🏆 All Badges Unlocked!";
+    pendingNotificationDuration = 3000;
+
+    // Delay saving until *after* full load completes to prevent recursion
+    delay(100);
+    File file = SD.open("/badges/save.dat", FILE_WRITE);
+    for (int i = 0; i < badgeCount; i++) {
+      file.write(isUnlocked[i] ? 1 : 0);
+    }
+    file.close();
+  }
+
+  // Update global flag
+  allBadgesEarned = true;
+  for (int i = 0; i < 9; i++) {
+    if (!badgeProgress[i]) {
+      allBadgesEarned = false;
+      break;
+    }
+  }
 }
 
 // ========== Saves New Badge ========== //
@@ -230,6 +277,26 @@ void resetBadgeProgress() {
   Serial.println("✅ Badge progress reset.");
 }
 
+void checkFinalBadgeUnlock() {
+  bool allUnlocked = true;
+  for (int i = 0; i < 9; i++) {
+    if (!badgeProgress[i]) {
+      allUnlocked = false;
+      break;
+    }
+  }
+
+  if (allUnlocked && !badgeProgress[9]) {
+    badgeProgress[9] = true;
+    isUnlocked[9] = true;
+    saveBadgeProgress();
+
+    hasPendingNotification = true;
+    pendingNotificationMessage = "All Badges Unlocked!";
+    pendingNotificationDuration = 3000;
+  }
+}
+
 // ####################################################################################################
 //  Drawing
 // ####################################################################################################
@@ -237,6 +304,10 @@ void resetBadgeProgress() {
 // ========== Draw the Badges ========== //
 void drawBadges(int selectedIndex, int xOffset, int yOffset, int extraWidth,
                 int extraHeight, int descX, int descY, int descW, int descH) {
+
+  // Golden Selector
+  uint16_t selectorColor = allBadgesEarned ? 0xFFD700 : TFT_WHITE;
+
   tft.fillScreen(SETTINGS_BG_COLOR);
 
   // Clear badge area
@@ -244,7 +315,7 @@ void drawBadges(int selectedIndex, int xOffset, int yOffset, int extraWidth,
                SETTINGS_BG_COLOR);
 
   tft.setTextDatum(TC_DATUM);
-  tft.setTextColor(TFT_WHITE);
+  tft.setTextColor(selectorColor);
   tft.setTextSize(2);
   tft.drawString("BADGES", tft.width() / 2, 20);
 
@@ -280,12 +351,13 @@ void drawBadges(int selectedIndex, int xOffset, int yOffset, int extraWidth,
         tft.drawRoundRect(selX - j + xOffset - extraWidth / 2,
                           selY - j + yOffset - extraHeight / 2,
                           badgeSize + 2 * j + extraWidth,
-                          badgeSize + 2 * j + extraHeight, 6, TFT_WHITE);
+                          badgeSize + 2 * j + extraHeight, 6, selectorColor);
       }
     }
   }
 
-  tft.drawRoundRect(descX - 1, descY - 1, descW + 2, descH + 2, 6, TFT_WHITE);
+  tft.drawRoundRect(descX - 1, descY - 1, descW + 2, descH + 2, 6,
+                    selectorColor);
   tft.fillRect(descX, descY, descW, descH, TFT_BLACK);
   tft.setTextDatum(CC_DATUM);
   tft.setTextColor(TFT_WHITE);
@@ -302,6 +374,10 @@ void drawBadges(int selectedIndex, int xOffset, int yOffset, int extraWidth,
 void drawSelectorAndDescription(int index, int prevIndex, int xOffset,
                                 int yOffset, int extraWidth, int extraHeight,
                                 int descX, int descY, int descW, int descH) {
+
+  // Golden Selector
+  uint16_t selectorColor = allBadgesEarned ? 0xFFD700 : TFT_WHITE;
+
   int descTop = descY - 2;
 
   // ===== Clear previous selector =====
@@ -343,7 +419,8 @@ void drawSelectorAndDescription(int index, int prevIndex, int xOffset,
 
     if (borderY + borderH < descTop) {
       tft.drawRoundRect(x - j + xOffset - extraWidth / 2, borderY,
-                        badgeSize + 2 * j + extraWidth, borderH, 6, TFT_WHITE);
+                        badgeSize + 2 * j + extraWidth, borderH, 6,
+                        selectorColor);
     }
   }
 

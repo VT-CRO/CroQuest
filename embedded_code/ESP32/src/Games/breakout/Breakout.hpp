@@ -34,6 +34,15 @@ struct Brick {
   uint16_t color;
 };
 
+// Structure for Sessions
+struct BreakoutSession {
+  int consecutiveWins;
+  int breakoutPerfectWins;
+  bool badgeUnlocked = false;
+};
+
+extern BreakoutSession breakout_session;
+
 // Structure for Ball
 struct Ball {
   int x, y;

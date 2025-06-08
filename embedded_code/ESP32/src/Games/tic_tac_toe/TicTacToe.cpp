@@ -50,6 +50,9 @@ enum State {
 // Speaker Pin
 #define SPEAKER_PIN 21
 
+// Badge
+TicTacToeSession session;
+
 // Logic
 bool multiplayerMode = false;
 static bool firstFrame = false;
@@ -148,13 +151,13 @@ void runTicTacToe() {
     handleTicTacToeFrame();
 
     if (getExitFlag())
-      return;
+      break;
 
     // keep support for exiting with B from homescreen
     if (game_state == HOMESCREEN && B.wasJustPressed()) {
       Serial.println("Returning to menu");
       delay(500);
-      return;
+      break;
     }
   }
 }
@@ -577,6 +580,7 @@ void handleTicTacToeFrame() {
     drawEndScreen();
     if (millis() - lastMoveTime > moveDelay) {
       if (A.wasJustPressed()) {
+
         game_state = HOMESCREEN;
         oWins = 0;
         xWins = 0;
@@ -637,6 +641,28 @@ void checkWinner() {
       else if (winner == 'O')
         oWins++;
 
+      // ================= Badge Unlock Logic =================
+      if (!multiplayerMode) {
+        // Perfect game: X wins 2-0
+        if (xWins == 2 && oWins == 0) {
+          session.consecutiveWins++;
+        } else if (oWins == 2) {
+          session.consecutiveWins = 0;
+        }
+
+        if (session.consecutiveWins >= 1 && !badgeProgress[2] &&
+            !session.badgeUnlocked) {
+          badgeProgress[2] = true;
+          isUnlocked[2] = true;
+          saveBadgeProgress();
+          session.badgeUnlocked = true;
+
+          hasPendingNotification = true;
+          pendingNotificationMessage = "Tic Tac Toe Badge Unlocked!";
+          pendingNotificationDuration = 3000;
+        }
+        checkFinalBadgeUnlock();
+      }
       return;
     }
   }

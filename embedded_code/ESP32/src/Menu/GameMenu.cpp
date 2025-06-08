@@ -38,6 +38,10 @@ void GameMenu::draw() { drawPage(); }
 
 // ###################### Draw Menu Interface ######################
 void GameMenu::drawPage() {
+
+  // Fancy golden selector
+  uint16_t selectorColor = allBadgesEarned ? 0xFFD700 : TFT_WHITE;
+
   tft->fillScreen(BACKGROUND_COLOR);
 
   // Select the appropriate background image for the current page
@@ -89,7 +93,7 @@ void GameMenu::drawPage() {
 
   for (int i = 0; i < SELECTOR_THICKNESS; i++) {
     tft->drawRoundRect(x - i, y - i, ICON_SIZE + 2 * i, ICON_SIZE + 2 * i,
-                       SELECTOR_RADIUS, TFT_WHITE);
+                       SELECTOR_RADIUS, selectorColor);
   }
 
   processPendingNotification();
@@ -97,6 +101,9 @@ void GameMenu::drawPage() {
 
 // ###################### Handle Input User ######################
 void GameMenu::handleInput() {
+
+  // Fancy golden selector
+  uint16_t selectorColor = allBadgesEarned ? 0xFFD700 : TFT_WHITE;
 
   static unsigned long lastInput = 0;
   static int previousIndex = 0;
@@ -284,7 +291,7 @@ void GameMenu::handleInput() {
 
       for (int i = 0; i < SELECTOR_THICKNESS; i++) {
         tft->drawRoundRect(gx - i, gy - i, 32 + 2 * i, 32 + 2 * i,
-                           SELECTOR_RADIUS, TFT_WHITE);
+                           SELECTOR_RADIUS, selectorColor);
       }
     } else {
       // Clear previous selector
@@ -306,7 +313,7 @@ void GameMenu::handleInput() {
 
       for (int i = 0; i < SELECTOR_THICKNESS; i++) {
         tft->drawRoundRect(x - i, y - i, ICON_SIZE + 2 * i, ICON_SIZE + 2 * i,
-                           SELECTOR_RADIUS, TFT_WHITE);
+                           SELECTOR_RADIUS, selectorColor);
       }
 
       previousIndex = selectedIndex;

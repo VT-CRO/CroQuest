@@ -200,7 +200,7 @@ void runTetris() {
   // Needs to be true to generate the first piece
   bottomCollision = true;
 
-  //clear sprite and cache
+  // clear sprite and cache
   drawing.clearCache();
   drawing.clearSprite();
   drawing.deleteSprite();
@@ -211,9 +211,9 @@ void runTetris() {
 
   // Loop
   while (true) {
-    
-    handleTetrisFrame();    
-  
+
+    handleTetrisFrame();
+
     if (getExitFlag())
       return;
 
@@ -292,6 +292,20 @@ static void handleTetrisFrame() {
     break;
   case PLAYING:
     singlePieceLogic();
+
+    // ========= Badge Unlock Condition ========= //
+    if (score >= 50 && !badgeProgress[7] && !session.badgeUnlocked) {
+      badgeProgress[7] = true;
+      isUnlocked[7] = true;
+      saveBadgeProgress();
+      checkFinalBadgeUnlock();
+      session.badgeUnlocked = true;
+
+      hasPendingNotification = true;
+      pendingNotificationMessage = "Tetris Badge Unlocked!";
+      pendingNotificationDuration = 3000;
+    }
+
     break;
   case ENDSCREEN:
     // ENDSCREEN HANDLING
@@ -305,7 +319,7 @@ static void handleTetrisFrame() {
       startNewGame();
       currentState = PLAYING; // handleUserInput returns true : game restarts
     } else {
-      if(endScreen.exit){ // exit to menu
+      if (endScreen.exit) { // exit to menu
         return;
       }
       currentState = HOMESCREEN;

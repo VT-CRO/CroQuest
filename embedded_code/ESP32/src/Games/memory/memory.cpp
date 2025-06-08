@@ -63,10 +63,9 @@ static void drawTiles();
 static void showHomeScreen();
 static void clearAllCursors();
 
-//sounds
+// sounds
 static void playGameOverSound();
 static void playLevelCompleteSound();
-
 
 // --- Cursor State ---
 static int cursorRow = 0, cursorCol = 0;
@@ -76,10 +75,10 @@ void runMemory() {
   resetExitFlag(); // Restes flag for Main Menu
   currentState = HOMESCREEN;
 
-  //reset level
+  // reset level
   currentLevel = 0;
 
-  //clear sprite and cache
+  // clear sprite and cache
   drawing.clearCache();
   drawing.clearSprite();
   drawing.deleteSprite();
@@ -137,9 +136,7 @@ static void runMemoryFrame() {
           totalMoves = 0;
           currentLevel = 0;
           totalTime = 0;
-        }
-
-        else {
+        } else {
           currentLevel++;
         }
 
@@ -193,10 +190,11 @@ static void runMemoryFrame() {
   }
   case ENDSCREEN:
     // ENDSCREEN HANDLING
-    std::vector<String> playerNames = {settings.name}; //TEMP
-    std::vector<int> playerScores = {totalMoves}; //TEMP
+    std::vector<String> playerNames = {settings.name}; // TEMP
+    std::vector<int> playerScores = {totalMoves};      // TEMP
 
-    EndScreen endScreen(playerNames, playerScores, false, settings.name, totalMoves);
+    EndScreen endScreen(playerNames, playerScores, false, settings.name,
+                        totalMoves);
     if (endScreen.handleUserInput()) {
       // Clear Screen
       tft.fillScreen(TFT_BLACK);
@@ -205,7 +203,7 @@ static void runMemoryFrame() {
       // loadLevel(currentLevel);
       currentState = PLAYING; // handleUserInput returns true : game restarts
     } else {
-      if(endScreen.exit){ // exit to menu
+      if (endScreen.exit) { // exit to menu
         return;
       }
       currentState = HOMESCREEN;
@@ -400,8 +398,7 @@ static void handleInput() {
   }
 }
 
-static void clearAllCursors()
-{
+static void clearAllCursors() {
   int w = CARD_SIZE - 2 * CARD_PADDING;
 
   for (int row = 0; row < cardRows; row++) {
@@ -414,7 +411,6 @@ static void clearAllCursors()
     }
   }
 }
-
 
 static void flipCard(int row, int col) {
   flipped[row][col] = true;
@@ -461,8 +457,9 @@ static void checkWinCondition() {
   // Game stats
   tft.setTextSize(2);
   tft.drawString("Total Time: " + String(totalTime) + "s", tft.width() / 2,
-               tft.height() / 2 - 30);
-  tft.drawString("Total Moves: " + String(totalMoves), tft.width() / 2, tft.height() / 2 - 5);
+                 tft.height() / 2 - 30);
+  tft.drawString("Total Moves: " + String(totalMoves), tft.width() / 2,
+                 tft.height() / 2 - 5);
 
   // Options
   if (currentLevel == NUM_LEVELS - 1) {
@@ -475,6 +472,23 @@ static void checkWinCondition() {
 
   playLevelCompleteSound();
   movesThisLevel = 0;
+
+  // ================= Badge Unlock Logic =================
+  if (currentLevel == NUM_LEVELS - 1) {
+    // Unlock if totalTime is under 150 seconds
+    if (totalTime < 1500 && !badgeProgress[6] && !session.badgeUnlocked) {
+      // if (currentLevel == 0 && !badgeProgress[3] && !session.badgeUnlocked) {
+      badgeProgress[6] = true;
+      isUnlocked[6] = true;
+      saveBadgeProgress();
+      checkFinalBadgeUnlock();
+      session.badgeUnlocked = true;
+
+      hasPendingNotification = true;
+      pendingNotificationMessage = "Memory Badge Unlocked!";
+      pendingNotificationDuration = 3000;
+    }
+  }
 }
 
 static void showLevelIntroScreen() {
@@ -489,27 +503,29 @@ static void showLevelIntroScreen() {
   delay(1500);
 }
 
-static void updateMoveCounter()
-{
+static void updateMoveCounter() {
   tft.setTextDatum(MC_DATUM);
   int x = tft.width() - 5;
   int y = 5;
 
   int clearWidth = 120;
   int clearHeight = 20;
-  tft.fillRect(x - clearWidth, y - 2, clearWidth, clearHeight, tft.color565(220, 220, 220));
-  tft.drawRect(x - clearWidth - 1, y - 3, clearWidth + 2, clearHeight + 2, TFT_WHITE);
-  tft.drawRect(x - clearWidth - 2, y - 4, clearWidth + 4, clearHeight + 4, TFT_WHITE);
-  tft.drawRect(x - clearWidth - 3, y - 5, clearWidth + 6, clearHeight + 6, TFT_WHITE);
+  tft.fillRect(x - clearWidth, y - 2, clearWidth, clearHeight,
+               tft.color565(220, 220, 220));
+  tft.drawRect(x - clearWidth - 1, y - 3, clearWidth + 2, clearHeight + 2,
+               TFT_WHITE);
+  tft.drawRect(x - clearWidth - 2, y - 4, clearWidth + 4, clearHeight + 4,
+               TFT_WHITE);
+  tft.drawRect(x - clearWidth - 3, y - 5, clearWidth + 6, clearHeight + 6,
+               TFT_WHITE);
 
   tft.setTextColor(TFT_BLACK);
   tft.setTextSize(2);
-  tft.drawString("Moves: " + String(movesThisLevel), x - clearWidth/2, y + clearHeight/2);
+  tft.drawString("Moves: " + String(movesThisLevel), x - clearWidth / 2,
+                 y + clearHeight / 2);
 }
 
-
-static void updateTimerDisplay() 
-{
+static void updateTimerDisplay() {
   tft.setTextDatum(MC_DATUM);
   int x = 4, y = 5;
   tft.fillRect(x - 2, y - 2, 120, 20, tft.color565(220, 220, 220));
@@ -520,7 +536,6 @@ static void updateTimerDisplay()
   tft.setTextSize(2);
   tft.drawString("Time: " + String(timeRemaining), x + 60, y + 10);
 }
-
 
 static void triggerGameOver() {
   playGameOverSound();
@@ -536,14 +551,15 @@ void showHomeScreen() {
   tft.setTextDatum(MC_DATUM);
 
   // Draw the game title in large font
-  tft.setTextColor(TFT_NAVY);   // dark blue for contrast
+  tft.setTextColor(TFT_NAVY); // dark blue for contrast
   tft.setTextSize(4);
   tft.drawString("Memory", tft.width() / 2, tft.height() / 2 - 50);
 
   // Draw the author name
-  tft.setTextColor(TFT_DARKGREY);  // soft but readable
+  tft.setTextColor(TFT_DARKGREY); // soft but readable
   tft.setTextSize(2);
-  tft.drawString("Designed by CroQuest", tft.width() / 2, tft.height() / 2 + 10);
+  tft.drawString("Designed by CroQuest", tft.width() / 2,
+                 tft.height() / 2 + 10);
 
   // Draw the "Press A to start" prompt
   tft.setTextColor(TFT_BLACK);
@@ -551,7 +567,7 @@ void showHomeScreen() {
   tft.drawString("Press A to start", tft.width() / 2, tft.height() - 50);
 }
 
-static void drawTiles(){
+static void drawTiles() {
   const int BLOCKSIZE = 80;
   const int WIDTH = 6;
   const int HEIGHT = 4;
@@ -559,18 +575,18 @@ static void drawTiles(){
   uint16_t light_grey = tft.color565(205, 205, 205);
   uint16_t dark_grey = tft.color565(164, 164, 164);
 
-  for(int row = 0; row < HEIGHT; row++){
-    for(int column = 0; column < WIDTH; column++){
-      tft.fillRect(column * BLOCKSIZE, row * BLOCKSIZE, BLOCKSIZE, BLOCKSIZE, (column + row) % 2 == 0 ? light_grey : dark_grey);
+  for (int row = 0; row < HEIGHT; row++) {
+    for (int column = 0; column < WIDTH; column++) {
+      tft.fillRect(column * BLOCKSIZE, row * BLOCKSIZE, BLOCKSIZE, BLOCKSIZE,
+                   (column + row) % 2 == 0 ? light_grey : dark_grey);
     }
   }
-
 }
 
 static void playLevelCompleteSound() {
   const int noteDuration = 100; // milliseconds
 
-  int melody[] = { 523, 659, 784, 1046 }; // C5, E5, G5, C6
+  int melody[] = {523, 659, 784, 1046}; // C5, E5, G5, C6
   for (int i = 0; i < 4; i++) {
     playTone(melody[i], volume);
     delay(noteDuration);
@@ -579,10 +595,10 @@ static void playLevelCompleteSound() {
 }
 
 static void playGameOverSound() {
-  const int volume = 80; // Percent
+  const int volume = 80;        // Percent
   const int noteDuration = 150; // milliseconds
 
-  int melody[] = { 659, 523, 392, 261 }; // E5, C5, G4, C4
+  int melody[] = {659, 523, 392, 261}; // E5, C5, G4, C4
   for (int i = 0; i < 4; i++) {
     playTone(melody[i], volume);
     delay(noteDuration);

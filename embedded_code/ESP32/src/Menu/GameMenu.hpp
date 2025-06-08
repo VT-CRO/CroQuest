@@ -11,6 +11,7 @@
 #include "Core/JpegDrawing.hpp"
 #include "Menu/GameSetup.hpp"
 #include "Notifications/NotificationManager.hpp"
+#include "SettingsMenu/BadgesMenu/Badges.hpp"
 #include "SettingsMenu/Settings/Settings.hpp"
 
 // === Global Flags ===

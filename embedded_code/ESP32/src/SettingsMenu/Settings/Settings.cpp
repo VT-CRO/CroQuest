@@ -43,12 +43,15 @@ void runSettings() {
                  tft.width() - 2 * (buttonPadding - selectorMaxRadius - 1),
                  optionHeight + 2 * selectorMaxRadius + 2, SETTINGS_BG_COLOR);
 
+    // Selector color: gold if all badges earned
+    uint16_t selectorColor = allBadgesEarned ? 0xFFD700 : TFT_WHITE;
+
     // Selector
     if (selected) {
       for (int j = 0; j < MenuLayout::SELECTOR_THICKNESS; j++) {
         tft.drawRoundRect(buttonPadding - j, y - j,
                           tft.width() - 2 * buttonPadding + 2 * j,
-                          optionHeight + 2 * j, 4, TFT_WHITE);
+                          optionHeight + 2 * j, 4, selectorColor);
       }
     }
 
@@ -152,7 +155,7 @@ void runSettings() {
       }
 
       delay(200);
-    }else if(B.isPressed()){
+    } else if (B.isPressed()) {
       saveToSettingsFile("/settings.bin");
       backAudio();
       break;

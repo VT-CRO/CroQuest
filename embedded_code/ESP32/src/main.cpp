@@ -10,6 +10,7 @@
 #include "Core/Buttons.hpp"
 #include "Menu/GameMenu.hpp"
 #include "Notifications/Notification.hpp"
+#include "SettingsMenu/BadgesMenu/Badges.hpp"
 #include "SettingsMenu/Settings/Settings.hpp" // for `settings.brightness`
 
 GameMenu menu(&tft);                    // Create a GameMenu instance
@@ -22,6 +23,9 @@ void setup() {
 
   // Initialize SD + TFT
   initBoot();
+
+  // Load badge progress
+  loadBadgeProgress();
 
   // Loads settings
   loadFromSettingsFile("/settings.bin");

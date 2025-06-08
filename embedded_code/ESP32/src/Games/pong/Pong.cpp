@@ -309,6 +309,31 @@ void handlePongFrame() {
       // modified the gamestate accordingly, otherwise
       // draws all game assets
       if (score0 >= GAME_WON || score1 >= GAME_WON) {
+
+        // ================= Badge Unlock Logic =================
+        if (!multiplayerMode) {
+          bool playerWon =
+              score1 >= GAME_WON; // assuming player is on the right
+          bool aiWon = score0 >= GAME_WON;
+
+          if (playerWon && !aiWon) {
+            consecutiveWins++;
+          } else {
+            consecutiveWins = 0;
+          }
+
+          if (consecutiveWins >= 0 && !badgeProgress[1]) {
+            badgeProgress[1] = true;
+            isUnlocked[1] = true;
+            saveBadgeProgress();
+            checkFinalBadgeUnlock();
+
+            hasPendingNotification = true;
+            pendingNotificationMessage = "Pong Badge Unlocked!";
+            pendingNotificationDuration = 3000;
+          }
+        }
+
         // Changes the game state if either the players or AI has won
         current_state = STATE_GAMEOVER;
         firstFrame = true;
@@ -786,23 +811,6 @@ static void draw_endscreen(int score0, int score1) {
   tft.setCursor(scoreX, 120);  // Main position
   tft.print(scorestr0);
   tft.print(scorestr1);
-
-  if (!multiplayerMode) {
-    if (playerWon && !aiWon) {
-      consecutiveWins++;
-    } else {
-      consecutiveWins = 0; // Reset on loss or multiplayer
-    }
-
-    if (consecutiveWins >= 3 && !badgeProgress[1]) {
-      badgeProgress[1] = true;
-      isUnlocked[1] = true;
-      saveBadgeProgress();
-      hasPendingNotification = true;
-      pendingNotificationMessage = "Pong Badge Unlocked!";
-      pendingNotificationDuration = 3000;
-    }
-  }
 
   // Instructions for restart and home screen with buttons
 

@@ -328,14 +328,16 @@ void moveSnake() {
     snakeLength++;
     score++;
 
-    // Unlock badge 0 if score >= x
-    if (score >= 150 && !badgeProgress[0]) {
+    // ================= Badge Unlock Logic =================
+    if (score >= 4 && !badgeProgress[0]) {
       badgeProgress[0] = true;
       isUnlocked[0] = true;
+      badgeProgress[4] = true;
+      isUnlocked[4] = true;
       saveBadgeProgress();
-
       triggerNotification("Snake Badge Unlocked!", 3000);
     }
+    checkFinalBadgeUnlock();
 
     tft.fillRect(0, 0, tft.width(), TILE_SIZE * 2 - 4,
                  tft.color565(50, 50, 50)); // Clear top row
