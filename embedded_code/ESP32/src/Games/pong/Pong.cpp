@@ -24,7 +24,7 @@ enum GameState {
 static int consecutiveWins = 0;
 
 // Multiplayer
-static bool firstFrame = false;
+static bool firstFrame = true;
 static bool multiplayerMode = false;
 static int player_paddle = 1; // or 0, depending on who the human is
 
@@ -39,6 +39,7 @@ static Paddle prev_paddles[2];
 
 // Score and other state elements
 static GameState current_state = STATE_HOMESCREEN;
+static GameState prev_state = STATE_HOMESCREEN;
 static bool game_initialized = false;
 static bool first_home_draw = true;
 static int level = 1;
@@ -88,6 +89,12 @@ static void drawHomeSelection();
 static void updateFPS();
 static void resetMultiplayerState(bool fullReset);
 
+// Multiplayer Functions
+void handleHostLogic();
+void handlePeripheralLogic();
+void drawGameState();
+bool checkWinCondition();
+
 // Numpad
 static NumPad<GameState> pad(
     drawHomeScreen,                          // What to show when exiting pad
@@ -114,6 +121,7 @@ void runPong() {
   subselection = 0;
   buttonAPressed = false;
   buttonBPressed = false;
+  firstFrame = true;
 
   // clear sprite and cache
   drawing.clearCache();
@@ -398,6 +406,7 @@ void handlePongFrame() {
             multiplayerMode = true;
 
             if (!central.getConnectedClients().empty()) {
+              initialize_game(&ball, paddles, &level);
               localPlayerSide = 'X'; // or 0/1 if you want paddle 0
               current_state = HOST_SCREEN;
               firstFrame = true;
@@ -438,135 +447,53 @@ void handlePongFrame() {
       }
     }
 
-    // ================== HOST_SCREEN State =================== //
-    else if (current_state == HOST_SCREEN) {
-
-      BluetoothCentral &central = BluetoothManager::getCentral();
-    }
-
-    // ================== MULTIPLAYER_PLAYING State =================== //
-    else if (current_state == MULTIPLAYER_PLAYING) {
-
+    else if (current_state == MULTIPLAYER_PLAYING || current_state == HOST_SCREEN) {
       if (firstFrame) {
-        tft.fillScreen(orange_color);
-        drawAllPlaying();
-        firstFrame = false;
-      }
-
-      BluetoothManager::getPeripheral().update();
-    }
-
-    if (current_state == HOST_SCREEN || current_state == MULTIPLAYER_PLAYING) {
-      bool isHost = current_state == HOST_SCREEN;
-
-      if (firstFrame) {
-        tft.fillScreen(orange_color);
-        drawAllPlaying();
-        firstFrame = false;
-      }
-
-      if (isHost) {
-        // Host logic
-        BluetoothCentral &central = BluetoothManager::getCentral();
-        central.update();
-
-        std::string msg = central.readMessage();
-        if (!msg.empty() && msg.rfind("@move@", 0) == 0) {
-          std::string dir = msg.substr(6);
-          if (dir == "up") {
-            updatePaddle(true, &paddles[1]);
-            prev_paddles[1].paddle_mod = true;
-          } else if (dir == "down") {
-            updatePaddle(false, &paddles[1]);
-            prev_paddles[1].paddle_mod = true;
-          }
-        }
-
-        // Local (host) controls paddle 0
-        if (up.isPressed()) {
-          updatePaddle(true, &paddles[0]);
-          prev_paddles[0].paddle_mod = true;
-        } else if (down.isPressed()) {
-          updatePaddle(false, &paddles[0]);
-          prev_paddles[0].paddle_mod = true;
-        }
-
-        // Update ball and scores
+        // Initializes the game
+        initialize_game(&ball, paddles, &level);
+        // Initializes prev_ball
         prev_ball.x = ball.x;
         prev_ball.y = ball.y;
-        updateBall(&ball, paddles, &level, &score0, &score1);
+        prev_ball.h = ball.h;
+        prev_ball.w = ball.w;
 
-        // Send game state
-        char state[64];
-        sprintf(state, "@state@%d,%d,%d,%d,%.1f,%.1f", paddles[1].y,
-                paddles[0].y, score0, score1, ball.x, ball.y);
-        central.sendMessage(state);
+        // Initializes prev_paddles
+        prev_paddles[0].y = paddles[0].y;
+        prev_paddles[0].x = paddles[0].x;
+        prev_paddles[1].y = paddles[1].y;
+        prev_paddles[1].x = paddles[1].x;
+
+        prev_paddles[0].w = paddles[0].w;
+        prev_paddles[0].h = paddles[0].h;
+
+        prev_paddles[1].w = paddles[1].w;
+        prev_paddles[1].h = paddles[1].h;
+
+        prev_paddles[0].paddle_mod = false;
+        prev_paddles[1].paddle_mod = false;
+
+        tft.fillScreen(TFT_BLACK);
+        prev_score0 = 0;
+        prev_score1 = 0;
+        firstFrame = false;
       }
 
-      else {
-        // Client (peripheral) logic
-        BluetoothPeripheral &peripheral = BluetoothManager::getPeripheral();
-        peripheral.update();
-
-        if (up.wasJustPressed()) {
-          peripheral.sendMessage("@move@up");
-        } else if (down.wasJustPressed()) {
-          peripheral.sendMessage("@move@down");
-        }
-
-        std::string state = peripheral.readMessage();
-        if (!state.empty() && state.rfind("@state@", 0) == 0) {
-          int y1, y0, s0, s1;
-          float bx, by;
-          sscanf(state.c_str() + 7, "%d,%d,%d,%d,%f,%f", &y1, &y0, &s0, &s1,
-                 &bx, &by);
-
-          paddles[1].y = y1;
-          paddles[0].y = y0;
-          score0 = s0;
-          score1 = s1;
-          ball.x = bx;
-          ball.y = by;
-
-          // Mark paddles as modified so they redraw
-          prev_paddles[0].paddle_mod = true;
-          prev_paddles[1].paddle_mod = true;
-          prev_ball.x = bx;
-          prev_ball.y = by;
-        }
+      if (current_state == HOST_SCREEN) {
+        handleHostLogic();
+      } else {
+        handlePeripheralLogic();
       }
 
-      // Shared: Drawing + win condition
-      if (score0 >= GAME_WON || score1 >= GAME_WON) {
+      if (checkWinCondition()) {
         current_state = STATE_GAMEOVER;
+        prev_state = current_state;
         tft.fillScreen(TFT_BLACK);
         draw_endscreen(score0, score1);
+        firstFrame = true;
         return;
       }
 
-      // Drawing logic (same as your PLAYING state)
-      if (prev_paddles[0].paddle_mod) {
-        erasePaddle(prev_paddles[0]);
-        prev_paddles[0].paddle_mod = false;
-        prev_paddles[0].y = paddles[0].y;
-      }
-      if (prev_paddles[1].paddle_mod) {
-        erasePaddle(prev_paddles[1]);
-        prev_paddles[1].paddle_mod = false;
-        prev_paddles[1].y = paddles[1].y;
-      }
-      eraseBall(&prev_ball);
-
-      if (prev_score0 != score0 || prev_score1 != score1) {
-        erase_score();
-        prev_score0 = score0;
-        prev_score1 = score1;
-      }
-
-      drawPaddle(paddles[0]);
-      drawPaddle(paddles[1]);
-      drawBall(&ball);
-      drawScore(score0, score1);
+      drawGameState();
     }
 
     // ================== BLUETOOTH_NUMPAD State =================== //
@@ -583,7 +510,19 @@ void handlePongFrame() {
         peripheral.beginAdvertising(enteredCode);
         localPlayerSymbol = 'O';
 
+        initialize_game(&ball, paddles, &level);
+
         pad.clearCode();
+      }
+    }
+    else if(current_state == STATE_GAMEOVER){
+      if(A.wasJustPressed()){
+        // current_state = prev_state; // Need some other checks before letting users restart
+        // probably need to send a "ready" string, etc.
+      }else if(B.wasJustPressed()){
+        current_state = STATE_HOMESCREEN;
+        first_home_draw = true;
+        drawHomeScreen();
       }
     }
   }
@@ -895,3 +834,118 @@ static void draw_endscreen(int score0, int score1) {
 // ####################################################################################################
 //  Bluetooth Logic
 // ####################################################################################################
+
+
+void handleHostLogic() {
+  BluetoothCentral &central = BluetoothManager::getCentral();
+
+  std::string msg = central.readMessage();
+  if (!msg.empty() && msg.rfind("@pong@move@", 0) == 0) {
+    std::string yStr = msg.substr(11);
+    int yPos = std::stoi(yStr);
+    paddles[1].y = yPos;
+    prev_paddles[1].paddle_mod = true;
+}
+
+  if (up.isPressed()) {
+    updatePaddle(true, &paddles[0]);
+    prev_paddles[0].paddle_mod = true;
+  } else if (down.isPressed()) {
+    updatePaddle(false, &paddles[0]);
+    prev_paddles[0].paddle_mod = true;
+  }
+
+  prev_ball.x = ball.x;
+  prev_ball.y = ball.y;
+  updateBall(&ball, paddles, &level, &score0, &score1);
+
+  // Checks if the paddle positions have been modified
+  if (paddles[0].y != prev_paddles[0].y) {
+    prev_paddles[0].paddle_mod = true;
+  }
+  if (paddles[1].y != prev_paddles[1].y) {
+    prev_paddles[1].paddle_mod = true;
+  }
+
+  char state[64];
+  sprintf(state, "@pong@state@%d,%d,%d,%.1f,%.1f",
+          paddles[0].y, score0, score1, ball.x, ball.y);
+  central.sendMessage(state);
+}
+
+void handlePeripheralLogic() {
+  BluetoothPeripheral &peripheral = BluetoothManager::getPeripheral();
+
+    //read state
+  std::string state = peripheral.readMessage();
+  
+  //update paddle
+  if (up.isPressed()) {
+    updatePaddle(true, &paddles[1]);
+    prev_paddles[1].paddle_mod = true;
+
+    char buf[32];
+    sprintf(buf, "@pong@move@%d", paddles[1].y);
+    peripheral.sendMessage(buf);
+  } else if (down.isPressed()) {
+    updatePaddle(false, &paddles[1]);
+    prev_paddles[1].paddle_mod = true;
+
+    char buf[32];
+    sprintf(buf, "@pong@move@%d", paddles[1].y);
+    peripheral.sendMessage(buf);
+  }
+
+  if (!state.empty() && state.rfind("@pong@state@", 0) == 0) {
+    int y0, s0, s1;
+    float bx, by;
+    sscanf(state.c_str() + 13, "%d,%d,%d,%f,%f", &y0, &s0, &s1, &bx, &by);
+
+    prev_ball.x = ball.x;
+    prev_ball.y = ball.y;
+
+    if(score0 != s0 || score1 != s1){
+      initialize_game(&ball, paddles, &level);
+    }
+
+    paddles[0].y = y0;
+    score0 = s0;
+    score1 = s1;
+    ball.x = bx;
+    ball.y = by;
+
+    prev_paddles[0].paddle_mod = true;
+    prev_paddles[1].paddle_mod = true;
+  }
+}
+
+void drawGameState() {
+  if (prev_paddles[0].paddle_mod) {
+    erasePaddle(prev_paddles[0]);
+    prev_paddles[0].paddle_mod = false;
+    prev_paddles[0].y = paddles[0].y;
+  }
+
+  if (prev_paddles[1].paddle_mod) {
+    erasePaddle(prev_paddles[1]);
+    prev_paddles[1].paddle_mod = false;
+    prev_paddles[1].y = paddles[1].y;
+  }
+
+  eraseBall(&prev_ball);
+
+  if (prev_score0 != score0 || prev_score1 != score1) {
+    erase_score();
+    prev_score0 = score0;
+    prev_score1 = score1;
+  }
+
+  drawPaddle(paddles[0]);
+  drawPaddle(paddles[1]);
+  drawBall(&ball);
+  drawScore(score0, score1);
+}
+
+bool checkWinCondition() {
+  return score0 >= GAME_WON || score1 >= GAME_WON;
+}

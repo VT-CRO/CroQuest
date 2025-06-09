@@ -191,5 +191,10 @@ std::string BluetoothPeripheral::readMessage() {
 
 // ###################### Send Messages #####################
 void BluetoothPeripheral::sendMessage(const std::string &message) {
-  sendAction(message);
+  if (!characteristic) {
+  Serial.println("❌ No characteristic available");
+  return;
+  }
+  characteristic->setValue((uint8_t*)message.data(), message.size());
+  characteristic->notify();
 }

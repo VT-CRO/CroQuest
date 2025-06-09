@@ -43,7 +43,7 @@ public:
   void update();
 
   // ###################### Send Messages (not array) #####################
-  void sendMessage(const std::string &msg);
+  bool sendMessage(const std::string &msg);
 
   // ###################### Read Messages #####################
   std::string readMessage();
@@ -52,6 +52,7 @@ public:
   const std::vector<NimBLEClient *> &getConnectedClients() const;
 
 private:
+  std::string latestMessage = ""; // Latest message sent
   TFT_eSPI &tft;
   std::string targetCode;
 
