@@ -121,7 +121,7 @@ void BluetoothCentral::connectToDevices() {
       NimBLERemoteCharacteristic *charac =
           service->getCharacteristic(CHARACTERISTIC_UUID);
       if (charac && charac->canNotify()) {
-        bool success = charac->subscribe(true, [](NimBLERemoteCharacteristic *c,
+        bool success = charac->subscribe(true, [this](NimBLERemoteCharacteristic *c,
                                                   uint8_t *data, size_t length,
                                                   bool isNotify) {
           std::string msg(reinterpret_cast<char *>(data), length);
@@ -165,6 +165,8 @@ void BluetoothCentral::connectToDevices() {
             for (auto *client : central.getConnectedClients()) {
               central.sendToDevice(client, confirmedState.c_str());
             }
+          }else if (msg.rfind("@pong", 0) == 0) {
+            this->latestMessage = msg;
           } else {
             Serial.println("⚠️ Unknown message format (notify).");
           }
@@ -262,13 +264,41 @@ void BluetoothCentral::update() {
 
 // ###################### Read Messages #####################
 std::string BluetoothCentral::readMessage() {
-  // You can extend this to poll a characteristic, but for now return empty
-  return "";
+  std::string msg = this->latestMessage;
+  this->latestMessage.clear(); // Clear so it doesn't repeat
+  return msg;
 }
 
 // ###################### Send Messages (not array) #####################
-void BluetoothCentral::sendMessage(const std::string &msg) {
+bool BluetoothCentral::sendMessage(const std::string &msg) {
+  if (connectedClients.empty()) return false;
+
   for (auto *client : this->connectedClients) {
-    sendToDevice(client, msg);
+
+    if (!client || !client->isConnected()) return false;
+
+    NimBLERemoteService* service = client->getService(SERVICE_UUID);
+    if (!service) return false;
+
+    NimBLERemoteCharacteristic* characteristic = service->getCharacteristic(CHARACTERISTIC_UUID);
+    if (!characteristic || !characteristic->canWrite()) {
+      // Serial.println("❌ Cannot write to characteristic");
+      return false;
+    }
+
+    try {
+      bool success = characteristic->writeValue((uint8_t*)msg.data(), msg.size(), false);
+      if (success) {
+        // Serial.print("📤 Host wrote: ");
+        // Serial.println(msg.c_str());
+        return true;
+      } else {
+        // Serial.println("❌ writeValue() failed");
+        return false;
+      }
+    } catch (...) {
+      // Serial.println("❌ Exception writing to peripheral characteristic");
+      return false;
+    } 
   }
 }
