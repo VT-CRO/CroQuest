@@ -294,7 +294,7 @@ static void handleTetrisFrame() {
     singlePieceLogic();
 
     // ========= Badge Unlock Condition ========= //
-    if (score >= 50 && !badgeProgress[7] && !session.badgeUnlocked) {
+    if (score >= 5000 && !badgeProgress[7] && !session.badgeUnlocked) {
       badgeProgress[7] = true;
       isUnlocked[7] = true;
       saveBadgeProgress();

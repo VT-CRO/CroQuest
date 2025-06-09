@@ -6,17 +6,13 @@
 // Include Games
 #include "Games/breakout/Breakout.hpp"
 #include "Games/chess/Chess.hpp"
-#include "Games/memory/memory.hpp"
+#include "Games/connect4/Connect4.hpp"
+#include "Games/memory/Memory.hpp"
 #include "Games/pong/Pong.hpp"
 #include "Games/simon/Simon.hpp"
 #include "Games/snake/Snake.hpp"
 #include "Games/tetris/Tetris.hpp"
 #include "Games/tic_tac_toe/TicTacToe.hpp"
-
-// Include games headers here
-// #include "Games/Tetris/Tetris.hpp"
-// #include "Games/Breakout/Breakout.hpp"
-// #include "Games/UNO/UNO.hpp"
 
 void launchGameByName(const char *name) {
   Serial.print("Launching game: ");
@@ -31,7 +27,7 @@ void launchGameByName(const char *name) {
   } else if (strcmp(name, "Simon") == 0) {
     runSimon();
   } else if (strcmp(name, "Connect 4") == 0) {
-    // launchConnect4();
+    runConnect4();
   } else if (strcmp(name, "Breakout") == 0) {
     runBreakout();
   } else if (strcmp(name, "Memory") == 0) {

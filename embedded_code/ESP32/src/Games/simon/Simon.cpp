@@ -503,7 +503,7 @@ void simonGameOver() {
 
   // ================= Badge Unlock Logic =================
   if (multiplayerMode.equals("SINGLE")) {
-    if (playerScore >= 2 && !badgeProgress[3]) {
+    if (playerScore >= 25 && !badgeProgress[3]) {
       badgeProgress[3] = true;
       isUnlocked[3] = true;
       saveBadgeProgress();
@@ -568,8 +568,8 @@ void drawSimonHomeScreen() {
 
   // Options
   tft.setTextSize(2);
-  tft.drawString("Press for Single-Player", SCREEN_WIDTH / 2, 180);
-  tft.drawString("Press for Multiplayer", SCREEN_WIDTH / 2, 230);
+  tft.drawString("Start Single-Player", SCREEN_WIDTH / 2, 180);
+  tft.drawString("Start Multiplayer", SCREEN_WIDTH / 2, 230);
 
   drawSimonHomeSelection();
 }
@@ -589,17 +589,17 @@ void drawSimonHomeSelection() {
   if (simonSelection == 0) {
     // Single-player selected
     tft.setTextSize(3);
-    tft.drawString("Press for Single-Player", SCREEN_WIDTH / 2, y_single);
+    tft.drawString("Start Single-Player", SCREEN_WIDTH / 2, y_single);
 
     tft.setTextSize(2);
-    tft.drawString("Press for Multiplayer", SCREEN_WIDTH / 2, y_multi);
+    tft.drawString("Start Multiplayer", SCREEN_WIDTH / 2, y_multi);
   } else {
     // Multiplayer selected
     tft.setTextSize(2);
-    tft.drawString("Press for Single-Player", SCREEN_WIDTH / 2, y_single);
+    tft.drawString("Start Single-Player", SCREEN_WIDTH / 2, y_single);
 
     tft.setTextSize(3);
-    tft.drawString("Press for Multiplayer", SCREEN_WIDTH / 2, y_multi);
+    tft.drawString("Start Multiplayer", SCREEN_WIDTH / 2, y_multi);
 
     if (simon_game_state == SIMON_MULTIPLAYER_SELECTION) {
       const char *sub1 = "Host a Game";

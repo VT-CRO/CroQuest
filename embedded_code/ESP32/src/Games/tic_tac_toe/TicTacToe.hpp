@@ -1,4 +1,5 @@
-// TicTacToe.hpp
+// src/Games/tic_tac_toe/TicTacToe.hpp
+
 #pragma once
 
 #include "Bluetooth/BluetoothManager.hpp"
@@ -9,7 +10,9 @@
 #include "Menu/MenuReturn.hpp"
 #include "Notifications/NotificationManager.hpp"
 #include "NumPad/NumPad.hpp"
+#include "SettingsMenu/AudioMenu/Audio.hpp"
 #include "SettingsMenu/BadgesMenu/Badges.hpp"
+
 #include <TFT_eSPI.h>
 
 // ========== API ==========
@@ -40,5 +43,8 @@ String generateTicTacToeStateString();
 void readTicTacToeString(String oldState, const char *data);
 
 void drawWinLine();
+
+// ========== Draw Title and Grid ========== //
+static void drawTitleAndGrid();
 
 void drawAllPlaying();

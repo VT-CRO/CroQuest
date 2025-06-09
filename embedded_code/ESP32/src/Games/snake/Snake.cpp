@@ -329,11 +329,9 @@ void moveSnake() {
     score++;
 
     // ================= Badge Unlock Logic =================
-    if (score >= 4 && !badgeProgress[0]) {
+    if (score >= 150 && !badgeProgress[0]) {
       badgeProgress[0] = true;
       isUnlocked[0] = true;
-      badgeProgress[4] = true;
-      isUnlocked[4] = true;
       saveBadgeProgress();
       triggerNotification("Snake Badge Unlocked!", 3000);
     }

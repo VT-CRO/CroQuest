@@ -433,7 +433,7 @@ void updateBreakoutGame() {
       breakout_session.consecutiveWins++;
 
       // ===== Unlock Badge after 3 perfect matches =====
-      if (breakout_session.consecutiveWins >= 0 && !badgeProgress[5] &&
+      if (breakout_session.consecutiveWins >= 3 && !badgeProgress[5] &&
           !breakout_session.badgeUnlocked) {
         badgeProgress[5] = true;
         isUnlocked[5] = true;

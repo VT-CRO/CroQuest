@@ -322,7 +322,7 @@ void handlePongFrame() {
             consecutiveWins = 0;
           }
 
-          if (consecutiveWins >= 0 && !badgeProgress[1]) {
+          if (consecutiveWins >= 1 && !badgeProgress[1]) {
             badgeProgress[1] = true;
             isUnlocked[1] = true;
             saveBadgeProgress();
@@ -709,8 +709,8 @@ static void drawHomeScreen() {
 
     // Options
     tft.setTextSize(2);
-    tft.drawString("Press for Single-Player", SCREEN_WIDTH / 2, 180);
-    tft.drawString("Press for Multiplayer", SCREEN_WIDTH / 2, 230);
+    tft.drawString("Start Single-Player", SCREEN_WIDTH / 2, 180);
+    tft.drawString("Start Multiplayer", SCREEN_WIDTH / 2, 230);
 
     drawHomeSelection();
   }
@@ -729,16 +729,16 @@ static void drawHomeSelection() {
 
   if (selection == 0) {
     tft.setTextSize(3);
-    tft.drawString("Press for Single-Player", SCREEN_WIDTH / 2, y_single);
+    tft.drawString("Start Single-Player", SCREEN_WIDTH / 2, y_single);
 
     tft.setTextSize(2);
-    tft.drawString("Press for Multiplayer", SCREEN_WIDTH / 2, y_multi);
+    tft.drawString("Start Multiplayer", SCREEN_WIDTH / 2, y_multi);
   } else {
     tft.setTextSize(2);
-    tft.drawString("Press for Single-Player", SCREEN_WIDTH / 2, y_single);
+    tft.drawString("Start Single-Player", SCREEN_WIDTH / 2, y_single);
 
     tft.setTextSize(3);
-    tft.drawString("Press for Multiplayer", SCREEN_WIDTH / 2, y_multi);
+    tft.drawString("Start Multiplayer", SCREEN_WIDTH / 2, y_multi);
 
     if (current_state == MULTIPLAYER_SELECTION) {
       const char *sub1 = "Host a Game";

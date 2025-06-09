@@ -1,4 +1,4 @@
-#include "memory.hpp"
+#include "Memory.hpp"
 #include "EndScreen/EndScreen.hpp"
 #include "SettingsMenu/AudioMenu/Audio.hpp"
 
@@ -476,7 +476,7 @@ static void checkWinCondition() {
   // ================= Badge Unlock Logic =================
   if (currentLevel == NUM_LEVELS - 1) {
     // Unlock if totalTime is under 150 seconds
-    if (totalTime < 1500 && !badgeProgress[6] && !session.badgeUnlocked) {
+    if (totalTime < 150 && !badgeProgress[6] && !session.badgeUnlocked) {
       // if (currentLevel == 0 && !badgeProgress[3] && !session.badgeUnlocked) {
       badgeProgress[6] = true;
       isUnlocked[6] = true;

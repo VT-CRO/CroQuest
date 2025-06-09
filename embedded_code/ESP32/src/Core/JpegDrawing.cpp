@@ -268,3 +268,17 @@ void JpegDrawing::clearCache() {
 TFT_eSprite *JpegDrawing::getSprite() {
   return &sprite; // Assuming `sprite` is your TFT_eSprite inside JpegDrawing
 }
+
+void JpegDrawing::drawDirect(const char *filename, int xpos, int ypos) {
+  File jpegFile = SD.open(filename, FILE_READ);
+  if (!jpegFile) {
+    Serial.print("ERROR: File \"");
+    Serial.print(filename);
+    Serial.println("\" not found!");
+    return;
+  }
+
+  if (JpegDec.decodeSdFile(jpegFile)) {
+    jpegRender(xpos, ypos); // Your existing render
+  }
+}

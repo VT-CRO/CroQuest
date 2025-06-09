@@ -60,7 +60,10 @@ public:
 
   // Caching API
   void addToCache(const char *path);
+
   void clearCache();
+
+  void drawDirect(const char *filename, int xpos, int ypos);
 };
 
 #endif // JPEG_DRAWING_HPP

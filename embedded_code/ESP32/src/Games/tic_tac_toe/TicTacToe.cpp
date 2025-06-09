@@ -88,6 +88,11 @@ int subselection = 0;
 const unsigned long moveDelay = 100;
 bool buttonPreviouslyPressed = false;
 
+// Game Menu
+static int prevSelection = -1;
+static int prevSubselection = -1;
+static State prevGameState = HOMESCREEN;
+
 // Screen
 int screen_width, screen_height;
 const int cell_size = 80;
@@ -138,10 +143,16 @@ void runTicTacToe() {
   roundEnded = false;
   moveCount = 0;
 
-  // reset first frame
+  // Reset UI tracking
   firstFrame = true;
+  selection = 0;
+  subselection = 0;
+  prevSelection = -1;
+  prevSubselection = -1;
+  prevGameState = static_cast<State>(-1);
 
   drawHomeScreen();
+  drawHomescreenSelect();
 
   while (true) {
     handleTicTacToeFrame();
@@ -160,6 +171,7 @@ void runTicTacToe() {
 
 // ========== Manual Loop ========== //
 void handleTicTacToeFrame() {
+
   static int lastCursor = -1;
   static unsigned long lastMoveTime = 0;
 
@@ -292,7 +304,7 @@ void handleTicTacToeFrame() {
 
   if (game_state == HOST_SCREEN || game_state == MULTIPLAYER_PLAYING) {
 
-    // ✅ Draw if Bluetooth state just changed
+    // Draw if Bluetooth state just changed
     if (ticTacToeStateChanged) {
       drawAllPlaying();
       drawWinLine();
@@ -341,79 +353,78 @@ void handleTicTacToeFrame() {
       Serial.printf("⏳ Not your turn. You are '%c' and it's '%c'\n",
                     localPlayerSymbol, currentPlayer);
 
+      // All move/selection logic
+      if (!roundEnded && selectPressed && !buttonPreviouslyPressed &&
+          board[cursorIndex] == "**") {
+        if (moveCount >= 6) {
+          int oldIndex = moveQueue[0].index;
+          board[oldIndex] = "**";
+          for (int i = 1; i < 6; i++)
+            moveQueue[i - 1] = moveQueue[i];
+          moveCount = 5;
+        }
 
-    // All move/selection logic
-    if (!roundEnded && selectPressed && !buttonPreviouslyPressed &&
-        board[cursorIndex] == "**") {
-      if (moveCount >= 6) {
-        int oldIndex = moveQueue[0].index;
-        board[oldIndex] = "**";
-        for (int i = 1; i < 6; i++)
-          moveQueue[i - 1] = moveQueue[i];
-        moveCount = 5;
-      }
+        playMoveSound();
 
-      playMoveSound();
+        board[cursorIndex] = String(currentPlayer);
+        moveQueue[moveCount].index = cursorIndex;
+        moveQueue[moveCount].symbol = currentPlayer;
+        moveCount++;
 
-      board[cursorIndex] = String(currentPlayer);
-      moveQueue[moveCount].index = cursorIndex;
-      moveQueue[moveCount].symbol = currentPlayer;
-      moveCount++;
+        currentPlayer = (currentPlayer == 'X') ? 'O' : 'X';
+        checkWinner();
 
-      currentPlayer = (currentPlayer == 'X') ? 'O' : 'X';
-      checkWinner();
+        drawAllPlaying();
+        drawWinLine();
+        if (roundEnded) {
+          playWinSound();
+          drawWinnerMessage();
+        }
 
-      drawAllPlaying();
-      drawWinLine();
-      if (roundEnded) {
-        playWinSound();
-        drawWinnerMessage();
-      }
+        // After move, send state
+        String newState = generateTicTacToeStateString();
 
-      // After move, send state
-      String newState = generateTicTacToeStateString();
+        Serial.println("HOST SENDING: ");
+        Serial.println(newState);
 
-      Serial.println("HOST SENDING: ");
-      Serial.println(newState);
-
-      if (game_state == HOST_SCREEN) {
-        BluetoothCentral &central = BluetoothManager::getCentral();
-        for (auto *client : central.getConnectedClients()) {
-          if (!central.sendToDevice(client, newState.c_str())) {
-            Serial.println("❌ Failed to notify client. Disconnecting...");
-            ConnectionScreen::showMessage("Peripheral disconnected");
+        if (game_state == HOST_SCREEN) {
+          BluetoothCentral &central = BluetoothManager::getCentral();
+          for (auto *client : central.getConnectedClients()) {
+            if (!central.sendToDevice(client, newState.c_str())) {
+              Serial.println("❌ Failed to notify client. Disconnecting...");
+              ConnectionScreen::showMessage("Peripheral disconnected");
+              shouldExitToMenu = true;
+              return;
+            }
+          }
+        } else if (game_state == MULTIPLAYER_PLAYING) {
+          BluetoothPeripheral &peripheral = BluetoothManager::getPeripheral();
+          if (!peripheral.sendAction(newState.c_str())) {
+            ConnectionScreen::showMessage("Disconnected (Send Failed)");
             shouldExitToMenu = true;
             return;
           }
         }
-      } else if (game_state == MULTIPLAYER_PLAYING) {
-        BluetoothPeripheral &peripheral = BluetoothManager::getPeripheral();
-        if (!peripheral.sendAction(newState.c_str())) {
-          ConnectionScreen::showMessage("Disconnected (Send Failed)");
-          shouldExitToMenu = true;
-          return;
+
+        delay(400);
+      } else if (!roundEnded && selectPressed && !buttonPreviouslyPressed &&
+                 board[cursorIndex] != "**") {
+        playErrorSound();
+      }
+
+      buttonPreviouslyPressed = selectPressed;
+
+      // Redraw when moving or selecting
+      if (cursorIndex != lastCursor || selectPressed) {
+        drawAllPlaying();
+        drawWinLine();
+        if (roundEnded) {
+          playWinSound();
+          drawWinnerMessage();
         }
+        lastCursor = cursorIndex;
       }
-
-      delay(400);
-    } else if (!roundEnded && selectPressed && !buttonPreviouslyPressed &&
-               board[cursorIndex] != "**") {
-      playErrorSound();
     }
-
-    buttonPreviouslyPressed = selectPressed;
-
-    // Redraw when moving or selecting
-    if (cursorIndex != lastCursor || selectPressed) {
-      drawAllPlaying();
-      drawWinLine();
-      if (roundEnded) {
-        playWinSound();
-        drawWinnerMessage();
-      }
-      lastCursor = cursorIndex;
-    }
-  }
 
     // Auto Restart with Bluetooth sync
     if (roundEnded && millis() - winTime >= 5000 && xWins < 2 && oWins < 2) {
@@ -586,8 +597,6 @@ void handleTicTacToeFrame() {
       localPlayerSymbol = 'O';
 
       pad.clearCode();
-
-
     }
   }
 }
@@ -631,7 +640,7 @@ void checkWinner() {
           session.consecutiveWins = 0;
         }
 
-        if (session.consecutiveWins >= 1 && !badgeProgress[2] &&
+        if (session.consecutiveWins >= 3 && !badgeProgress[2] &&
             !session.badgeUnlocked) {
           badgeProgress[2] = true;
           isUnlocked[2] = true;
@@ -885,13 +894,13 @@ void drawWinnerMessage() {
   int x = (tft.width() - boxWidth) / 2;
   int y = 20;
 
-  tft.fillRoundRect(x, y, boxWidth, boxHeight, 8, bgColor);
+  tft.fillRoundRect(x, y, boxWidth, boxHeight, 8, orange_color);
   tft.drawRoundRect(x, y, boxWidth, boxHeight, 8, color);
 
   // Draw glowing text in center
   tft.setTextDatum(MC_DATUM);
   tft.setTextSize(3);
-  tft.setTextColor(color, bgColor);
+  tft.setTextColor(color, orange_color);
   tft.drawString(msg, tft.width() / 2, y + boxHeight / 2);
 }
 
@@ -931,7 +940,7 @@ void drawEndScreen() {
 
   // Instructions to continue
   tft.setTextSize(2);
-  tft.drawString("Press SELECT to return to menu", screen_width / 2, 280);
+  tft.drawString("Return to menu", screen_width / 2, 280);
 
   // Draw trophy next to winner's symbol
   if (xWins > oWins) {
@@ -948,116 +957,111 @@ void drawEndScreen() {
 
 // ========== Draw HomeScreen ========== //
 void drawHomeScreen() {
-  // Clear the screen with orange background
-  tft.fillScreen(orange_color);
 
-  // Set text properties for title
-  tft.setTextDatum(MC_DATUM);
-  tft.setTextColor(TFT_WHITE);
-  tft.setTextSize(4);
-
-  // Draw game title
-  tft.drawString("TIC TAC TOE", screen_width / 2, 40);
-
-  // Draw tic-tac-toe grid manually in center
-  int gridSize = 90; // Total grid size
-  int cellSize = gridSize / 3;
-  int gridX = (screen_width - gridSize) / 2;
-  int gridY = 30;
-
-  // Draw the grid lines with thickness of 5 pixels
-  // Vertical lines
-  tft.fillRect(gridX + cellSize - 2, gridY + 50, 5, gridSize, TFT_WHITE);
-  tft.fillRect(gridX + 2 * cellSize - 2, gridY + 50, 5, gridSize, TFT_WHITE);
-
-  // Horizontal lines
-  tft.fillRect(gridX, gridY + cellSize - 2 + 50, gridSize, 5, TFT_WHITE);
-  tft.fillRect(gridX, gridY + 2 * cellSize - 2 + 50, gridSize, 5, TFT_WHITE);
-
-  // Display instructions
-  tft.setTextSize(2);
-  tft.drawString("Press for Single-Player", screen_width / 2, 200);
-  tft.drawString("Press for Multiplayer", screen_width / 2, 250);
-
-  drawHomescreenSelect();
+  drawTitleAndGrid();     // Draw static background
+  drawHomescreenSelect(); // Draw dynamic buttons
 }
 
 // ========== Draw HomeScreen Buttons ========== //
 void drawHomescreenSelect() {
+
   int y_single = 200;
   int y_multi = 250;
-  int y_sub1 = y_multi + 20;
-  int y_sub2 = y_multi + 40;
+  int y_sub = y_multi + 40;
 
-  // Clear areas
-  tft.setTextDatum(MC_DATUM);
-  tft.setTextColor(TFT_WHITE);
-  tft.setTextSize(1); // reset default
+  // Draw background and grid ONCE when entering screen
+  if (prevSelection == -1 || selection != prevSelection ||
+      game_state != prevGameState) {
+    drawTitleAndGrid(); // <- Only once when arriving
+  }
 
-  tft.fillRect(0, y_single - 15, screen_width, 35, orange_color);
-  tft.fillRect(0, y_multi - 15, screen_width, 80,
-               orange_color); // extra space for sub-options
-
-  if (selection == 0) {
-    // Single-player selected
-    tft.setTextSize(3);
-    tft.drawString("Press for Single-Player", screen_width / 2, y_single);
-
-    tft.setTextSize(2);
-    tft.drawString("Press for Multiplayer", screen_width / 2, y_multi);
-  } else {
-    // Multiplayer selected
-    tft.setTextSize(2);
-    tft.drawString("Press for Single-Player", screen_width / 2, y_single);
-
-    tft.setTextSize(3);
-    tft.drawString("Press for Multiplayer", screen_width / 2, y_multi);
-
-    // Draw sub-options
+  // Draw buttons
+  if (prevSelection == -1 || selection != prevSelection ||
+      game_state != prevGameState) {
+    tft.setTextDatum(MC_DATUM);
+    tft.setTextColor(TFT_WHITE);
     tft.setTextSize(1);
-    const char *sub1 = "Press to Host a Game";
-    const char *sub2 = "Press to Join a Game";
+
+    tft.fillRect(0, y_single - 15, screen_width, 35, orange_color);
+    tft.fillRect(0, y_multi - 15, screen_width, 80, orange_color);
+
+    tft.setTextSize(selection == 0 ? 3 : 2);
+    tft.drawString("Start Single-Player", screen_width / 2, y_single);
+
+    tft.setTextSize(selection == 1 ? 3 : 2);
+    tft.drawString("Start Multiplayer", screen_width / 2, y_multi);
+  }
+
+  // ---------- Draw Sub-options ----------
+  if (game_state == MULTIPLAYER_SELECTION) {
+    const char *sub1 = "Host a Game";
+    const char *sub2 = "Join a Game";
+
+    int textSize = 2;
+    tft.setTextSize(textSize);
+    tft.setTextDatum(MC_DATUM);
+
+    int padding_x = 10;
+    int padding_y = 2;
 
     int sub1Width = tft.textWidth(sub1);
     int sub2Width = tft.textWidth(sub2);
 
-    // Draw highlight rectangles for selected sub-option
-    if (game_state == MULTIPLAYER_SELECTION) {
-      const char *sub1 = "Host a Game";
-      const char *sub2 = "Join a Game";
+    int sub1BoxWidth = sub1Width + padding_x * 2;
+    int sub2BoxWidth = sub2Width + padding_x * 2;
+    int boxHeight = 16 * textSize + padding_y * 2;
 
-      int textSize = 2;
-      tft.setTextSize(textSize);
-      tft.setTextDatum(MC_DATUM);
+    int x_sub1 = screen_width / 4;
+    int x_sub2 = 3 * screen_width / 4;
 
-      int y_sub = y_multi + 40; // vertical position for both buttons
-      int padding_x = 10;       // horizontal padding around text
-      int padding_y = 2;        // vertical padding around text
+    // Only redraw if changed
+    if (subselection != prevSubselection || game_state != prevGameState) {
+      // Clear area
+      tft.fillRect(0, y_sub - boxHeight / 2 - 2, screen_width, boxHeight + 10,
+                   orange_color);
 
-      int sub1Width = tft.textWidth(sub1);
-      int sub2Width = tft.textWidth(sub2);
-
-      int sub1BoxWidth = sub1Width + padding_x * 2;
-      int sub2BoxWidth = sub2Width + padding_x * 2;
-      int boxHeight = 16 * textSize + padding_y * 2;
-
-      int x_sub1 = screen_width / 4;
-      int x_sub2 = 3 * screen_width / 4;
-
-      // Draw highlight rectangle if selected
+      // Draw highlight
       if (subselection == 0) {
         tft.drawRect(x_sub1 - sub1BoxWidth / 2, y_sub - boxHeight / 2,
                      sub1BoxWidth, boxHeight, TFT_WHITE);
-      } else if (subselection == 1) {
+      } else {
         tft.drawRect(x_sub2 - sub2BoxWidth / 2, y_sub - boxHeight / 2,
                      sub2BoxWidth, boxHeight, TFT_WHITE);
       }
 
-      // Draw the sub-option text
+      // Draw text
       tft.drawString(sub1, x_sub1, y_sub);
       tft.drawString(sub2, x_sub2, y_sub);
     }
   }
+
+  // ---------- Save state ----------
+  prevSelection = selection;
+  prevSubselection = subselection;
+  prevGameState = game_state;
+}
+
+// ========== Draw Title and Grid ========== //
+void drawTitleAndGrid() {
+  // Clear the screen with orange background
+  tft.fillScreen(orange_color);
+
+  // Title
+  tft.setTextDatum(MC_DATUM);
+  tft.setTextColor(TFT_WHITE);
+  tft.setTextSize(4);
+  tft.drawString("TIC TAC TOE", screen_width / 2, 40);
+
+  // Grid
+  int gridSize = 90;
+  int cellSize = gridSize / 3;
+  int gridX = (screen_width - gridSize) / 2;
+  int gridY = 30;
+
+  tft.fillRect(gridX + cellSize - 2, gridY + 50, 5, gridSize, TFT_WHITE);
+  tft.fillRect(gridX + 2 * cellSize - 2, gridY + 50, 5, gridSize, TFT_WHITE);
+  tft.fillRect(gridX, gridY + cellSize - 2 + 50, gridSize, 5, TFT_WHITE);
+  tft.fillRect(gridX, gridY + 2 * cellSize - 2 + 50, gridSize, 5, TFT_WHITE);
 }
 
 // ========== Draw Moves ========== //
@@ -1321,7 +1325,7 @@ void readTicTacToeString(String oldState, const char *data) {
   ticTacToeStateChanged = true;
 
   // Check if there is a winner
-  if(winner == 'N'){
+  if (winner == 'N') {
     checkWinner();
   }
 
