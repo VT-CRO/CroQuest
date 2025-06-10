@@ -43,7 +43,7 @@ const char *badgeDescriptions[badgeCount] = {
     "Perfect Pong",
     "Perfect Tic Tac Toe 3 times",
     "Reach Level 25 in Simon",
-    "Win 3 matches of Connect 4",
+    "Win a matches of Connect 4",
     "Perfect Breakout 2 times",
     "Win Matching in less than 150 seconds",
     "Reach 5000 points in Tetris",

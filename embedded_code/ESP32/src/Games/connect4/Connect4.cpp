@@ -43,6 +43,9 @@ static int subselection = 0;
 static const unsigned long moveDelay = 100;
 static bool buttonPreviouslyPressed = false;
 
+// Badges
+static int totalConnect4Wins;
+
 const int CELL_SIZE = 30;
 const int COLS = 7;
 const int ROWS = 6;
@@ -275,7 +278,7 @@ void handleConnect4Frame() {
   else if (game_state == SINGLE_PLAYER) {
     if (firstFrame) {
 
-      // drawGrid();
+      drawGrid();
       drawCursor();
       drawScorePanel(player1Wins, player2Wins, currentPlayer);
       firstFrame = false;
@@ -301,7 +304,26 @@ void handleConnect4Frame() {
         playDropSound();
 
         if (checkWin(currentPlayer)) {
-          player1Wins++;
+          if (currentPlayer == 1) {
+            player1Wins++;
+
+            // BADGE LOGIC – only if Player 1 wins
+            totalConnect4Wins++;
+            if (totalConnect4Wins >= 3 && !badgeProgress[4]) {
+              badgeProgress[4] = true;
+              isUnlocked[4] = true;
+              saveBadgeProgress();
+              checkFinalBadgeUnlock();
+
+              hasPendingNotification = true;
+              pendingNotificationMessage = "Connect4 Badge Unlocked!";
+              pendingNotificationDuration = 3000;
+            }
+
+          } else if (currentPlayer == 2) {
+            player2Wins++;
+          }
+
           drawScorePanel(player1Wins, player2Wins, currentPlayer);
           playWinSound();
           drawWinLine(currentPlayer);
@@ -492,6 +514,7 @@ bool checkWin(int player) {
       }
     }
   }
+
   return false; // no win found
 }
 
@@ -683,8 +706,9 @@ void drawWinLine(int player) {
   // Draw a thick line (5px total: offset -2 to +2)
   for (int offset = -2; offset <= 2; offset++) {
     tft.drawLine(x1 + offset, y1, x2 + offset, y2,
-                 color);                                   // horizontal offset
-    tft.drawLine(x1, y1 + offset, x2, y2 + offset, color); // vertical offset
+                 color); // horizontal offset
+    tft.drawLine(x1, y1 + offset, x2, y2 + offset,
+                 color); // vertical offset
   }
 }
 

@@ -447,7 +447,8 @@ void handlePongFrame() {
       }
     }
 
-    else if (current_state == MULTIPLAYER_PLAYING || current_state == HOST_SCREEN) {
+    else if (current_state == MULTIPLAYER_PLAYING ||
+             current_state == HOST_SCREEN) {
       if (firstFrame) {
         // Initializes the game
         initialize_game(&ball, paddles, &level);
@@ -514,12 +515,11 @@ void handlePongFrame() {
 
         pad.clearCode();
       }
-    }
-    else if(current_state == STATE_GAMEOVER){
-      if(A.wasJustPressed()){
-        // current_state = prev_state; // Need some other checks before letting users restart
-        // probably need to send a "ready" string, etc.
-      }else if(B.wasJustPressed()){
+    } else if (current_state == STATE_GAMEOVER) {
+      if (A.wasJustPressed()) {
+        // current_state = prev_state; // Need some other checks before letting
+        // users restart probably need to send a "ready" string, etc.
+      } else if (B.wasJustPressed()) {
         current_state = STATE_HOMESCREEN;
         first_home_draw = true;
         drawHomeScreen();
@@ -835,7 +835,6 @@ static void draw_endscreen(int score0, int score1) {
 //  Bluetooth Logic
 // ####################################################################################################
 
-
 void handleHostLogic() {
   BluetoothCentral &central = BluetoothManager::getCentral();
 
@@ -845,7 +844,7 @@ void handleHostLogic() {
     int yPos = std::stoi(yStr);
     paddles[1].y = yPos;
     prev_paddles[1].paddle_mod = true;
-}
+  }
 
   if (up.isPressed()) {
     updatePaddle(true, &paddles[0]);
@@ -868,18 +867,18 @@ void handleHostLogic() {
   }
 
   char state[64];
-  sprintf(state, "@pong@state@%d,%d,%d,%.1f,%.1f",
-          paddles[0].y, score0, score1, ball.x, ball.y);
+  sprintf(state, "@pong@state@%d,%d,%d,%.1f,%.1f", paddles[0].y, score0, score1,
+          ball.x, ball.y);
   central.sendMessage(state);
 }
 
 void handlePeripheralLogic() {
   BluetoothPeripheral &peripheral = BluetoothManager::getPeripheral();
 
-    //read state
+  // read state
   std::string state = peripheral.readMessage();
-  
-  //update paddle
+
+  // update paddle
   if (up.isPressed()) {
     updatePaddle(true, &paddles[1]);
     prev_paddles[1].paddle_mod = true;
@@ -904,7 +903,7 @@ void handlePeripheralLogic() {
     prev_ball.x = ball.x;
     prev_ball.y = ball.y;
 
-    if(score0 != s0 || score1 != s1){
+    if (score0 != s0 || score1 != s1) {
       initialize_game(&ball, paddles, &level);
     }
 
@@ -946,6 +945,4 @@ void drawGameState() {
   drawScore(score0, score1);
 }
 
-bool checkWinCondition() {
-  return score0 >= GAME_WON || score1 >= GAME_WON;
-}
+bool checkWinCondition() { return score0 >= GAME_WON || score1 >= GAME_WON; }
