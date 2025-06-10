@@ -898,7 +898,7 @@ void handlePeripheralLogic() {
   if (!state.empty() && state.rfind("@pong@state@", 0) == 0) {
     int y0, s0, s1;
     float bx, by;
-    sscanf(state.c_str() + 13, "%d,%d,%d,%f,%f", &y0, &s0, &s1, &bx, &by);
+    sscanf(state.substr(12).c_str(), "%d,%d,%d,%f,%f", &y0, &s0, &s1, &bx, &by);
 
     prev_ball.x = ball.x;
     prev_ball.y = ball.y;
