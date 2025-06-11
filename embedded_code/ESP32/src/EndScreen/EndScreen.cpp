@@ -1,5 +1,6 @@
+// src/EndScreen/EndScreen.cpp
+
 #include "EndScreen.hpp"
-#include "BackButton/BackButton.hpp"
 
 inline EndScreen::Selection operator++(EndScreen::Selection &s, int) {
   typedef typename std::underlying_type<EndScreen::Selection>::type T;
@@ -19,8 +20,7 @@ inline EndScreen::Selection operator--(EndScreen::Selection &s, int) {
   return old;
 }
 
-// ==================== ENDSCREEN ================== //
-
+// ========== End Screen ========== //
 void EndScreen::gameOverScreen() {
   // Clear screen
   tft.fillScreen(TFT_BLACK);
@@ -98,6 +98,7 @@ void EndScreen::gameOverScreen() {
   drawingSelections(TFT_BLACK);
 }
 
+// ========== Score Board ========== //
 void EndScreen::scoreBoardScreen() {
   tft.fillScreen(TFT_BLACK);
   tft.setTextDatum(MC_DATUM);
@@ -140,7 +141,19 @@ void EndScreen::scoreBoardScreen() {
     // Sets text color
     tft.setTextColor(playerScores[i] == highScore ? TFT_GREEN : TFT_WHITE);
 
-    tft.drawString(playerNames[i], nameX, rowY);
+    String displayName = playerNames[i];
+
+    // If it's the local user, format name and add (you)
+    if (playerNames[i] == settings.name) {
+      displayName.toLowerCase();
+      displayName[0] = toupper(displayName[0]);
+      displayName += "   (You)";
+    } else {
+      displayName.toLowerCase();
+      displayName[0] = toupper(displayName[0]);
+    }
+
+    tft.drawString(displayName, nameX, rowY);
     tft.drawString(String(playerScores[i]), scoreX, rowY);
   }
 
@@ -150,10 +163,8 @@ void EndScreen::scoreBoardScreen() {
   tft.drawString("Press A for endscreen", tft.width() / 2, tft.height() - 30);
 }
 
-// Handles user input
+// ========== Handle User Input ========== //
 bool EndScreen::handleUserInput() {
-
-  // Draws the scoreboard
   if (multiplayer) {
     scoreBoardScreen();
   } else {
@@ -163,40 +174,36 @@ bool EndScreen::handleUserInput() {
 
   unsigned long lastButtonPressTime = 0;
   unsigned long buttonDebounceDelay = 200;
+
   for (;;) {
+    static int prevSelection = -1;
+
     if (millis() - lastButtonPressTime > buttonDebounceDelay) {
-      // start button pressed
       if (checkStartButtonAndExit(tft)) {
         exit = true;
-        return false; // function returns false and exit is set to true -> exit
-                      // to menu
+        return false;
       }
 
       switch (currentState) {
-      // SCOREBOARD DISPLAYED
       case SCORE_BOARD:
-        // GOES TO ENDSCREEN
         if (A.wasJustPressed()) {
           currentState = ENDSCREEN;
           gameOverScreen();
           lastButtonPressTime = millis();
         }
         break;
+
       case ENDSCREEN:
         // Selection logic
         if (A.wasJustPressed()) {
           if (currentSelection == RESTART_GAME) {
-            // GAME SHOULD RESTART
             currentState = SCORE_BOARD;
             currentSelection = RESTART_GAME;
             return true;
           } else if (currentSelection == BACK_BUTTON) {
-            // SHOULD RETURN TO SCOREBOARD
             currentState = SCORE_BOARD;
             scoreBoardScreen();
-
           } else if (currentSelection == GAME_MENU) {
-            // GAME SHOULD RETURN TO GAME MENU
             currentState = SCORE_BOARD;
             currentSelection = RESTART_GAME;
             return false;
@@ -212,42 +219,51 @@ bool EndScreen::handleUserInput() {
               currentSelection--;
             }
           }
-          drawingSelections(TFT_BLACK);
           lastButtonPressTime = millis();
         } else if (down.isPressed()) {
           if (currentSelection < GAME_MENU) {
             currentSelection++;
           }
-          drawingSelections(TFT_BLACK);
           lastButtonPressTime = millis();
         }
+
+        // Only redraw when selection changes
+        if (currentSelection != prevSelection) {
+          drawingSelections(TFT_BLACK); // or pass a bgColor variable
+          prevSelection = currentSelection;
+        }
+
         break;
-      };
+      }
     }
   }
 }
 
+// ========== Draw Seleciton Buttons ========== //
 void EndScreen::drawingSelections(uint16_t bgcolor) {
+  tft.setTextDatum(MC_DATUM);
   tft.setTextColor(TFT_WHITE);
-  tft.setTextSize(2);
 
-  // PRESS TO RESTART
-  tft.drawRoundRect(tft.width() / 2 - tft.textWidth("Press to restart") / 2 - 4,
-                    tft.height() - 60 - tft.fontHeight() / 2 - 4,
-                    tft.textWidth("Press to restart") + 8, tft.fontHeight() + 8,
-                    6, currentSelection == RESTART_GAME ? TFT_WHITE : bgcolor);
-  tft.drawString("Press to restart", tft.width() / 2, tft.height() - 60);
+  // --------- Y Positions --------- //
+  int y_restart = tft.height() - 70;
+  int y_menu = tft.height() - 30;
 
-  // PRESS TO RETURN TO MENU
-  tft.drawRoundRect(
-      tft.width() / 2 - tft.textWidth("Press to return to menu") / 2 - 4,
-      tft.height() - 30 - tft.fontHeight() / 2 - 4,
-      tft.textWidth("Press to return to menu") + 8, tft.fontHeight() + 8, 6,
-      currentSelection == GAME_MENU ? TFT_WHITE : bgcolor);
-  tft.drawString("Press to return to menu", tft.width() / 2, tft.height() - 30);
+  // --------- Clear areas behind buttons --------- //
+  tft.fillRect(0, y_restart - 20, tft.width(), 40, bgcolor);
+  tft.fillRect(0, y_menu - 20, tft.width(), 40, bgcolor);
 
+  // --------- "Press to Restart" --------- //
+  int textSize_restart = (currentSelection == RESTART_GAME) ? 3 : 2;
+  tft.setTextSize(textSize_restart);
+  tft.drawString("Press to restart", tft.width() / 2, y_restart);
+
+  // --------- "Press to Return to Menu" --------- //
+  int textSize_menu = (currentSelection == GAME_MENU) ? 3 : 2;
+  tft.setTextSize(textSize_menu);
+  tft.drawString("Press to return to menu", tft.width() / 2, y_menu);
+
+  // --------- Back Button for Scoreboard --------- //
   if (multiplayer) {
-    // Draws back button
     back(currentSelection, bgcolor, "< Scores");
   }
 }

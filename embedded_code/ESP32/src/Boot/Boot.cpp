@@ -125,6 +125,10 @@ void nameIntroduction() {
 
   // Fade In
   for (int i = 0; i <= 255; i += 5) {
+    if (A.wasJustPressed()) {
+      tft.fillScreen(TFT_BLACK);
+      return; // skip to menu
+    }
     uint16_t color = tft.color565(i, i, i); // Grayscale fade
     tft.fillScreen(TFT_BLACK);              // Clear between frames
     tft.setTextColor(color, TFT_BLACK);
@@ -133,16 +137,28 @@ void nameIntroduction() {
   }
 
   // Hold
-  delay(3000);
+  unsigned long holdStart = millis();
+  while (millis() - holdStart < 3000) {
+    if (A.wasJustPressed()) {
+      tft.fillScreen(TFT_BLACK);
+      return;
+    }
+    delay(10);
+  }
 
   // Fade Out
   for (int i = 255; i >= 0; i -= 5) {
+    if (A.wasJustPressed()) {
+      tft.fillScreen(TFT_BLACK);
+      return;
+    }
     uint16_t color = tft.color565(i, i, i); // Grayscale fade
     tft.fillScreen(TFT_BLACK);
     tft.setTextColor(color, TFT_BLACK);
     tft.drawString(username, centerX, centerY);
     delay(10);
   }
+  tft.fillScreen(TFT_BLACK); // Clean up at the end
 }
 
 // ======================== Fade-In Effect ========================

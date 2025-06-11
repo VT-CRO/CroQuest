@@ -23,6 +23,7 @@ void launchGameByName(const char *name) {
   } else if (strcmp(name, "Pong") == 0) {
     runPong();
   } else if (strcmp(name, "Tic Tac Toe") == 0) {
+    resetExitFlag();
     runTicTacToe();
   } else if (strcmp(name, "Simon") == 0) {
     runSimon();

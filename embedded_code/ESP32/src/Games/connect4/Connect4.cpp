@@ -400,6 +400,7 @@ void handleConnect4Frame() {
                         player1Wins);
 
     if (endScreen.handleUserInput()) {
+
       // ==== Restart game ====
       player1Wins = 0;
       player2Wins = 0;
@@ -803,7 +804,6 @@ void drawHomeScreen() {
   drawHomescreenSelect();
 }
 
-// ========== Draw HomeScreen Buttons ========== //
 // ========== Draw HomeScreen Buttons ========== //
 void drawHomescreenSelect() {
   static int prevSelection = -1;

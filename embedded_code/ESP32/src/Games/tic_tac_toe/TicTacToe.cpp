@@ -63,6 +63,8 @@ int lastCursor = -1;
 // Bluetooth Turns
 char localPlayerSymbol = 'X'; // default for host
 
+String remotePlayerName = "Player 2"; // default fallback
+
 // Assets
 const char *BOARD_PATH = "/tic_tac_toe_assets/board.jpg";
 const char *X_PATH = "/tic_tac_toe_assets/x.jpg";
@@ -152,7 +154,6 @@ void runTicTacToe() {
   prevGameState = static_cast<State>(-1);
 
   drawHomeScreen();
-  drawHomescreenSelect();
 
   while (true) {
     handleTicTacToeFrame();
@@ -556,7 +557,7 @@ void handleTicTacToeFrame() {
     }
 
     // Auto Restart
-    if (roundEnded && millis() - winTime >= 5000 && xWins < 2 && oWins < 2) {
+    if (roundEnded && millis() - winTime >= 3000 && xWins < 2 && oWins < 2) {
       resetBoardState(true);
       drawAllPlaying();
 
@@ -565,23 +566,6 @@ void handleTicTacToeFrame() {
       resetBoardState(true);
       // Clear the screen with orange background
       tft.fillScreen(orange_color);
-    }
-  }
-
-  // ================== GAMEOVER_SCREEN State =================== //
-  else if (game_state == GAMEOVER_SCREEN) {
-    drawEndScreen();
-    if (millis() - lastMoveTime > moveDelay) {
-      if (A.wasJustPressed()) {
-
-        game_state = HOMESCREEN;
-        oWins = 0;
-        xWins = 0;
-
-        // Draw homescreen
-        drawHomeScreen();
-      }
-      lastMoveTime = millis();
     }
   }
 
@@ -601,6 +585,85 @@ void handleTicTacToeFrame() {
 
       pad.clearCode();
     }
+  }
+
+  // ================== GAMEOVER_SCREEN State =================== //
+  else if (game_state == GAMEOVER_SCREEN) {
+    std::vector<String> playerNames;
+    std::vector<int> playerScores;
+
+    bool multiplayer = multiplayerMode;
+
+    if (multiplayer) {
+      playerNames = {settings.name};
+      playerScores = {(localPlayerSymbol == 'X') ? xWins : oWins};
+
+      String opponentName = remotePlayerName;
+      int opponentScore = (localPlayerSymbol == 'X') ? oWins : xWins;
+
+      playerNames.push_back(opponentName);
+      playerScores.push_back(opponentScore);
+
+    } else {
+      playerNames = {"AI", settings.name};
+      playerScores = {oWins, xWins};
+    }
+
+    char localNameBuffer[6];
+    strncpy(localNameBuffer, settings.name, sizeof(localNameBuffer) - 1);
+    localNameBuffer[sizeof(localNameBuffer) - 1] = '\0';
+
+    int playerScore = (localPlayerSymbol == 'X') ? xWins : oWins;
+
+    EndScreen endScreen(playerNames, playerScores, multiplayer, localNameBuffer,
+                        playerScore);
+
+    if (endScreen.handleUserInput()) {
+
+      // ==== Reset score ==== //
+      xWins = 0;
+      oWins = 0;
+
+      // ---- Restart game ---- //
+      if (multiplayer) {
+        resetMultiplayerState(false); // false = don't clear screen again
+
+      } else {
+        resetToSinglePlayerDefaults(); // Clear AI/game state
+      }
+
+      resetBoardState(true);
+      roundEnded = false;
+      winner = 'N';
+      winCombo[0] = winCombo[1] = winCombo[2] = -1;
+
+      game_state = multiplayer ? MULTIPLAYER_PLAYING : SINGLE_PLAYER;
+
+      // ==== Immediately redraw everything like the start of a game ====
+      drawGrid();
+      drawAllPlaying();
+      drawScoreboard();
+      highlightCursor(cursorIndex);
+
+      firstFrame = true;
+      return;
+
+    } else if (endScreen.exit) {
+      return;
+    }
+
+    // Exit to game menu
+    xWins = 0;
+    oWins = 0;
+
+    selection = 0;
+    subselection = 0;
+    prevSelection = -1;
+    prevSubselection = -1;
+    prevGameState = static_cast<State>(-1);
+
+    game_state = HOMESCREEN;
+    drawHomeScreen();
   }
 }
 
@@ -907,7 +970,6 @@ void drawWinnerMessage() {
   tft.drawString(msg, tft.width() / 2, y + boxHeight / 2);
 }
 
-// TODO: replace by real "End Screen"
 // ========== Draw End Screen ========== //
 void drawEndScreen() {
 
@@ -967,35 +1029,30 @@ void drawHomeScreen() {
 
 // ========== Draw HomeScreen Buttons ========== //
 void drawHomescreenSelect() {
-
   int y_single = 200;
   int y_multi = 250;
   int y_sub = y_multi + 40;
 
-  // Draw background and grid ONCE when entering screen
-  if (prevSelection == -1 || selection != prevSelection ||
-      game_state != prevGameState) {
-    drawTitleAndGrid(); // <- Only once when arriving
+  // Always draw title + grid once when entering this screen
+  if (prevSelection == -1 || game_state != prevGameState) {
+    drawTitleAndGrid();
   }
 
-  // Draw buttons
-  if (prevSelection == -1 || selection != prevSelection ||
-      game_state != prevGameState) {
-    tft.setTextDatum(MC_DATUM);
-    tft.setTextColor(TFT_WHITE);
-    tft.setTextSize(1);
+  // === Draw Buttons (always) ===
+  tft.setTextDatum(MC_DATUM);
+  tft.setTextColor(TFT_WHITE);
+  tft.setTextSize(1);
 
-    tft.fillRect(0, y_single - 15, screen_width, 35, orange_color);
-    tft.fillRect(0, y_multi - 15, screen_width, 80, orange_color);
+  tft.fillRect(0, y_single - 15, screen_width, 35, orange_color);
+  tft.fillRect(0, y_multi - 15, screen_width, 80, orange_color);
 
-    tft.setTextSize(selection == 0 ? 3 : 2);
-    tft.drawString("Start Single-Player", screen_width / 2, y_single);
+  tft.setTextSize(selection == 0 ? 3 : 2);
+  tft.drawString("Start Single-Player", screen_width / 2, y_single);
 
-    tft.setTextSize(selection == 1 ? 3 : 2);
-    tft.drawString("Start Multiplayer", screen_width / 2, y_multi);
-  }
+  tft.setTextSize(selection == 1 ? 3 : 2);
+  tft.drawString("Start Multiplayer", screen_width / 2, y_multi);
 
-  // ---------- Draw Sub-options ----------
+  // ---------- Sub-options for Multiplayer ----------
   if (game_state == MULTIPLAYER_SELECTION) {
     const char *sub1 = "Host a Game";
     const char *sub2 = "Join a Game";
@@ -1017,25 +1074,22 @@ void drawHomescreenSelect() {
     int x_sub1 = screen_width / 4;
     int x_sub2 = 3 * screen_width / 4;
 
-    // Only redraw if changed
-    if (subselection != prevSubselection || game_state != prevGameState) {
-      // Clear area
-      tft.fillRect(0, y_sub - boxHeight / 2 - 2, screen_width, boxHeight + 10,
-                   orange_color);
+    // Clear suboption area every time in this case
+    tft.fillRect(0, y_sub - boxHeight / 2 - 2, screen_width, boxHeight + 10,
+                 orange_color);
 
-      // Draw highlight
-      if (subselection == 0) {
-        tft.drawRect(x_sub1 - sub1BoxWidth / 2, y_sub - boxHeight / 2,
-                     sub1BoxWidth, boxHeight, TFT_WHITE);
-      } else {
-        tft.drawRect(x_sub2 - sub2BoxWidth / 2, y_sub - boxHeight / 2,
-                     sub2BoxWidth, boxHeight, TFT_WHITE);
-      }
-
-      // Draw text
-      tft.drawString(sub1, x_sub1, y_sub);
-      tft.drawString(sub2, x_sub2, y_sub);
+    // Draw highlight
+    if (subselection == 0) {
+      tft.drawRect(x_sub1 - sub1BoxWidth / 2, y_sub - boxHeight / 2,
+                   sub1BoxWidth, boxHeight, TFT_WHITE);
+    } else {
+      tft.drawRect(x_sub2 - sub2BoxWidth / 2, y_sub - boxHeight / 2,
+                   sub2BoxWidth, boxHeight, TFT_WHITE);
     }
+
+    // Draw text
+    tft.drawString(sub1, x_sub1, y_sub);
+    tft.drawString(sub2, x_sub2, y_sub);
   }
 
   // ---------- Save state ----------
@@ -1181,11 +1235,14 @@ void playErrorSound() { tone(SPEAKER_PIN, 300, 300); }
 String generateTicTacToeStateString() {
   String state = "ttt@";
 
-  // Host or local device info
-  state += "0,X," + String(xWins) + ",MGH;\n";
+  // Use real player names
+  String xName = (localPlayerSymbol == 'X') ? formatName(settings.name)
+                                            : formatName(remotePlayerName);
+  String oName = (localPlayerSymbol == 'O') ? formatName(settings.name)
+                                            : formatName(remotePlayerName);
 
-  // Opponent info (you can customize this later)
-  state += "1,O," + String(oWins) + ",CRO;\n";
+  state += "0,X," + String(xWins) + "," + xName + ";\n";
+  state += "1,O," + String(oWins) + "," + oName + ";\n";
 
   // Best of condition
   state += "5;\n";
@@ -1225,13 +1282,27 @@ String generateTicTacToeStateString() {
   return state;
 }
 
-// ========== Reads Tic Tac Toe State String ========== //
+// ========== Helper: Split String ==========
+std::vector<String> split(const String &s, char delimiter) {
+  std::vector<String> result;
+  int start = 0;
+  int end = s.indexOf(delimiter);
+
+  while (end != -1) {
+    result.push_back(s.substring(start, end));
+    start = end + 1;
+    end = s.indexOf(delimiter, start);
+  }
+  result.push_back(s.substring(start));
+  return result;
+}
+
+// ========== Reads Tic Tac Toe State String ==========
 void readTicTacToeString(String oldState, const char *data) {
   String input = String(data);
   input.trim();
   input.replace("ttt@", "");
 
-  // === Clear Board and Queue ===
   for (int i = 0; i < 9; i++)
     board[i] = "**";
   for (int i = 0; i < 6; i++) {
@@ -1244,34 +1315,56 @@ void readTicTacToeString(String oldState, const char *data) {
   int i = 0;
   int idx = 0;
 
-  while (idx != -1 && line < 6) {
+  while (idx != -1 && line < 7) {
     idx = input.indexOf(";\n", i);
     String part = input.substring(i, idx);
     i = idx + 2;
 
     switch (line) {
-    case 0:
-      break; // Player X info
-    case 1:
-      break; // Player O info
+    case 0: { // Player X
+      auto parts = split(part, ',');
+      if (parts.size() >= 4) {
+        int parsedXScore = parts[2].toInt();
+        if (localPlayerSymbol == 'O') {
+          xWins = parsedXScore; // Opponent's score
+          remotePlayerName = parts[3];
+        } else {
+          // Optional: xWins = parsedXScore; // In case host needs to sync its
+          // own value
+        }
+      }
+      break;
+    }
+
+    case 1: { // Player O
+      auto parts = split(part, ',');
+      if (parts.size() >= 4) {
+        int parsedOScore = parts[2].toInt();
+        if (localPlayerSymbol == 'X') {
+          oWins = parsedOScore; // Opponent's score
+          remotePlayerName = parts[3];
+        } else {
+          // Optional: oWins = parsedOScore;
+        }
+      }
+      break;
+    }
+
     case 2:
       break; // Best-of
     case 3:
       currentPlayer = part.charAt(0);
       break;
-
     case 4: {
-      // Board state with aging: e.g., X0,O2,**,**,**,**,**,**,**;
       int moveIndex = 0;
       for (int j = 0; j < 9; j++) {
         int comma = part.indexOf(',', moveIndex);
         String cell =
-            part.substring(moveIndex, comma == -1 ? part.length() : comma);
+            part.substring(moveIndex, (comma == -1) ? part.length() : comma);
 
         if (cell != "**" && cell.length() == 2) {
           char symbol = cell.charAt(0);
           int age = cell.charAt(1) - '0';
-
           board[j] = String(symbol);
           moveQueue[age].index = j;
           moveQueue[age].symbol = symbol;
@@ -1285,21 +1378,15 @@ void readTicTacToeString(String oldState, const char *data) {
       }
       break;
     }
-
     case 5: {
-
-      // Only update cursorIndex if this ESP is the active player
-      if (localPlayerSymbol != currentPlayer) {
+      if (localPlayerSymbol != currentPlayer)
         cursorIndex = part.toInt();
-      }
       break;
     }
-
     case 6: {
       int sep = part.indexOf(';');
       if (sep != -1) {
         winner = part.substring(0, sep).charAt(0);
-
         if (winner == 'X' || winner == 'O' || winner == 'D') {
           roundEnded = true;
           winTime = millis();
@@ -1320,20 +1407,17 @@ void readTicTacToeString(String oldState, const char *data) {
       break;
     }
     }
+
     line++;
   }
 
-  // Enable multiplayer mode when parsing a multiplayer update
   multiplayerMode = true;
   ticTacToeStateChanged = true;
 
-  // Check if there is a winner
-  if (winner == 'N') {
+  if (winner == 'N')
     checkWinner();
-  }
 
-  // 🧪 Optional debug output
-  Serial.println("📋 Parsed board:");
+  Serial.println("Parsed board:");
   for (int k = 0; k < 9; ++k) {
     Serial.print(board[k]);
     Serial.print(" ");
@@ -1341,9 +1425,17 @@ void readTicTacToeString(String oldState, const char *data) {
       Serial.println();
   }
 
-  Serial.println("🧠 Parsed moveQueue:");
+  Serial.println("Parsed moveQueue:");
   for (int k = 0; k < moveCount; ++k) {
     Serial.printf("Move %d: %c at %d\n", k, moveQueue[k].symbol,
                   moveQueue[k].index);
   }
+}
+
+String formatName(String name) {
+  if (name.length() == 0)
+    return name;
+  name.toLowerCase();
+  name.setCharAt(0, toupper(name.charAt(0)));
+  return name;
 }

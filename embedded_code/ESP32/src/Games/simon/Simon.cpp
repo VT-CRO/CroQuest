@@ -338,6 +338,7 @@ void handleSimonFrame() {
     }
     break;
   }
+
   case SIMON_LEVELUP:
     if (millis() - levelUpTime > 200) {
       simon_game_state = SIMON_STATE_WATCH;

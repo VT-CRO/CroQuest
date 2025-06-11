@@ -5,6 +5,7 @@
 #include "Bluetooth/BluetoothManager.hpp"
 #include "Core/Buttons.hpp"
 #include "Core/JpegDrawing.hpp"
+#include "EndScreen/EndScreen.hpp"
 #include "HostGame/HostGame.hpp"
 #include "JoinHost/JoinHost.hpp"
 #include "Menu/MenuReturn.hpp"
@@ -15,11 +16,11 @@
 
 #include <TFT_eSPI.h>
 
-// ========== API ==========
+// ========== API ========== //
 void runTicTacToe();
 void handleTicTacToeFrame();
 
-// ========== Globals ==========
+// ========== Globals ========== //
 extern TFT_eSPI tft;
 extern JpegDrawing drawing;
 extern Button A, B, up, down, left, right;
@@ -39,6 +40,10 @@ struct TicTacToeSession {
 extern TicTacToeSession session;
 
 String generateTicTacToeStateString();
+
+String formatName(String name);
+
+std::vector<String> split(const String &s, char delimiter);
 
 void readTicTacToeString(String oldState, const char *data);
 

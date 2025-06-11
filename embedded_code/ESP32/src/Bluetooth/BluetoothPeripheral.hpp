@@ -65,4 +65,10 @@ private:
   private:
     BluetoothPeripheral *parent;
   };
+
+  class CharacteristicCallbacks : public NimBLECharacteristicCallbacks {
+  public:
+    void onWrite(NimBLECharacteristic *pCharacteristic,
+                 NimBLEConnInfo &connInfo) override;
+  };
 };

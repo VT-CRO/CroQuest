@@ -28,6 +28,11 @@ static bool firstFrame = true;
 static bool multiplayerMode = false;
 static int player_paddle = 1; // or 0, depending on who the human is
 
+// Declare but do NOT define (no initializer)
+extern volatile bool hasNewPongState;
+extern String pongStateBuffer;
+static unsigned long lastMoveSendTime = 0;
+
 static char localPlayerSide = ' ';
 static char localPlayerSymbol = ' ';
 
@@ -214,8 +219,23 @@ void handlePongFrame() {
             resetMultiplayerState(true);
             multiplayerMode = false;
             player_paddle = 1; // Player on the right
-            current_state = STATE_PLAYING;
+
+            // clear scores and paddle states
+            score0 = 0;
+            score1 = 0;
+            prev_score0 = 0;
+            prev_score1 = 0;
+
+            // Reset state flags
             game_initialized = false;
+            firstFrame = true;
+            current_state = STATE_PLAYING;
+
+            // Clear paddle and ball state
+            memset(&ball, 0, sizeof(ball));
+            memset(paddles, 0, sizeof(paddles));
+            memset(prev_paddles, 0, sizeof(prev_paddles));
+
             tft.fillScreen(TFT_BLACK);
 
           } else if (selection == 1) {
@@ -394,7 +414,6 @@ void handlePongFrame() {
             std::string code = generate6DigitCode();
 
             // Display the host connection code (create a simple PongHostScreen
-            // if needed)
             HostGame::init(tft);
             HostGame::showCode(String(code.c_str()));
 
@@ -518,11 +537,62 @@ void handlePongFrame() {
 
         pad.clearCode();
       }
-    } else if (current_state == STATE_GAMEOVER) {
-      if (A.wasJustPressed()) {
-        // current_state = prev_state; // Need some other checks before letting
-        // users restart probably need to send a "ready" string, etc.
-      } else if (B.wasJustPressed()) {
+
+      // ================== GAME OVER STATE =================== //
+    }
+
+    // ================== GAME OVER STATE =================== //
+    else if (current_state == STATE_GAMEOVER) {
+      String localName = settings.name;
+      int localScore = (multiplayerMode)
+                           ? ((prev_state == HOST_SCREEN) ? score0 : score1)
+                           : score1;
+
+      std::vector<String> playerNames;
+      if (multiplayerMode) {
+        if (prev_state == HOST_SCREEN) {
+          playerNames = {localName, "Player 2"};
+        } else {
+          playerNames = {"Player 1", localName};
+        }
+      } else {
+        playerNames = {"AI", localName};
+      }
+
+      std::vector<int> playerScores = {score0, score1};
+
+      char localNameBuffer[6];
+      localName.toCharArray(localNameBuffer, sizeof(localNameBuffer));
+
+      EndScreen endScreen(playerNames, playerScores, multiplayerMode,
+                          localNameBuffer, localScore);
+
+      bool restart = endScreen.handleUserInput();
+
+      if (restart) {
+        score0 = 0;
+        score1 = 0;
+        prev_score0 = -1;
+        prev_score1 = -1;
+        game_initialized = false;
+        firstFrame = true;
+
+        memset(&ball, 0, sizeof(ball));
+        memset(paddles, 0, sizeof(paddles));
+        memset(prev_paddles, 0, sizeof(prev_paddles));
+
+        if (multiplayerMode) {
+          current_state =
+              (prev_state == HOST_SCREEN) ? HOST_SCREEN : MULTIPLAYER_PLAYING;
+        } else {
+          current_state = STATE_PLAYING;
+        }
+
+        tft.fillScreen(TFT_BLACK);
+      } else if (endScreen.exit) {
+        BluetoothManager::reset();
+        return;
+      } else {
         current_state = STATE_HOMESCREEN;
         first_home_draw = true;
         drawHomeScreen();
@@ -551,7 +621,8 @@ void resetMultiplayerState(bool fullReset) {
   localPlayerSide = ' '; // or 0/1 if using int instead of char
   player_paddle = 1;     // Default paddle side for single-player
   // if (fullReset) {
-  //   // BluetoothManager::end(); // Optional if you're cleaning up connections
+  //   // BluetoothManager::end(); // Optional if you're cleaning up
+  //   connections
   // }
 }
 
@@ -878,30 +949,35 @@ void handleHostLogic() {
 void handlePeripheralLogic() {
   BluetoothPeripheral &peripheral = BluetoothManager::getPeripheral();
 
-  // read state
-  std::string state = peripheral.readMessage();
+  // ========== 1. Handle Paddle Movement ==========
+  bool moved = false;
 
-  // update paddle
   if (up.isPressed()) {
     updatePaddle(true, &paddles[1]);
     prev_paddles[1].paddle_mod = true;
-
-    char buf[32];
-    sprintf(buf, "@pong@move@%d", paddles[1].y);
-    peripheral.sendMessage(buf);
+    moved = true;
   } else if (down.isPressed()) {
     updatePaddle(false, &paddles[1]);
     prev_paddles[1].paddle_mod = true;
+    moved = true;
+  }
 
+  // Throttle message send to avoid BLE congestion
+  if (moved && millis() - lastMoveSendTime > 30) {
     char buf[32];
     sprintf(buf, "@pong@move@%d", paddles[1].y);
     peripheral.sendMessage(buf);
+    lastMoveSendTime = millis();
   }
 
-  if (!state.empty() && state.rfind("@pong@state@", 0) == 0) {
+  // ========== 2. Apply New State from Host ==========
+  if (hasNewPongState) {
+    hasNewPongState = false;
+
     int y0, s0, s1;
     float bx, by;
-    sscanf(state.substr(12).c_str(), "%d,%d,%d,%f,%f", &y0, &s0, &s1, &bx, &by);
+    sscanf(pongStateBuffer.substring(12).c_str(), "%d,%d,%d,%f,%f", &y0, &s0,
+           &s1, &bx, &by);
 
     prev_ball.x = ball.x;
     prev_ball.y = ball.y;

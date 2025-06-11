@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Core/Buttons.hpp"
 #include "SettingsMenu/NameMenu/Name.hpp"
 
 #include <Arduino.h>

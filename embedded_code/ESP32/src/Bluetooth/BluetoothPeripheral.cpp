@@ -2,6 +2,20 @@
 
 #include "BluetoothPeripheral.hpp"
 
+// === Global flags for each game ===
+
+volatile bool hasNewPongState = false;
+
+String pongStateBuffer = "";
+
+volatile bool hasNewTicTacToeState = false;
+
+String tttBuffer = "";
+
+volatile bool hasNewSimonState = false;
+
+String simonBuffer = "";
+
 // Simon func
 extern void readSimonString(String oldState, const char *data);
 
@@ -39,6 +53,8 @@ void BluetoothPeripheral::beginAdvertising(const std::string &code) {
   characteristic = service->createCharacteristic(
       CHARACTERISTIC_UUID,
       NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::NOTIFY);
+  characteristic->setCallbacks(new CharacteristicCallbacks());
+
   characteristic->setValue("ACK");
   service->start();
 
@@ -199,4 +215,22 @@ void BluetoothPeripheral::sendMessage(const std::string &message) {
   }
   characteristic->setValue((uint8_t *)message.data(), message.size());
   characteristic->notify();
+}
+
+void BluetoothPeripheral::CharacteristicCallbacks::onWrite(
+    NimBLECharacteristic *pCharacteristic, NimBLEConnInfo &connInfo) {
+  (void)connInfo; // suppress unused warning if not needed
+
+  std::string val = pCharacteristic->getValue();
+
+  if (val.rfind("@pong@state@", 0) == 0) {
+    pongStateBuffer = String(val.c_str());
+    hasNewPongState = true;
+  } else if (val.rfind("ttt@", 0) == 0) {
+    tttBuffer = String(val.c_str());
+    hasNewTicTacToeState = true;
+  } else if (val.rfind("s@", 0) == 0) {
+    simonBuffer = String(val.c_str());
+    hasNewSimonState = true;
+  }
 }
