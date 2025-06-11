@@ -912,27 +912,51 @@ void drawWinLine() {
   int i1 = winCombo[0];
   int i3 = winCombo[2];
 
-  // Cell positions (row/col)
+  // Get cell positions
   int row1 = i1 / 3, col1 = i1 % 3;
   int row3 = i3 / 3, col3 = i3 % 3;
 
-  // Compute center points of the two winning cells
-  int x1 = x_start + col1 * cell_size + cell_size / 2;
-  int y1 = y_start + row1 * cell_size + cell_size / 2;
-  int x3 = x_start + col3 * cell_size + cell_size / 2;
-  int y3 = y_start + row3 * cell_size + cell_size / 2;
-
-  // Optional vertical nudge (if the line looks off)
-  int y_adjust = 10; // change to +6 if needed
-  y1 += y_adjust;
-  y3 += y_adjust;
+  // Compute center points of the winning cells
+  int x1 = x_start + col1 * cell_size + cell_size / 2 + 6;
+  int y1 = y_start + row1 * cell_size + cell_size / 2 + 6;
+  int x3 = x_start + col3 * cell_size + cell_size / 2 + 6;
+  int y3 = y_start + row3 * cell_size + cell_size / 2 + 6;
 
   uint16_t color = (winner == 'X') ? TFT_RED : TFT_BLUE;
 
-  // Draw a thick line by offsetting in both directions
-  for (int offset = -2; offset <= 2; offset++) {
-    tft.drawLine(x1 + offset, y1, x3 + offset, y3, color);
-    tft.drawLine(x1, y1 + offset, x3, y3 + offset, color);
+  // Determine if this is a backslash or slash diagonal
+  bool isSlashDiagonal = (col3 - col1) * (row3 - row1) < 0;
+
+  // Normalize thickness by keeping offset only *perpendicular* to direction
+  for (int t = -2; t <= 2; t++) {
+    int x1_offset = x1, x3_offset = x3;
+    int y1_offset = y1, y3_offset = y3;
+
+    if (row1 == row3) {
+      // Horizontal Line
+      y1_offset += t;
+      y3_offset += t;
+    } else if (col1 == col3) {
+      // Vertical Line
+      x1_offset += t;
+      x3_offset += t;
+    } else {
+      if (isSlashDiagonal) {
+        // From top-right to bottom-left
+        x1_offset += t;
+        y1_offset += t;
+        x3_offset += t;
+        y3_offset += t;
+      } else {
+        // From top-left to bottom-right
+        x1_offset += t;
+        y1_offset -= t;
+        x3_offset += t;
+        y3_offset -= t;
+      }
+    }
+
+    tft.drawLine(x1_offset, y1_offset, x3_offset, y3_offset, color);
   }
 }
 
