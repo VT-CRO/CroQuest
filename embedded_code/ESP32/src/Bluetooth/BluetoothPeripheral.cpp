@@ -2,8 +2,10 @@
 
 #include "BluetoothPeripheral.hpp"
 
-//Simon func
+// Simon func
 extern void readSimonString(String oldState, const char *data);
+
+extern void onSimonEliminationReceived();
 
 static bool bleInitialized = false;
 
@@ -95,7 +97,7 @@ void BluetoothPeripheral::update() {
   // Check if it's a Tic Tac Toe game state
   if (received.rfind("ttt@", 0) == 0) {
     readTicTacToeString("", received.c_str());
-  }else if (received.rfind("s@", 0) == 0) {
+  } else if (received.rfind("s@", 0) == 0) {
     readSimonString("", received.c_str());
   } else {
     Serial.println("⚠️ Unknown message format, ignored.");
@@ -192,9 +194,9 @@ std::string BluetoothPeripheral::readMessage() {
 // ###################### Send Messages #####################
 void BluetoothPeripheral::sendMessage(const std::string &message) {
   if (!characteristic) {
-  Serial.println("❌ No characteristic available");
-  return;
+    Serial.println("❌ No characteristic available");
+    return;
   }
-  characteristic->setValue((uint8_t*)message.data(), message.size());
+  characteristic->setValue((uint8_t *)message.data(), message.size());
   characteristic->notify();
 }

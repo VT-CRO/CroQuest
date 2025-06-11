@@ -10,16 +10,32 @@ class BluetoothCentral;
 class BluetoothPeripheral;
 
 namespace BluetoothManager {
-void initPeripheral(TFT_eSPI &display);
-BluetoothPeripheral &getPeripheral();
 
-// Central (Client)
+//  Central
+
+// =========== Initialize Central ============ //
 void initCentral(TFT_eSPI &display);
+
+// =========== Get Central ============ //
 BluetoothCentral &getCentral();
 
-// Utilities
+//  Peripheral
+
+// =========== Initialize Peripheral ============ //
+void initPeripheral(TFT_eSPI &display);
+
+// =========== Get Peripheral ============ //
+BluetoothPeripheral &getPeripheral();
+
+// =========== Get Clients ============ //
+static bool getPeripheralActive();
+
+//  Connectivity
+
+// =========== Stop Scanning ============ //
 void stopScan();
 
-static bool getPeripheralActive();
+// =========== Reset Bluetooth ============ //
+void reset();
 
 } // namespace BluetoothManager

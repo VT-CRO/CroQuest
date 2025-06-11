@@ -159,13 +159,16 @@ void runPong() {
 
     handlePongFrame();
 
-    if (getExitFlag())
+    if (getExitFlag()) {
+      BluetoothManager::reset();
       return;
+    }
 
     // Keep support for exiting with B from homescreen as well
     if (current_state == STATE_HOMESCREEN && B.wasJustPressed()) {
       Serial.println("Returning to menu");
       delay(500);
+      BluetoothManager::reset();
       return;
     }
   }

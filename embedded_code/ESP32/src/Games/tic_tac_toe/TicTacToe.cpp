@@ -6,7 +6,7 @@
 //  Functions Declarations
 // ####################################################################################################
 
-// ========== Drawing ==========
+// ========== Drawing ========== //
 void drawScoreboard();
 void drawWinnerMessage();
 void drawWinLine();
@@ -16,12 +16,12 @@ void drawEndScreen();
 void drawHomeScreen();
 void drawHomescreenSelect();
 
-// ========== Sound ==========
+// ========== Sound ========== //
 void playMoveSound();
 void playWinSound();
 void playErrorSound();
 
-// ========== Logic ==========
+// ========== Logic ========== //
 void checkWinner();
 void clearCursor(int index);
 void highlightCursor(int index);
@@ -30,7 +30,7 @@ void resetBoardState(bool clearScreen);
 void resetToSinglePlayerDefaults();
 void resetMultiplayerState(bool clearScreen);
 
-// ========== Game States ==========
+// ========== Game States ========== //
 enum State {
   HOMESCREEN,
   MULTIPLAYER,
@@ -103,7 +103,7 @@ uint16_t orange_color = tft.color565(0xFF, 0x70, 0x00);
 int xWins = 0;
 int oWins = 0;
 
-// TODO: Numpad w/ pointers to functions & Game State are temporary)
+// Numpad Setup
 static NumPad<State> pad(drawHomeScreen, drawAllPlaying, &game_state,
                          HOMESCREEN, SINGLE_PLAYER);
 
@@ -157,14 +157,17 @@ void runTicTacToe() {
   while (true) {
     handleTicTacToeFrame();
 
-    if (getExitFlag())
-      break;
+    if (getExitFlag()) {
+      BluetoothManager::reset();
+      return;
+    }
 
     // keep support for exiting with B from homescreen
     if (game_state == HOMESCREEN && B.wasJustPressed()) {
       Serial.println("Returning to menu");
       delay(500);
-      break;
+      BluetoothManager::reset();
+      return;
     }
   }
 }

@@ -100,6 +100,49 @@ void showBootWithLoading(const char *path) {
   tft.fillScreen(TFT_BLACK);
   drawSdJpeg(path, 0, 0);
   delay(1300); // Time that shows logo CroQuest
+
+  nameIntroduction();
+}
+
+// ======================== Print Name Introduction ========================
+void nameIntroduction() {
+
+  // ================= User Name Welcome ================= //
+  tft.fillScreen(TFT_BLACK);
+  tft.setTextDatum(MC_DATUM);
+  tft.setTextSize(4);
+
+  String rawName = String(settings.name);
+  if (rawName.length() > 0) {
+    rawName[0] = toupper(rawName[0]);
+    for (int i = 1; i < rawName.length(); i++) {
+      rawName[i] = tolower(rawName[i]);
+    }
+  }
+  String username = "Welcome " + rawName;
+  int centerX = tft.width() / 2;
+  int centerY = tft.height() / 2;
+
+  // Fade In
+  for (int i = 0; i <= 255; i += 5) {
+    uint16_t color = tft.color565(i, i, i); // Grayscale fade
+    tft.fillScreen(TFT_BLACK);              // Clear between frames
+    tft.setTextColor(color, TFT_BLACK);
+    tft.drawString(username, centerX, centerY);
+    delay(10);
+  }
+
+  // Hold
+  delay(3000);
+
+  // Fade Out
+  for (int i = 255; i >= 0; i -= 5) {
+    uint16_t color = tft.color565(i, i, i); // Grayscale fade
+    tft.fillScreen(TFT_BLACK);
+    tft.setTextColor(color, TFT_BLACK);
+    tft.drawString(username, centerX, centerY);
+    delay(10);
+  }
 }
 
 // ======================== Fade-In Effect ========================

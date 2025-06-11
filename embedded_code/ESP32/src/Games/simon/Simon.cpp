@@ -11,6 +11,7 @@ void highlightSimonButton(int buttonId);
 void drawSimonHomeSelection();
 void drawSimonTriangleOverlay(int buttonId);
 static void drawHighscore();
+void drawPlayerStatusTable();
 
 // ========== Logic ==========
 void simonGenerateSequence();
@@ -21,7 +22,7 @@ void simonStartNewGame();
 void simonGameOver();
 void simonLevelUp();
 void simonHandleInput();
-void drawPlayerStatusTable();
+void onSimonEliminationReceived();
 
 // =========== AUDIO ============
 static void playGameOverSound();
@@ -117,8 +118,7 @@ void runSimon() {
   JpegDrawing::ImageInfo dim = drawing.getJpegDimensions(DISK_PATH);
   diskSize = dim.width; // Still assuming square
 
-  // Center of the disk: left third of screen, vertical middle
-  // Compute center positions
+  // Center Disk on the left side
   diskCenterX = SCREEN_WIDTH / 3;
   diskCenterY = SCREEN_HEIGHT / 2;
 
@@ -152,13 +152,16 @@ void runSimon() {
     // updateAllButtons();
     handleSimonFrame();
 
-    if (getExitFlag())
+    if (getExitFlag()) {
+      BluetoothManager::reset();
       return;
+    }
 
     // Return to main menu if B is pressed
     if (simon_game_state == SIMON_HOMESCREEN && B.wasJustPressed()) {
       Serial.println("Returning to menu.");
       delay(500);
+      BluetoothManager::reset();
       return;
     }
   }
@@ -248,6 +251,9 @@ void handleSimonFrame() {
             currentPlayer.status = "ready";
             simonPlayers.push_back(currentPlayer);
 
+            BluetoothManager::getCentral().sendMessage(
+                generateSimonString("full").c_str());
+
             simonStartNewGame(); // Start a new game
 
           } else {
@@ -312,8 +318,14 @@ void handleSimonFrame() {
     std::vector<String> playerNames = {settings.name};
     std::vector<int> playerScores = {playerScore};
 
+    for (const auto &p : simonPlayers) {
+      playerNames.push_back(p.name);
+      playerScores.push_back(p.score);
+    }
+
     EndScreen endScreen(playerNames, playerScores, multiplayer, settings.name,
                         playerScore);
+
     if (endScreen.handleUserInput()) {
       simonStartNewGame(); // handleUserInput returns true : game restarts
     } else {
@@ -444,6 +456,12 @@ void simonCheckInput(int buttonPressed) {
       currentPlayer.status = "eliminated";
       BluetoothManager::getPeripheral().sendAction(
           generateSimonString(String("status")).c_str());
+    }
+
+    if (strcmp(multiplayerMode.c_str(), "HOST") == 0) {
+      currentPlayer.status = "eliminated";
+      BluetoothManager::getCentral().sendMessage(
+          generateSimonString("status").c_str());
     }
 
     playerFailed = true;     // Mark failure
@@ -959,6 +977,13 @@ void readSimonString(String oldState, const char *data) {
         Serial.printf("👤 New player added: ID=%d, Name=%s, Status=%s\n", id,
                       name.c_str(), status.c_str());
       }
+
+      // Check for elimination trigger
+      if (status == "eliminated" && simonPlayers.size() == 2 &&
+          id != currentPlayer.id) {
+        onSimonEliminationReceived(); // game over sync
+      }
+
       update = true;
     } else {
       Serial.println("⚠️ Malformed status string: " + input);
@@ -966,4 +991,12 @@ void readSimonString(String oldState, const char *data) {
   } else {
     Serial.println("⚠️ Unrecognized Simon string format: " + input);
   }
+}
+
+// ========== Elimination Status ========== //
+void onSimonEliminationReceived() {
+  Serial.println(
+      "🚨 Remote elimination detected. Ending game for this device.");
+  simon_game_state = SIMON_GAMEOVER_SCREEN;
+  update = true;
 }

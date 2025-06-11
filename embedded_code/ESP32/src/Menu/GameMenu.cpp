@@ -39,6 +39,9 @@ void GameMenu::draw() { drawPage(); }
 // ###################### Draw Menu Interface ######################
 void GameMenu::drawPage() {
 
+  // Clear before showing menu
+  tft->fillScreen(BACKGROUND_COLOR);
+
   // Fancy golden selector
   uint16_t selectorColor = allBadgesEarned ? 0xFFD700 : TFT_WHITE;
 

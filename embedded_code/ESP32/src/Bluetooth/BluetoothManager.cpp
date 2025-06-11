@@ -1,4 +1,10 @@
+// src/Bluetooth/BluetoothManager.cpp
+
 #include "BluetoothManager.hpp"
+
+// ####################################################################################################
+//  Global Definitions
+// ####################################################################################################
 
 static BluetoothPeripheral *peripheral = nullptr;
 static BluetoothCentral *central = nullptr;
@@ -6,20 +12,11 @@ static BluetoothCentral *central = nullptr;
 enum ActiveRole { NONE, ROLE_PERIPHERAL, ROLE_CENTRAL };
 static ActiveRole currentRole = NONE;
 
-void BluetoothManager::initPeripheral(TFT_eSPI &display) {
-  if (currentRole == ROLE_CENTRAL && central) {
-    delete central;
-    central = nullptr;
-    Serial.println("🔄 Switching from CENTRAL to PERIPHERAL");
-  }
+// ####################################################################################################
+//  Central
+// ####################################################################################################
 
-  if (!peripheral) {
-    peripheral = new BluetoothPeripheral(display);
-    currentRole = ROLE_PERIPHERAL;
-    Serial.println("🔧 Initialized PERIPHERAL");
-  }
-}
-
+// =========== Initialize Central ============ //
 void BluetoothManager::initCentral(TFT_eSPI &display) {
   if (currentRole == ROLE_PERIPHERAL && peripheral) {
     delete peripheral;
@@ -34,9 +31,41 @@ void BluetoothManager::initCentral(TFT_eSPI &display) {
   }
 }
 
-BluetoothPeripheral &BluetoothManager::getPeripheral() { return *peripheral; }
+// =========== Get Central ============ //
 BluetoothCentral &BluetoothManager::getCentral() { return *central; }
 
+// ####################################################################################################
+//  Peripheral
+// ####################################################################################################
+
+// =========== Initialize Peripheral ============ //
+void BluetoothManager::initPeripheral(TFT_eSPI &display) {
+  if (currentRole == ROLE_CENTRAL && central) {
+    delete central;
+    central = nullptr;
+    Serial.println("🔄 Switching from CENTRAL to PERIPHERAL");
+  }
+
+  if (!peripheral) {
+    peripheral = new BluetoothPeripheral(display);
+    currentRole = ROLE_PERIPHERAL;
+    Serial.println("🔧 Initialized PERIPHERAL");
+  }
+}
+
+// =========== Get Peripheral ============ //
+BluetoothPeripheral &BluetoothManager::getPeripheral() { return *peripheral; }
+
+// =========== Get Active Clients ============ //
+bool BluetoothManager::getPeripheralActive() {
+  return currentRole == ROLE_PERIPHERAL && peripheral != nullptr;
+}
+
+// ####################################################################################################
+//  Connectivity
+// ####################################################################################################
+
+// =========== Stop Scanning ============ //
 void BluetoothManager::stopScan() {
   if (currentRole == ROLE_CENTRAL && central) {
     NimBLEScan *scanner = NimBLEDevice::getScan();
@@ -48,6 +77,20 @@ void BluetoothManager::stopScan() {
   }
 }
 
-bool BluetoothManager::getPeripheralActive() {
-  return currentRole == ROLE_PERIPHERAL && peripheral != nullptr;
+// =========== Reset Bluetooth ============ //
+void BluetoothManager::reset() {
+  if (central) {
+    delete central;
+    central = nullptr;
+  }
+  if (peripheral) {
+    delete peripheral;
+    peripheral = nullptr;
+  }
+
+  NimBLEDevice::deinit(true); // Force full deinit
+  delay(100);                 // Let it settle
+  currentRole = NONE;
+
+  Serial.println("🔁 Bluetooth stack fully reset.");
 }

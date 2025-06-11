@@ -1,5 +1,7 @@
 #pragma once
 
+#include "SettingsMenu/NameMenu/Name.hpp"
+
 #include <Arduino.h>
 #include <TFT_eSPI.h>
 
@@ -17,6 +19,7 @@ void initBoot();                            // Initializes TFT + SD
 void showBootWithLoading(const char *path); // Full boot sequence
 
 // Internal helpers
+void nameIntroduction();
 void drawSdJpeg(const char *filename, int x, int y); // Draws a JPEG from SD
 void jpegRender(int x, int y);                // Renders JPEG from JpegDec
 void fadeInJpeg();                            // Simple fade-in effect
