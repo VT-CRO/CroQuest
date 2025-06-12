@@ -91,8 +91,10 @@ void EndScreen::gameOverScreen() {
       (multiplayer && score == highScore && highScoreCount == 1) ? TFT_GREEN
                                                                  : TFT_YELLOW);
 
-  tft.setTextColor(TFT_YELLOW);
-  tft.drawString("Score: " + String(score), centerX, scoreY);
+  if (score >= 0) {
+    tft.setTextColor(TFT_YELLOW);
+    tft.drawString("Score: " + String(score), centerX, scoreY);
+  }
 
   // Footer options or selection
   drawingSelections(TFT_BLACK);

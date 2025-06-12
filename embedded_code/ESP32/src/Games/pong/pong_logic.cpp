@@ -7,7 +7,6 @@
 #include "SettingsMenu/AudioMenu/Audio.hpp"
 #include <Arduino.h>
 
-
 // Screen dimensions
 const int SCREEN_HEIGHT = 320;
 const int SCREEN_WIDTH = 480;

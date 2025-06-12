@@ -4,6 +4,7 @@
 #include <Arduino.h>
 #include <TFT_eSPI.h>
 
+#include "Bluetooth/BluetoothManager.hpp"
 #include "Core/Buttons.hpp"
 #include "Menu/MenuReturn.hpp"
 

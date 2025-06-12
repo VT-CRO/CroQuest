@@ -1,6 +1,8 @@
 #include "Memory.hpp"
-#include "EndScreen/EndScreen.hpp"
-#include "SettingsMenu/AudioMenu/Audio.hpp"
+
+// ####################################################################################################
+//  Global Definitions
+// ####################################################################################################
 
 // Timing variables
 static unsigned long lastButtonPressTime = 0;
@@ -22,7 +24,6 @@ static int cardRows = LEVELS[0][0];
 static int cardCols = LEVELS[0][1];
 static int CARD_X_OFFSET = 0;
 static int CARD_Y_OFFSET = 0;
-
 static bool flipped[4][5] = {false};
 static int tileValues[4][5];
 static int firstRow = -1, firstCol = -1;
@@ -39,18 +40,17 @@ static unsigned long levelStartTime = 0;
 static int timeRemaining = 0;
 static bool gameOver = false;
 
-// Game State
+// ========== Game States ========== //
 enum State { HOMESCREEN, PLAYING, ENDSCREEN };
 State currentState = HOMESCREEN;
 
-static void drawBackground();
-static void drawCard(int row, int col);
-static void drawCardBacks();
-static void drawCursor();
-static void clearCursor();
+// ####################################################################################################
+//  Functions Declarations
+// ####################################################################################################
+
+// ========== Logic ========== //
 static void handleInput();
 static void loadLevel(int level);
-static void handleInput();
 static void flipCard(int row, int col);
 static void flipCardBack(int row, int col);
 static void checkWinCondition();
@@ -59,17 +59,30 @@ static void updateMoveCounter();
 static void updateTimerDisplay();
 static void triggerGameOver();
 static void runMemoryFrame();
+
+// ========== Drawing ========== //
+static void drawBackground();
+static void drawCard(int row, int col);
+static void drawCardBacks();
+static void drawCursor();
+static void clearCursor();
 static void drawTiles();
 static void showHomeScreen();
 static void clearAllCursors();
 
-// sounds
+// ========== Sound ========== //
 static void playGameOverSound();
 static void playLevelCompleteSound();
+static void playWinSound();
 
 // --- Cursor State ---
 static int cursorRow = 0, cursorCol = 0;
 
+// ####################################################################################################
+//  Setup & Loop
+// ####################################################################################################
+
+// ========== Run Game ========== //
 void runMemory() {
 
   resetExitFlag(); // Restes flag for Main Menu
@@ -84,6 +97,7 @@ void runMemory() {
   drawing.deleteSprite();
 
   showHomeScreen();
+
   for (;;) {
     runMemoryFrame();
 
@@ -99,6 +113,7 @@ void runMemory() {
   }
 }
 
+// ========== Manual Loop ========== //
 static void runMemoryFrame() {
 
   // Check if the Start Button was pressed and goes back to Main Menu
@@ -133,11 +148,15 @@ static void runMemoryFrame() {
         waitingForWinChoice = false;
 
         if (currentLevel == NUM_LEVELS - 1) {
-          totalMoves = 0;
-          currentLevel = 0;
-          totalTime = 0;
+          playWinSound();
+          currentState = ENDSCREEN;
+          return;
         } else {
           currentLevel++;
+          showLevelIntroScreen();
+          loadLevel(currentLevel);
+          delay(300);
+          return;
         }
 
         showLevelIntroScreen();
@@ -164,6 +183,7 @@ static void runMemoryFrame() {
 
     if (timeRemaining <= 0) {
       triggerGameOver();
+      currentState = ENDSCREEN;
       return;
     }
 
@@ -189,23 +209,45 @@ static void runMemoryFrame() {
     break;
   }
   case ENDSCREEN:
-    // ENDSCREEN HANDLING
-    std::vector<String> playerNames = {settings.name}; // TEMP
-    std::vector<int> playerScores = {totalMoves};      // TEMP
 
-    EndScreen endScreen(playerNames, playerScores, false, settings.name,
-                        totalMoves);
+    // ENDSCREEN HANDLING
+
+    bool playerWon = (timeRemaining > 0 && currentLevel == NUM_LEVELS - 1);
+
+    // Prepare name label with total time
+    String timeLabelStr = "Time: " + String(totalTime) + "s";
+    char timeLabel[32]; // must be long enough
+    timeLabelStr.toCharArray(timeLabel, sizeof(timeLabel));
+
+    // If player won, show message
+    bool fakeMultiplayer = playerWon;
+    int finalScore = playerWon ? -1 : totalTime; // -1 means "don't show score"
+
+    std::vector<String> playerNames = {timeLabel};
+    std::vector<int> playerScores = {0};
+
+    EndScreen endScreen(playerNames, playerScores, fakeMultiplayer, timeLabel,
+                        finalScore);
+
     if (endScreen.handleUserInput()) {
+      totalTime = 0;
+      totalMoves = 0;
+      currentLevel = 0;
+
       // Clear Screen
       tft.fillScreen(TFT_BLACK);
       loadLevel(currentLevel);
-      // showLevelIntroScreen();
-      // loadLevel(currentLevel);
       currentState = PLAYING; // handleUserInput returns true : game restarts
     } else {
       if (endScreen.exit) { // exit to menu
+        totalTime = 0;
+        totalMoves = 0;
+        currentLevel = 0;
         return;
       }
+      totalTime = 0;
+      totalMoves = 0;
+      currentLevel = 0;
       currentState = HOMESCREEN;
       showHomeScreen(); // handleUserInput returns false : returns to game menu
       delay(300);
@@ -214,6 +256,70 @@ static void runMemoryFrame() {
   }
 }
 
+// ####################################################################################################
+//  Logic
+// ####################################################################################################
+
+// ========== Handle User Input ========== //
+static void handleInput() {
+  int val35 = analogRead(35);
+  int val34 = analogRead(34);
+
+  if (right.isPressed() && cursorCol < cardCols - 1) {
+    playSelectBeep();
+    clearCursor();
+    cursorCol++;
+    drawCursor();
+  }
+
+  else if (up.isPressed() && cursorRow > 0) {
+    playSelectBeep();
+    clearCursor();
+    cursorRow--;
+    drawCursor();
+  }
+
+  if (down.isPressed() && cursorRow < cardRows - 1) {
+    playSelectBeep();
+    clearCursor();
+    cursorRow++;
+    drawCursor();
+  }
+
+  else if (left.isPressed() && cursorCol > 0) {
+    playSelectBeep();
+    clearCursor();
+    cursorCol--;
+    drawCursor();
+  }
+
+  delay(100);
+
+  if (!lockInput && A.wasJustPressed()) {
+    playPressSound();
+    if (!flipped[cursorRow][cursorCol]) {
+      flipCard(cursorRow, cursorCol);
+      movesThisLevel++;
+      updateMoveCounter();
+
+      if (!waitingForSecond) {
+        firstRow = cursorRow;
+        firstCol = cursorCol;
+        waitingForSecond = true;
+      }
+
+      else {
+        secondRow = cursorRow;
+        secondCol = cursorCol;
+        waitingForSecond = false;
+        lockInput = true;
+        flipTime = millis();
+      }
+    }
+  }
+}
+
+// ========== Load Level ========== //
 static void loadLevel(int level) {
   cardRows = LEVELS[level][0];
   cardCols = LEVELS[level][1];
@@ -282,136 +388,7 @@ static void loadLevel(int level) {
   updateMoveCounter();
 }
 
-static void drawBackground() {
-  drawTiles();
-  tft.setTextColor(TFT_BLACK);
-  tft.setTextDatum(TR_DATUM);
-  tft.setTextSize(2);
-
-  String moveLabel = "Moves: " + String(movesThisLevel);
-  tft.drawString(moveLabel, tft.width() - 5, 5);
-
-  tft.setTextDatum(TL_DATUM);
-  tft.setTextSize(2);
-  tft.drawString("Time: " + String(timeRemaining), 5, 5);
-}
-
-static void drawCard(int row, int col) {
-  int x = CARD_X_OFFSET + col * (CARD_SIZE + GRID_SPACING);
-  int y = CARD_Y_OFFSET + row * (CARD_SIZE + GRID_SPACING);
-
-  if (flipped[row][col]) {
-    String path = "/Memory/card" + String(tileValues[row][col]) + ".jpg";
-    drawing.drawSdJpeg(path.c_str(), x, y);
-    drawing.addToCache(path.c_str());
-    drawing.pushSprite(false);
-  }
-
-  else {
-    drawing.drawSdJpeg("/Memory/backs.jpg", x, y);
-    drawing.addToCache("/Memory/backs.jpg");
-    drawing.pushSprite(false);
-  }
-}
-
-static void drawCardBacks() {
-  for (int row = 0; row < cardRows; row++) {
-    for (int col = 0; col < cardCols; col++) {
-      drawCard(row, col);
-    }
-  }
-}
-
-static void drawCursor() {
-  int w = CARD_SIZE - 2 * CARD_PADDING;
-  int x = CARD_X_OFFSET + cursorCol * (CARD_SIZE + GRID_SPACING);
-  int y = CARD_Y_OFFSET + cursorRow * (CARD_SIZE + GRID_SPACING);
-
-  tft.drawRect(x - 3, y - 3, w + 18, w + 18, TFT_RED);
-  tft.drawRect(x - 4, y - 4, w + 20, w + 20, TFT_RED);
-}
-
-static void clearCursor() {
-  int w = CARD_SIZE - 2 * CARD_PADDING;
-  int x = CARD_X_OFFSET + cursorCol * (CARD_SIZE + GRID_SPACING);
-  int y = CARD_Y_OFFSET + cursorRow * (CARD_SIZE + GRID_SPACING);
-
-  tft.drawRect(x - 3, y - 3, w + 18, w + 18, TFT_WHITE);
-  tft.drawRect(x - 4, y - 4, w + 20, w + 20, TFT_WHITE);
-}
-
-static void handleInput() {
-  int val35 = analogRead(35);
-  int val34 = analogRead(34);
-
-  if (right.isPressed() && cursorCol < cardCols - 1) {
-    playSelectBeep();
-    clearCursor();
-    cursorCol++;
-    drawCursor();
-  }
-
-  else if (up.isPressed() && cursorRow > 0) {
-    playSelectBeep();
-    clearCursor();
-    cursorRow--;
-    drawCursor();
-  }
-
-  if (down.isPressed() && cursorRow < cardRows - 1) {
-    playSelectBeep();
-    clearCursor();
-    cursorRow++;
-    drawCursor();
-  }
-
-  else if (left.isPressed() && cursorCol > 0) {
-    playSelectBeep();
-    clearCursor();
-    cursorCol--;
-    drawCursor();
-  }
-
-  delay(100);
-
-  if (!lockInput && A.wasJustPressed()) {
-    playPressSound();
-    if (!flipped[cursorRow][cursorCol]) {
-      flipCard(cursorRow, cursorCol);
-      movesThisLevel++;
-      updateMoveCounter();
-
-      if (!waitingForSecond) {
-        firstRow = cursorRow;
-        firstCol = cursorCol;
-        waitingForSecond = true;
-      }
-
-      else {
-        secondRow = cursorRow;
-        secondCol = cursorCol;
-        waitingForSecond = false;
-        lockInput = true;
-        flipTime = millis();
-      }
-    }
-  }
-}
-
-static void clearAllCursors() {
-  int w = CARD_SIZE - 2 * CARD_PADDING;
-
-  for (int row = 0; row < cardRows; row++) {
-    for (int col = 0; col < cardCols; col++) {
-      int x = CARD_X_OFFSET + col * (CARD_SIZE + GRID_SPACING);
-      int y = CARD_Y_OFFSET + row * (CARD_SIZE + GRID_SPACING);
-
-      tft.drawRect(x - 3, y - 3, w + 18, w + 18, TFT_WHITE);
-      tft.drawRect(x - 4, y - 4, w + 20, w + 20, TFT_WHITE);
-    }
-  }
-}
-
+// ========== Flip Card ========== //
 static void flipCard(int row, int col) {
   flipped[row][col] = true;
 
@@ -424,6 +401,7 @@ static void flipCard(int row, int col) {
   drawing.pushSprite(false);
 }
 
+// ========== Flip Card Back ========== //
 static void flipCardBack(int row, int col) {
   flipped[row][col] = false;
   int x = CARD_X_OFFSET + col * (CARD_SIZE + GRID_SPACING);
@@ -433,6 +411,7 @@ static void flipCardBack(int row, int col) {
   drawing.pushSprite(false);
 }
 
+// ========== Check Winner ========== //
 static void checkWinCondition() {
   for (int row = 0; row < cardRows; row++) {
     for (int col = 0; col < cardCols; col++) {
@@ -475,7 +454,10 @@ static void checkWinCondition() {
 
   // ================= Badge Unlock Logic =================
   if (currentLevel == NUM_LEVELS - 1) {
-    // Unlock if totalTime is under 150 seconds
+
+    playWinSound();
+
+    // Badge Logic | 150s
     if (totalTime < 150 && !badgeProgress[6] && !session.badgeUnlocked) {
       // if (currentLevel == 0 && !badgeProgress[3] && !session.badgeUnlocked) {
       badgeProgress[6] = true;
@@ -488,9 +470,14 @@ static void checkWinCondition() {
       pendingNotificationMessage = "Memory Badge Unlocked!";
       pendingNotificationDuration = 3000;
     }
+
+    // Jump to final ENDSCREEN — skip drawing “Level Complete” UI
+    currentState = ENDSCREEN;
+    return;
   }
 }
 
+// ========== Game Menu Screen ========== //
 static void showLevelIntroScreen() {
   drawTiles();
   tft.setTextColor(TFT_BLACK);
@@ -503,6 +490,7 @@ static void showLevelIntroScreen() {
   delay(1500);
 }
 
+// ========== Update Counter ========== //
 static void updateMoveCounter() {
   tft.setTextDatum(MC_DATUM);
   int x = tft.width() - 5;
@@ -525,6 +513,7 @@ static void updateMoveCounter() {
                  y + clearHeight / 2);
 }
 
+// ========== Timer ========== //
 static void updateTimerDisplay() {
   tft.setTextDatum(MC_DATUM);
   int x = 4, y = 5;
@@ -537,6 +526,7 @@ static void updateTimerDisplay() {
   tft.drawString("Time: " + String(timeRemaining), x + 60, y + 10);
 }
 
+// ========== Game Over ========== //
 static void triggerGameOver() {
   playGameOverSound();
   currentState = ENDSCREEN;
@@ -546,27 +536,135 @@ static void triggerGameOver() {
   movesThisLevel = 0;
 }
 
+// ========== Home Screen ========== //
 void showHomeScreen() {
+
+  // Draw Background
   drawTiles();
+
+  // ---------- Gradient Background (Vertical) ----------
+  for (int y = 0; y < tft.height(); y++) {
+    uint8_t gradient =
+        map(y, 0, tft.height(), 200, 255); // From light to bright blue
+    uint16_t color = tft.color565(gradient, gradient, 255);
+    tft.drawFastHLine(0, y, tft.width(), color);
+  }
+
+  // ---------- Stylized Title with Shadow ----------
   tft.setTextDatum(MC_DATUM);
-
-  // Draw the game title in large font
-  tft.setTextColor(TFT_NAVY); // dark blue for contrast
   tft.setTextSize(4);
-  tft.drawString("Memory", tft.width() / 2, tft.height() / 2 - 50);
 
-  // Draw the author name
-  tft.setTextColor(TFT_DARKGREY); // soft but readable
+  int centerX = tft.width() / 2;
+  int titleY = tft.height() / 2 - 50;
+
+  // Draw shadow
+  tft.setTextColor(TFT_DARKGREY);
+  tft.drawString("MEMORY", centerX + 3, titleY + 3);
+
+  // Draw main title
+  tft.setTextColor(TFT_WHITE);
+  tft.drawString("MEMORY", centerX, titleY);
+
+  // ---------- Author Name ----------
   tft.setTextSize(2);
-  tft.drawString("Designed by CroQuest", tft.width() / 2,
-                 tft.height() / 2 + 10);
-
-  // Draw the "Press A to start" prompt
   tft.setTextColor(TFT_BLACK);
+  tft.drawString("Designed by Lucas Shadoyan", centerX, titleY + 60);
+  tft.drawString("&", centerX, titleY + 80);
+  tft.drawString("Connor McCue", centerX, titleY + 100);
+
+  // ---------- Start Prompt with Shadow ----------
+  int promptY = tft.height() - 50;
   tft.setTextSize(2);
-  tft.drawString("Press A to start", tft.width() / 2, tft.height() - 50);
+  tft.setTextColor(TFT_DARKGREY);
+  tft.drawString("Press A to start", centerX + 2, promptY + 2);
+
+  tft.setTextColor(TFT_YELLOW);
+  tft.drawString("Press A to start", centerX, promptY);
 }
 
+// ####################################################################################################
+//  Drawing
+// ####################################################################################################
+
+// ========== Draw Background ========== //
+static void drawBackground() {
+  drawTiles();
+  tft.setTextColor(TFT_BLACK);
+  tft.setTextDatum(TR_DATUM);
+  tft.setTextSize(2);
+
+  String moveLabel = "Moves: " + String(movesThisLevel);
+  tft.drawString(moveLabel, tft.width() - 5, 5);
+
+  tft.setTextDatum(TL_DATUM);
+  tft.setTextSize(2);
+  tft.drawString("Time: " + String(timeRemaining), 5, 5);
+}
+
+// ========== Draw Cards ========== //
+static void drawCard(int row, int col) {
+  int x = CARD_X_OFFSET + col * (CARD_SIZE + GRID_SPACING);
+  int y = CARD_Y_OFFSET + row * (CARD_SIZE + GRID_SPACING);
+
+  if (flipped[row][col]) {
+    String path = "/Memory/card" + String(tileValues[row][col]) + ".jpg";
+    drawing.drawSdJpeg(path.c_str(), x, y);
+    drawing.addToCache(path.c_str());
+    drawing.pushSprite(false);
+  }
+
+  else {
+    drawing.drawSdJpeg("/Memory/backs.jpg", x, y);
+    drawing.addToCache("/Memory/backs.jpg");
+    drawing.pushSprite(false);
+  }
+}
+
+// ========== Draw Card Back ========== //
+static void drawCardBacks() {
+  for (int row = 0; row < cardRows; row++) {
+    for (int col = 0; col < cardCols; col++) {
+      drawCard(row, col);
+    }
+  }
+}
+
+// ========== Draw Cursor ========== //
+static void drawCursor() {
+  int w = CARD_SIZE - 2 * CARD_PADDING;
+  int x = CARD_X_OFFSET + cursorCol * (CARD_SIZE + GRID_SPACING);
+  int y = CARD_Y_OFFSET + cursorRow * (CARD_SIZE + GRID_SPACING);
+
+  tft.drawRect(x - 3, y - 3, w + 18, w + 18, TFT_RED);
+  tft.drawRect(x - 4, y - 4, w + 20, w + 20, TFT_RED);
+}
+
+// ========== Clear Cursor ========== //
+static void clearCursor() {
+  int w = CARD_SIZE - 2 * CARD_PADDING;
+  int x = CARD_X_OFFSET + cursorCol * (CARD_SIZE + GRID_SPACING);
+  int y = CARD_Y_OFFSET + cursorRow * (CARD_SIZE + GRID_SPACING);
+
+  tft.drawRect(x - 3, y - 3, w + 18, w + 18, TFT_WHITE);
+  tft.drawRect(x - 4, y - 4, w + 20, w + 20, TFT_WHITE);
+}
+
+// ========== Clear All Cursors ========== //
+static void clearAllCursors() {
+  int w = CARD_SIZE - 2 * CARD_PADDING;
+
+  for (int row = 0; row < cardRows; row++) {
+    for (int col = 0; col < cardCols; col++) {
+      int x = CARD_X_OFFSET + col * (CARD_SIZE + GRID_SPACING);
+      int y = CARD_Y_OFFSET + row * (CARD_SIZE + GRID_SPACING);
+
+      tft.drawRect(x - 3, y - 3, w + 18, w + 18, TFT_WHITE);
+      tft.drawRect(x - 4, y - 4, w + 20, w + 20, TFT_WHITE);
+    }
+  }
+}
+
+// ========== Draw Background ========== //
 static void drawTiles() {
   const int BLOCKSIZE = 80;
   const int WIDTH = 6;
@@ -583,6 +681,11 @@ static void drawTiles() {
   }
 }
 
+// ####################################################################################################
+//  Audio Logic
+// ####################################################################################################
+
+// ========== Level Completed Sound ========== //
 static void playLevelCompleteSound() {
   const int noteDuration = 100; // milliseconds
 
@@ -594,6 +697,7 @@ static void playLevelCompleteSound() {
   playTone(0, 0); // Stop tone
 }
 
+// ========== Game Over Sound ========== //
 static void playGameOverSound() {
   const int volume = 80;        // Percent
   const int noteDuration = 150; // milliseconds
@@ -604,4 +708,17 @@ static void playGameOverSound() {
     delay(noteDuration);
   }
   playTone(0, 0); // Stop tone
+}
+
+// ========== WinnerSound ========== //
+void playWinSound() {
+  int melody[] = {880, 988, 1047, 1175}; // A5, B5, C6, D6
+  int duration = 150;
+
+  for (int i = 0; i < 4; i++) {
+    ledcWriteTone(0, melody[i]);
+    delay(duration);
+    ledcWriteTone(0, 0); // Stop sound
+    delay(50);
+  }
 }

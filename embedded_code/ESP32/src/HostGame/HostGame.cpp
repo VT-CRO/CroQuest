@@ -9,7 +9,6 @@ static String lastStatus = "";
 void HostGame::init(TFT_eSPI &display) { screen = &display; }
 
 void HostGame::showCode(const String &code) {
-
   if (!screen)
     return;
 
@@ -33,6 +32,26 @@ void HostGame::showCode(const String &code) {
 
   delay(100);
   updateAllButtons();
+
+  // === Timeout logic === //
+  const unsigned long timeoutDuration = 3000; // 3seconds
+  unsigned long startTime = millis();
+
+  while (!getExitFlag()) {
+    updateAllButtons();
+    checkStartButtonAndExit(*screen);
+
+    // Check for timeout
+    if (millis() - startTime > timeoutDuration) {
+      screen->setTextSize(1);
+      screen->drawString("Press Start to return to menu", screen->width() / 2,
+                         screen->height() - 20);
+      shouldExitToMenu = true;
+      break;
+    }
+
+    delay(50);
+  }
 }
 
 void HostGame::showStatus(const String &msg) {

@@ -415,8 +415,11 @@ void handlePongFrame() {
 
             // Display the host connection code (create a simple PongHostScreen
             HostGame::init(tft);
+
+            // Code Screen
             HostGame::showCode(String(code.c_str()));
 
+            // Check if user exited
             if (getExitFlag()) {
               resetExitFlag();
               current_state = STATE_HOMESCREEN;

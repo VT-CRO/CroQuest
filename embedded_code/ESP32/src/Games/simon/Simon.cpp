@@ -235,6 +235,13 @@ void handleSimonFrame() {
           // Now safely show code
           HostGame::showCode(String(code.c_str()));
 
+          // Check if user exited
+          if (getExitFlag()) {
+            resetExitFlag();
+            simon_game_state = SIMON_HOMESCREEN;
+            return;
+          }
+
           central.scanAndConnectLoop(code);
 
           multiplayerMode = "HOST";

@@ -1,7 +1,7 @@
 #pragma once
 
 // Paddle dimensions
-#define PADDLE_HEIGHT 40
+#define PADDLE_HEIGHT 50
 #define PADDLE_WIDTH 10
 
 // The number of points to win the game

@@ -234,7 +234,7 @@ void handleTicTacToeFrame() {
           // Check if user exited
           if (getExitFlag()) {
             resetExitFlag();
-            game_state = HOMESCREEN; // TODO: This does not work completely well
+            game_state = HOMESCREEN;
             return;
           }
 
@@ -627,6 +627,10 @@ void handleTicTacToeFrame() {
       // ---- Restart game ---- //
       if (multiplayer) {
         resetMultiplayerState(false); // false = don't clear screen again
+
+        // ReBroadcast updated state to connected client
+        BluetoothManager::getCentral().sendMessage(
+            generateTicTacToeStateString().c_str());
 
       } else {
         resetToSinglePlayerDefaults(); // Clear AI/game state

@@ -199,7 +199,7 @@ void handleConnect4Frame() {
           // Check if user exited
           if (getExitFlag()) {
             resetExitFlag();
-            game_state = HOMESCREEN; // TODO: This does not work completely well
+            game_state = HOMESCREEN;
             return;
           }
 
