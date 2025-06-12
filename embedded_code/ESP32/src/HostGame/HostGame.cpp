@@ -6,20 +6,14 @@ static TFT_eSPI *screen = nullptr;
 static String lastCode = "";
 static String lastStatus = "";
 
-static unsigned long startTime = 0;
-static bool messageShown = false;
-
-// ========== Initialize Host ========== //
 void HostGame::init(TFT_eSPI &display) { screen = &display; }
 
-// ========== 6 Digit Code Screen ========== //
 void HostGame::showCode(const String &code) {
+
   if (!screen)
     return;
 
   lastCode = code;
-  messageShown = false;
-  startTime = millis();
 
   screen->fillScreen(TFT_BLACK);
   screen->setTextColor(TFT_WHITE, TFT_BLACK);
@@ -36,6 +30,9 @@ void HostGame::showCode(const String &code) {
 
   screen->setTextSize(2);
   screen->drawString("Waiting for players...", screen->width() / 2, 240);
+
+  delay(100);
+  updateAllButtons();
 }
 
 void HostGame::showStatus(const String &msg) {
