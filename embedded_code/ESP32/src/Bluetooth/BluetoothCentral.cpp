@@ -3,7 +3,6 @@
 #include "BluetoothCentral.hpp"
 #include "ConnectionScreen.hpp"
 
-// Simon funcs + state
 extern bool simonStateChanged;
 extern void readSimonString(String oldState, const char *data);
 extern String generateSimonString(String mode = "full");
@@ -113,7 +112,17 @@ void BluetoothCentral::connectToDevices() {
 
   client->setClientCallbacks(new MyClientCallbacks());
 
-  if (client->connect(&device)) {
+  // Try to connect up to 3 times before giving up
+  bool connected = false;
+  for (int i = 0; i < 3; i++) {
+    if (client->connect(&device)) {
+      connected = true;
+      break;
+    }
+    delay(200);
+  }
+
+  if (connected) {
     Serial.printf("✅ Connected to %s\n", device.getName().c_str());
     this->connectedClients.push_back(client);
 
@@ -244,13 +253,11 @@ void BluetoothCentral::disconnectAll() {
   this->connectedClients.clear();
 }
 
-// ###################### Getter of Connected Clients #####################
 const std::vector<NimBLEClient *> &
 BluetoothCentral::getConnectedClients() const {
   return connectedClients;
 }
 
-// ###################### Cleans Format of arrays #####################
 std::string BluetoothCentral::sanitize(const std::string &input) {
   size_t start = input.find_first_not_of(" \n\r\t");
   size_t end = input.find_last_not_of(" \n\r\t");

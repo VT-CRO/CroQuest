@@ -952,28 +952,7 @@ void handleHostLogic() {
 void handlePeripheralLogic() {
   BluetoothPeripheral &peripheral = BluetoothManager::getPeripheral();
 
-  // ========== 1. Handle Paddle Movement ==========
-  bool moved = false;
-
-  if (up.isPressed()) {
-    updatePaddle(true, &paddles[1]);
-    prev_paddles[1].paddle_mod = true;
-    moved = true;
-  } else if (down.isPressed()) {
-    updatePaddle(false, &paddles[1]);
-    prev_paddles[1].paddle_mod = true;
-    moved = true;
-  }
-
-  // Throttle message send to avoid BLE congestion
-  if (moved && millis() - lastMoveSendTime > 30) {
-    char buf[32];
-    sprintf(buf, "@pong@move@%d", paddles[1].y);
-    peripheral.sendMessage(buf);
-    lastMoveSendTime = millis();
-  }
-
-  // ========== 2. Apply New State from Host ==========
+  // ========== 1. Apply New State from Host ==========
   if (hasNewPongState) {
     hasNewPongState = false;
 
@@ -992,11 +971,61 @@ void handlePeripheralLogic() {
     paddles[0].y = y0;
     score0 = s0;
     score1 = s1;
-    ball.x = bx;
-    ball.y = by;
 
     prev_paddles[0].paddle_mod = true;
     prev_paddles[1].paddle_mod = true;
+
+    ball.x = prev_ball.x + ((bx - prev_ball.x) * (1.0/4));
+    ball.y = prev_ball.y + ((by - prev_ball.y) * (1.0/4));
+
+
+    eraseBall(&prev_ball);
+    drawBall(&ball);
+
+    prev_ball.x = ball.x;
+    prev_ball.y = ball.y;
+
+    ball.x = prev_ball.x + ((bx - prev_ball.x) * (2.0/4));
+    ball.y = prev_ball.y + ((by - prev_ball.y) * (2.0/4));
+
+    eraseBall(&prev_ball);
+    drawBall(&ball);
+
+    prev_ball.x = ball.x;
+    prev_ball.y = ball.y;
+
+    ball.x = prev_ball.x + ((bx - prev_ball.x) * (3.0/4));
+    ball.y = prev_ball.y + ((by - prev_ball.y) * (3.0/4));
+
+    eraseBall(&prev_ball);
+    drawBall(&ball);
+
+    prev_ball.x = ball.x;
+    prev_ball.y = ball.y;
+
+    ball.x = bx;
+    ball.y = by;
+
+  }
+
+  // ========== 2. Handle Paddle Movement ==========
+  bool moved = false;
+
+  if (up.isPressed()) {
+    updatePaddle(true, &paddles[1]);
+    prev_paddles[1].paddle_mod = true;
+    moved = true;
+  } else if (down.isPressed()) {
+    updatePaddle(false, &paddles[1]);
+    prev_paddles[1].paddle_mod = true;
+    moved = true;
+  }
+
+  // Throttle message send to avoid BLE congestion
+  if (moved) {
+    char buf[32];
+    sprintf(buf, "@pong@move@%d", paddles[1].y);
+    peripheral.sendMessage(buf);
   }
 }
 

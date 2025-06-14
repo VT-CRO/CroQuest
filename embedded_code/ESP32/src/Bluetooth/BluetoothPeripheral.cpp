@@ -54,8 +54,6 @@ void BluetoothPeripheral::beginAdvertising(const std::string &code) {
       CHARACTERISTIC_UUID,
       NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::NOTIFY);
   characteristic->setCallbacks(new CharacteristicCallbacks());
-
-  characteristic->setValue("ACK");
   service->start();
 
   advertising = NimBLEDevice::getAdvertising();
@@ -234,6 +232,7 @@ void BluetoothPeripheral::CharacteristicCallbacks::onWrite(
     tttBuffer = String(val.c_str());
     hasNewTicTacToeState = true;
   } else if (val.rfind("s@", 0) == 0) {
+    readSimonString("", val.c_str());
     simonBuffer = String(val.c_str());
     hasNewSimonState = true;
   } else if (val.rfind("connect4@", 0) == 0) {

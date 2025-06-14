@@ -97,6 +97,7 @@ struct SimonPlayer {
   SimonPlayer(int id_, const String &name_, int score_, const String &status_)
       : id(id_), name(name_), score(score_), status(status_) {}
 };
+bool code_entered = false;
 
 static SimonPlayer currentPlayer =
     SimonPlayer(atoi(generate6DigitCode().c_str()), String(settings.name), 0,
@@ -140,12 +141,16 @@ void runSimon() {
   // Set initial state
   simon_game_state = SIMON_HOMESCREEN;
   drawSimonHomeScreen();
+  multiplayer = false;
 
   currentPlayer = SimonPlayer(atoi(generate6DigitCode().c_str()),
                               String(settings.name), 0, String("idle"));
   update = false;
   // reset multiplayer flag
   multiplayerMode = "NONE";
+  code_entered = false;
+
+  simonPlayers.clear();
 
   // Main game loop
   while (true) {
@@ -245,6 +250,7 @@ void handleSimonFrame() {
           central.scanAndConnectLoop(code);
 
           multiplayerMode = "HOST";
+          simonPlayers.clear();
 
           if (!BluetoothManager::getCentral().getConnectedClients().empty()) {
 
@@ -260,6 +266,7 @@ void handleSimonFrame() {
 
             BluetoothManager::getCentral().sendMessage(
                 generateSimonString("full").c_str());
+            multiplayer = true;
 
             simonStartNewGame(); // Start a new game
 
@@ -286,8 +293,6 @@ void handleSimonFrame() {
 
   case SIMON_STATE_WATCH:
     // update peripheral data
-    if (strcmp(multiplayerMode.c_str(), "PERIPHERAL") == 0)
-      BluetoothManager::getPeripheral().update();
 
     if (update) {
       drawSimonGameScreen();   // Redraw disk
@@ -302,8 +307,6 @@ void handleSimonFrame() {
     break;
 
   case SIMON_STATE_PLAY:
-    if (strcmp(multiplayerMode.c_str(), "PERIPHERAL") == 0)
-      BluetoothManager::getPeripheral().update();
     if (update) {
       drawSimonGameScreen();   // Redraw disk
       drawSimonScore();        // Show updated score
@@ -322,8 +325,8 @@ void handleSimonFrame() {
 
   case SIMON_GAMEOVER_SCREEN: {
     // ENDSCREEN HANDLING
-    std::vector<String> playerNames = {settings.name};
-    std::vector<int> playerScores = {playerScore};
+    std::vector<String> playerNames = {};
+    std::vector<int> playerScores = {};
 
     for (const auto &p : simonPlayers) {
       playerNames.push_back(p.name);
@@ -334,6 +337,10 @@ void handleSimonFrame() {
                         playerScore);
 
     if (endScreen.handleUserInput()) {
+      // resets the score
+      for(auto &p : simonPlayers){
+        p.score = 0;
+      }
       simonStartNewGame(); // handleUserInput returns true : game restarts
     } else {
       if (endScreen.exit) { // exit to menu
@@ -358,23 +365,35 @@ void handleSimonFrame() {
     std::string enteredCode = pad.getCode();
 
     if (enteredCode.length() == 6 && pad.wasEnterPressed()) {
-
+      simonPlayers.clear();
       // JOIN = PERIPHERAL
       BluetoothManager::initPeripheral(tft);
       BluetoothPeripheral &peripheral = BluetoothManager::getPeripheral();
       peripheral.beginAdvertising(enteredCode);
 
       pad.clearCode();
+      code_entered = true;
       delay(1000);
-
-      multiplayerMode = "PERIPHERAL";
-
-      currentPlayer.status = "ready";
-      String ready = generateSimonString(String("status"));
-
-      BluetoothManager::getPeripheral().sendAction(ready.c_str());
-
-      simonStartNewGame();
+    }
+    
+    // Make sure there are actually devices connected, and then send the "ready"
+    // string and start the game
+    if(code_entered){
+      if(BluetoothManager::getPeripheral().server && 
+          BluetoothManager::getPeripheral().server->getConnectedCount() != 0){
+          if(!simonPlayers.empty()){
+            multiplayer = true;
+            multiplayerMode = "PERIPHERAL";
+    
+            currentPlayer.status = "ready";
+            String ready = generateSimonString(String("status"));
+    
+            BluetoothManager::getPeripheral().sendAction(ready.c_str());
+            code_entered = false;
+            simonStartNewGame();
+          }
+          
+        }
     }
     break;
   }

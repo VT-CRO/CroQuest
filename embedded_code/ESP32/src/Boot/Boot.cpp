@@ -33,6 +33,8 @@ void initBoot() {
   digitalWrite(15, HIGH);
   digitalWrite(5, HIGH);
 
+  if(!SD.begin(5)){}
+
   if (!SD.begin(5)) {
     Serial.println("Card Mount Failed");
 
