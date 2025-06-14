@@ -36,9 +36,9 @@ public:
   // ###################### Send Messages #####################
   void sendMessage(const std::string &message); // Alias to sendAction
 
+  NimBLEServer *server = nullptr;
 private:
   TFT_eSPI &tft;
-  NimBLEServer *server = nullptr;
   NimBLECharacteristic *characteristic = nullptr;
   NimBLEAdvertising *advertising = nullptr;
   std::string accessCode;

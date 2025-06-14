@@ -230,6 +230,7 @@ void BluetoothPeripheral::CharacteristicCallbacks::onWrite(
     tttBuffer = String(val.c_str());
     hasNewTicTacToeState = true;
   } else if (val.rfind("s@", 0) == 0) {
+    readSimonString("", val.c_str());
     simonBuffer = String(val.c_str());
     hasNewSimonState = true;
   }
