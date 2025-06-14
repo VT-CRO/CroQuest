@@ -63,7 +63,7 @@ int lastCursor = -1;
 // Bluetooth Turns
 char localPlayerSymbol = 'X'; // default for host
 
-String remotePlayerName = "Player 2"; // default fallback
+static String remotePlayerName = "Player 2"; // default fallback
 
 // Assets
 const char *BOARD_PATH = "/tic_tac_toe_assets/board.jpg";
@@ -306,6 +306,7 @@ void handleTicTacToeFrame() {
     BluetoothManager::getPeripheral().update();
   }
 
+  // ========== Multiplayer Logic for Host/Peripheral ========== //
   if (game_state == HOST_SCREEN || game_state == MULTIPLAYER_PLAYING) {
 
     // Draw if Bluetooth state just changed
@@ -437,11 +438,6 @@ void handleTicTacToeFrame() {
       drawAllPlaying();
 
     } else if (xWins >= 2 || oWins >= 2) {
-      // // ============== RESET BLUETOOTH CONNECTION ================ //
-      // // Host clears connection / disconnects for now.
-      // if(HOST_SCREEN){
-      //   BluetoothManager::getCentral().disconnectAll();
-      // }
       game_state = GAMEOVER_SCREEN;
       resetBoardState(true);
     }
@@ -832,7 +828,7 @@ void resetToSinglePlayerDefaults() {
 }
 
 // ========== Reset Multiplayer ========== //
-void resetMultiplayerState(bool clearScreen = true) {
+void resetMultiplayerState(bool clearScreen) {
   multiplayerMode = false;
   xWins = 0;
   oWins = 0;
@@ -1306,7 +1302,7 @@ String generateTicTacToeStateString() {
   return state;
 }
 
-// ========== Helper: Split String ==========
+// ========== Helper: Split String ========== //
 std::vector<String> split(const String &s, char delimiter) {
   std::vector<String> result;
   int start = 0;
@@ -1456,6 +1452,7 @@ void readTicTacToeString(String oldState, const char *data) {
   }
 }
 
+// ========== Format Name ========== //
 String formatName(String name) {
   if (name.length() == 0)
     return name;

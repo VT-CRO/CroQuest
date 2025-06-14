@@ -105,7 +105,7 @@ void BluetoothPeripheral::update() {
 
   lastHostMessage = received;
 
-  Serial.print("📥 Game data received: ");
+  Serial.print("Game data received: ");
   Serial.println(received.c_str());
 
   ConnectionScreen::showMessage("Host sent:\n" + String(received.c_str()));
@@ -113,10 +113,12 @@ void BluetoothPeripheral::update() {
   // Check if it's a Tic Tac Toe game state
   if (received.rfind("ttt@", 0) == 0) {
     readTicTacToeString("", received.c_str());
+  } else if (received.rfind("c4@", 0) == 0) {
+    readConnect4String("", received.c_str());
   } else if (received.rfind("s@", 0) == 0) {
     readSimonString("", received.c_str());
   } else {
-    Serial.println("⚠️ Unknown message format, ignored.");
+    Serial.println("Unknown message format, ignored.");
   }
 }
 
@@ -222,6 +224,8 @@ void BluetoothPeripheral::CharacteristicCallbacks::onWrite(
   (void)connInfo; // suppress unused warning if not needed
 
   std::string val = pCharacteristic->getValue();
+  Serial.print("📥 PERIPHERAL RECEIVED: ");
+  Serial.println(val.c_str());
 
   if (val.rfind("@pong@state@", 0) == 0) {
     pongStateBuffer = String(val.c_str());
@@ -232,5 +236,8 @@ void BluetoothPeripheral::CharacteristicCallbacks::onWrite(
   } else if (val.rfind("s@", 0) == 0) {
     simonBuffer = String(val.c_str());
     hasNewSimonState = true;
+  } else if (val.rfind("connect4@", 0) == 0) {
+    readConnect4String("", val.c_str()); // Apply
+    connect4StateChanged = true;         // Mark for redraw
   }
 }

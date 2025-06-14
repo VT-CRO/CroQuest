@@ -24,7 +24,10 @@ static State game_state = HOMESCREEN;
 // Logic
 static bool firstFrame = true;
 static bool multiplayerMode = false;
-static bool connect4StateChanged = false;
+bool connect4StateChanged = false;
+
+static int lastDropRow = -1;
+static int lastDropCol = -1;
 
 // Game Board
 static unsigned long winTime = 0;
@@ -70,12 +73,15 @@ static int player1Wins = 0;
 static int player2Wins = 0;
 static char currentPlayer = 'R';
 
+static String remotePlayerName = "Player 2"; // default fallback
+
 // These global variables are used to draw the win line
 static int winStartRow, winStartCol;
 static int winDirRow, winDirCol;
 
 // Game Board
 static bool roundEnded = false;
+
 // Screen
 static int screen_width, screen_height;
 
@@ -199,12 +205,11 @@ void handleConnect4Frame() {
           // Check if user exited
           if (getExitFlag()) {
             resetExitFlag();
-            game_state = HOMESCREEN;
+            game_state = HOMESCREEN; // TODO: This does not work completely well
             return;
           }
 
           central.scanAndConnectLoop(code);
-
           multiplayerMode = true;
 
           if (!BluetoothManager::getCentral().getConnectedClients().empty()) {
@@ -213,6 +218,13 @@ void handleConnect4Frame() {
             game_state = HOST_SCREEN;
             tft.fillScreen(bgColor);
             drawAllPlaying();
+
+            // SEND INITIAL GAME STATE TO PERIPHERAL
+            String initialState = generateConnect4StateString();
+            BluetoothCentral &central = BluetoothManager::getCentral();
+            for (auto *client : central.getConnectedClients()) {
+              central.sendToDevice(client, initialState.c_str());
+            }
 
             // Flush any held buttons to prevent input carryover
             delay(300); // debounce delay
@@ -262,25 +274,141 @@ void handleConnect4Frame() {
   // ================== MULTIPLAYER_PLAYING State =================== //
   else if (game_state == MULTIPLAYER_PLAYING) {
 
-    if (firstFrame) {
-      tft.fillScreen(bgColor);
-      drawAllPlaying();
-      firstFrame = false;
-    }
+    // // Redraw If Stated Changed
+    // if (connect4StateChanged) {
+    //   drawBoardPieces();
+    //   drawCursor(); // (Redraws selector based on updated cursorCol)
+    //   drawScorePanel(player1Wins, player2Wins, currentPlayer);
+    //   drawWinLine(currentPlayer);
+    //   // drawSinglePieceAt(lastDropRow, lastDropCol); // Just in case
+    //   connect4StateChanged = false;
+    // }
 
     BluetoothManager::getPeripheral().update();
   }
 
-  // if (game_state == HOST_SCREEN || game_state == MULTIPLAYER_PLAYING) {
-  // }
+  // ========== Multiplayer Logic for Host/Peripheral ========== //
+  if (game_state == HOST_SCREEN || game_state == MULTIPLAYER_PLAYING) {
+
+    // Redraw If Stated Changed
+    if (connect4StateChanged) {
+      drawCursor(); // (Redraws selector based on updated cursorCol)
+      drawScorePanel(player1Wins, player2Wins, currentPlayer);
+      drawWinLine(currentPlayer);
+      // drawSinglePieceAt(lastDropRow, lastDropCol);
+      connect4StateChanged = false;
+    }
+
+    // Turn Indicator
+    tft.setTextSize(2);
+    tft.setTextDatum(MC_DATUM);
+    tft.setTextColor(TFT_WHITE, bgColor);
+
+    if ((currentPlayer == 2 && game_state == HOST_SCREEN) ||
+        (currentPlayer == 1 && game_state == MULTIPLAYER_PLAYING)) {
+      tft.drawString("Waiting...", tft.width() / 2, tft.height() - 10);
+      return;
+    } else {
+      String turnText = (currentPlayer == 1) ? "Red's Turn" : "Blue's Turn";
+      tft.drawString(turnText, tft.width() / 2, tft.height() - 10);
+    }
+
+    // Handle Cursor Movement
+    if (!roundEnded && millis() - lastMoveTime > moveDelay / 2) {
+      if (left.isPressed() && cursorCol > 0) {
+        cursorCol--;
+        drawCursor();
+      } else if (right.isPressed() && cursorCol < COLS - 1) {
+        cursorCol++;
+        drawCursor();
+      }
+      lastMoveTime = millis();
+    }
+
+    bool selectPressed = A.wasJustPressed();
+
+    // Handle Drop
+    if (!roundEnded && selectPressed && !buttonPreviouslyPressed &&
+        localPlayerId == currentPlayer) {
+
+      bool placed = dropPiece(cursorCol, currentPlayer);
+
+      if (placed) {
+        playDropSound(); // Play sound
+
+        // Get position
+        lastDropRow = getDropRow(cursorCol);
+        lastDropCol = cursorCol;
+
+        // Check Winner
+        if (checkWin(currentPlayer)) {
+          (currentPlayer == 1 ? player1Wins++ : player2Wins++);
+          playWinSound();
+          drawWinLine(currentPlayer);
+          roundEnded = true;
+          winTime = millis();
+        } else if (isBoardFull()) {
+          roundEnded = true;
+          winTime = millis();
+        } else {
+          currentPlayer = (currentPlayer == 1) ? 2 : 1;
+        }
+
+        // Draw updated score/cursor
+        drawScorePanel(player1Wins, player2Wins, currentPlayer);
+        drawCursor();
+
+        String newState = generateConnect4StateString();
+
+        if (game_state == HOST_SCREEN) {
+          BluetoothCentral &central = BluetoothManager::getCentral();
+          for (auto *client : central.getConnectedClients()) {
+            if (!central.sendToDevice(client, newState.c_str())) {
+              Serial.println("❌ Failed to notify client. Disconnecting...");
+              ConnectionScreen::showMessage("Client disconnected.");
+              shouldExitToMenu = true;
+              return;
+            }
+          }
+        } else if (game_state == MULTIPLAYER_PLAYING) {
+          BluetoothPeripheral &peripheral = BluetoothManager::getPeripheral();
+          if (!peripheral.sendAction(newState.c_str())) {
+            ConnectionScreen::showMessage("Disconnected (send failed)");
+            shouldExitToMenu = true;
+            return;
+          }
+        }
+
+        delay(400); // debounce
+      } else {
+        playErrorSound();
+        flashCursorRed();
+      }
+    }
+
+    buttonPreviouslyPressed = selectPressed;
+
+    // Redraw when moving or selecting
+    if (cursorCol != lastCursorCol || selectPressed) {
+      drawWinLine(currentPlayer);
+      lastCursorCol = cursorCol;
+    }
+
+    // Auto Restart
+    if (roundEnded && millis() - winTime >= 5000) {
+      resetConnect4Board(true);
+      if (player1Wins >= 2 || player2Wins >= 2) {
+        game_state = GAMEOVER_SCREEN;
+      } else {
+        firstFrame = true;
+      }
+    }
+  }
 
   // ================== SINGLE_PLAYER ================== //
   else if (game_state == SINGLE_PLAYER) {
     if (firstFrame) {
-
-      drawGrid();
-      drawCursor();
-      drawScorePanel(player1Wins, player2Wins, currentPlayer);
+      drawAllPlaying();
       firstFrame = false;
     }
 
@@ -383,7 +511,6 @@ void handleConnect4Frame() {
         resetConnect4Board(true);
       } else {
         resetConnect4Board(true);
-        drawGrid();
         drawCursor();
         drawScorePanel(player1Wins, player2Wins, currentPlayer);
       }
@@ -420,7 +547,6 @@ void handleConnect4Frame() {
     tft.fillScreen(TFT_BLACK);
     game_state = HOMESCREEN;
     drawHomeScreen();
-
   }
 
   // ================== BLUETOOTH_NUMPAD State =================== //
@@ -435,9 +561,19 @@ void handleConnect4Frame() {
       BluetoothManager::initPeripheral(tft);
       BluetoothPeripheral &peripheral = BluetoothManager::getPeripheral();
       peripheral.beginAdvertising(enteredCode);
-      localPlayerId = 1;
 
+      localPlayerId = 2;
+      multiplayerMode = true;
+      game_state = MULTIPLAYER_PLAYING;
       pad.clearCode();
+
+      // Initial setup
+      tft.fillScreen(bgColor);
+      firstFrame = true;
+      cursorCol = 0;
+      roundEnded = false;
+
+      drawAllPlaying();
     }
   }
 }
@@ -452,6 +588,8 @@ bool dropPiece(int col, int player) {
     if (board[r][col] == 0) {
       animatePieceDrop(col, r, player); // animate it
       board[r][col] = player;
+      lastDropRow = r;
+      lastDropCol = col;
       return true;
     }
   }
@@ -566,7 +704,7 @@ void resetMultiplayerState(bool clearScreen) {
     tft.fillScreen(bgColor);
 }
 
-// ========== Flash Cursor Red (Invalid Move Feedback) ==========
+// ========== Flash Cursor Red (Invalid Move Feedback) ========== //
 void flashCursorRed() {
   int x = IMAGE_X + 15 + cursorCol * CELL_W + 25;
   int y = IMAGE_Y - 20;
@@ -581,7 +719,7 @@ void flashCursorRed() {
   drawCursor(); // Restore normal green arrow
 }
 
-// ========== AI Setup ==========
+// ========== AI Setup ========== //
 int findBestConnect4Move(int aiPlayer, int humanPlayer) {
   // 1. Try to win
   for (int col = 0; col < COLS; col++) {
@@ -625,7 +763,7 @@ int findBestConnect4Move(int aiPlayer, int humanPlayer) {
   return -1;
 }
 
-// ========== Get Available Row ==========
+// ========== Get Available Row ========== //
 int getAvailableRow(int col) {
   for (int row = ROWS - 1; row >= 0; row--) {
     if (board[row][col] == 0)
@@ -634,10 +772,10 @@ int getAvailableRow(int col) {
   return -1;
 }
 
-// ========== Can Move ==========
+// ========== Can Move ========== //
 bool canDrop(int col) { return board[0][col] == 0; }
 
-// ========== Board Full ==========
+// ========== Board Full ========== //
 bool isBoardFull() {
   for (int col = 0; col < COLS; col++) {
     if (board[0][col] == 0)
@@ -646,11 +784,21 @@ bool isBoardFull() {
   return true;
 }
 
+// ========== Gets Position of Dropped ========== //
+int getDropRow(int col) {
+  for (int r = 0; r < ROWS; r++) {
+    if (board[r][col] != 0) {
+      return r;
+    }
+  }
+  return ROWS - 1; // fallback (shouldn't happen if placed correctly)
+}
+
 // ####################################################################################################
 //  Game Drawing
 // ####################################################################################################
 
-// ========== Draw Grid ========== //
+// ========== Draw Grid + Piece ========== //
 void drawGrid() {
   tft.fillScreen(bgColor);
 
@@ -673,6 +821,37 @@ void drawGrid() {
       } else if (board[r][c] == 2) {
         drawing.drawSdJpeg("/connect4/assets/bluePiece.jpg", px, py);
         drawing.pushSprite(true, bgColor);
+      }
+    }
+  }
+}
+
+// ========== Draw Piece ========== //
+void drawSinglePieceAt(int row, int col) {
+  int px = IMAGE_X + col * CELL_W;
+  int py = IMAGE_Y + row * CELL_H;
+
+  drawing.setFirst(false); // ← disables internal (0,0) offset
+  drawing.x_pos = px;      // ← explicitly sets draw position
+  drawing.y_pos = py;
+
+  if (board[row][col] == 1) {
+    drawing.drawSdJpeg("/connect4/assets/redPiece.jpg", 0,
+                       0); // draw into sprite at (0,0)
+  } else if (board[row][col] == 2) {
+    drawing.drawSdJpeg("/connect4/assets/bluePiece.jpg", 0, 0);
+  }
+
+  drawing.pushSprite(true, false); // pushes the sprite to (x_pos, y_pos)
+}
+
+void drawBoardPieces() {
+  for (int r = 0; r < ROWS; r++) {
+    for (int c = 0; c < COLS; c++) {
+      int piece = board[r][c];
+      if (piece == 1 || piece == 2) {
+        drawSinglePieceAt(
+            r, c); // Draw each piece individually at its correct location
       }
     }
   }
@@ -914,6 +1093,18 @@ void drawTitleAndGrid() {
   }
 }
 
+// ========== Draw All Playing ========== //
+void drawAllPlaying() {
+  drawGrid();
+  drawScorePanel(player1Wins, player2Wins, currentPlayer);
+
+  // Only show cursor if it's your turn
+  if (multiplayerMode && currentPlayer == localPlayerId && !roundEnded)
+    drawCursor();
+  else if (!multiplayerMode && !roundEnded)
+    drawCursor();
+}
+
 // ####################################################################################################
 //  Audio Logic
 // ####################################################################################################
@@ -941,4 +1132,189 @@ void playErrorSound() {
   playTone(300, volume);
   delay(200);
   playTone(0, 0);
+}
+
+// ####################################################################################################
+//  Bluetooth Logic
+// ####################################################################################################
+
+// =================== Generate Connect4 State =================== //
+String generateConnect4StateString() {
+  String state = "c4@";
+
+  String redName = (localPlayerId == 1) ? formatName(settings.name)
+                                        : formatName(remotePlayerName);
+  String blueName = (localPlayerId == 2) ? formatName(settings.name)
+                                         : formatName(remotePlayerName);
+
+  state += "0,R," + String(player1Wins) + "," + redName + ";\n";
+  state += "1,B," + String(player2Wins) + "," + blueName + ";\n";
+  state += "5;\n";
+  state += (currentPlayer == 1 ? "R" : "B") + String(";\n");
+
+  // Board as 6x7 comma-separated flat row-major list
+  for (int r = 0; r < ROWS; r++) {
+    for (int c = 0; c < COLS; c++) {
+      if (board[r][c] == 0)
+        state += "**";
+      else
+        state += (board[r][c] == 1 ? "R" : "B") + String(r * COLS + c);
+
+      if (!(r == ROWS - 1 && c == COLS - 1))
+        state += ",";
+    }
+  }
+  state += ";\n";
+
+  state += String(cursorCol) + ";\n";
+
+  if (roundEnded) {
+    state += (currentPlayer == 1 ? "R" : "B") + String(";") +
+             String(winStartRow) + "," + String(winStartCol) + "," +
+             String(winDirRow) + "," + String(winDirCol) + ";\n";
+
+  } else {
+    state += "N;\n";
+  }
+
+  // Inlcude Drop Position
+  state += String(lastDropRow) + "," + String(lastDropCol) + ";\n";
+
+  return state;
+}
+
+// ========== Helper: Split String ========== //
+std::vector<String> split(const String &s, char delimiter) {
+  std::vector<String> result;
+  int start = 0;
+  int end = s.indexOf(delimiter);
+
+  while (end != -1) {
+    result.push_back(s.substring(start, end));
+    start = end + 1;
+    end = s.indexOf(delimiter, start);
+  }
+  result.push_back(s.substring(start));
+  return result;
+}
+
+// =================== Read Connect4 State =================== //
+void readConnect4String(String oldState, const char *data) {
+  String input = String(data);
+  input.trim();
+  input.replace("c4@", "");
+
+  // Declare outside the loop
+  int tempDropRow = -1;
+  int tempDropCol = -1;
+  int lastParsedPiece = -1;
+
+  int line = 0, i = 0, idx = 0;
+  while ((idx = input.indexOf(";\n", i)) != -1) {
+    String part = input.substring(i, idx);
+    i = idx + 2;
+
+    switch (line) {
+    case 0: { // Red Player
+      auto parts = split(part, ',');
+      if (parts.size() >= 4 && localPlayerId == 2) {
+        player1Wins = parts[2].toInt();
+        remotePlayerName = parts[3];
+      }
+      break;
+    }
+    case 1: { // Blue Player
+      auto parts = split(part, ',');
+      if (parts.size() >= 4 && localPlayerId == 1) {
+        player2Wins = parts[2].toInt();
+        remotePlayerName = parts[3];
+      }
+      break;
+    }
+    case 2:
+      break;
+    case 3:
+      currentPlayer = (part == "R") ? 1 : 2;
+      break;
+    case 4: { // Board
+      int idx = 0;
+      auto cells = split(part, ',');
+      for (int i = 0; i < ROWS * COLS; i++) {
+        String cell = cells[i];
+        int r = i / COLS;
+        int c = i % COLS;
+
+        if (cell == "**") {
+          board[r][c] = 0;
+        } else if (cell.startsWith("R")) {
+          board[r][c] = 1;
+          if (r == tempDropRow && c == tempDropCol)
+            lastParsedPiece = 1; // ← capture this
+        } else if (cell.startsWith("B")) {
+          board[r][c] = 2;
+          if (r == tempDropRow && c == tempDropCol)
+            lastParsedPiece = 2; // ← capture this
+        }
+      }
+
+      break;
+    }
+    case 5:
+      if (localPlayerId != currentPlayer)
+        cursorCol = part.toInt();
+      break;
+    case 6: {
+      int sep = part.indexOf(';');
+      if (sep != -1 && part[0] != 'N') {
+        roundEnded = true;
+        winTime = millis();
+        String combo = part.substring(sep + 1);
+        auto parts = split(combo, ',');
+        winStartRow = parts[0].toInt();
+        winStartCol = parts[1].toInt();
+        winDirRow = parts[2].toInt();
+        winDirCol = parts[3].toInt();
+      } else {
+        roundEnded = false;
+      }
+      break;
+    }
+    case 7: {
+      auto parts = split(part, ',');
+      if (parts.size() == 2) {
+        tempDropRow = parts[0].toInt();
+        tempDropCol = parts[1].toInt();
+
+        lastDropRow = tempDropRow;
+        lastDropCol = tempDropCol;
+      }
+      break;
+    }
+    }
+    line++;
+  }
+
+  // ================= Draw last dropped piece if needed =================
+  if (tempDropRow >= 0 && tempDropCol >= 0 && localPlayerId != currentPlayer) {
+    if (lastParsedPiece == 1 || lastParsedPiece == 2) {
+      animatePieceDrop(tempDropCol, tempDropRow, lastParsedPiece);
+      drawSinglePieceAt(tempDropRow, tempDropCol);
+    } else {
+      Serial.printf("Warning: Could not determine color for [%d][%d]\n",
+                    tempDropRow, tempDropCol);
+    }
+  }
+
+  multiplayerMode = true;
+  connect4StateChanged = true;
+  firstFrame = true;
+}
+
+// ========== Format Name ========== //
+String formatName(String name) {
+  if (name.length() == 0)
+    return name;
+  name.toLowerCase();
+  name.setCharAt(0, toupper(name.charAt(0)));
+  return name;
 }

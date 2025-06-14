@@ -8,6 +8,10 @@ extern bool simonStateChanged;
 extern void readSimonString(String oldState, const char *data);
 extern String generateSimonString(String mode = "full");
 
+// Connect4
+extern bool connect4StateChanged;
+extern void readConnect4String(String oldState, const char *data);
+
 BluetoothCentral::BluetoothCentral(TFT_eSPI &display) : tft(display) {}
 
 // ####################################################################################################
@@ -129,30 +133,19 @@ void BluetoothCentral::connectToDevices() {
               Serial.println(msg.c_str());
 
               if (msg.rfind("ttt@", 0) == 0) {
-
                 Serial.println("PERIPHERAL RECEIVED: ");
                 Serial.println(msg.c_str());
 
-                // 🧠 Step 1: Apply the new state to the host
+                // Apply the new state to the host
                 readTicTacToeString("", msg.c_str());
                 ticTacToeStateChanged = true;
 
-                // 🧼 Step 2: Recalculate and sanitize the game state
-                // String confirmedState = generateTicTacToeStateString();
-
-                // 🖼️ Step 3: Draw the updated board
-
-                // I've also commented out these lines, and will only call them
-                // in TictacToe Unless there is a better solution
-                // drawAllPlaying(); drawWinLine();
-
-                // 📣 Step 4: Re-broadcast the updated board state to all
-                // clients
                 BluetoothCentral &central = BluetoothManager::getCentral();
                 String confirmedState = String(msg.c_str());
                 for (auto *client : central.getConnectedClients()) {
                   central.sendToDevice(client, confirmedState.c_str());
                 }
+
               } else if (msg.rfind("s@", 0) == 0) {
                 Serial.println("PERIPHERAL SENT SIMON: ");
                 Serial.println(msg.c_str());
@@ -168,6 +161,20 @@ void BluetoothCentral::connectToDevices() {
                 }
               } else if (msg.rfind("@pong", 0) == 0) {
                 this->latestMessage = msg;
+
+              } else if (msg.rfind("c4@", 0) == 0) {
+                Serial.println("PERIPHERAL SENT CONNECT4:");
+                Serial.println(msg.c_str());
+
+                readConnect4String("", msg.c_str());
+                connect4StateChanged = true;
+
+                // Optional: re-broadcast to other peripherals if more than one
+                BluetoothCentral &central = BluetoothManager::getCentral();
+                String confirmedState = String(msg.c_str());
+                for (auto *client : central.getConnectedClients()) {
+                  central.sendToDevice(client, confirmedState.c_str());
+                }
               } else {
                 Serial.println("⚠️ Unknown message format (notify).");
               }
@@ -276,7 +283,6 @@ bool BluetoothCentral::sendMessage(const std::string &msg) {
     return false;
 
   for (auto *client : this->connectedClients) {
-
     if (!client || !client->isConnected())
       return false;
 
@@ -287,24 +293,18 @@ bool BluetoothCentral::sendMessage(const std::string &msg) {
     NimBLERemoteCharacteristic *characteristic =
         service->getCharacteristic(CHARACTERISTIC_UUID);
     if (!characteristic || !characteristic->canWrite()) {
-      // Serial.println("❌ Cannot write to characteristic");
       return false;
     }
 
     try {
       bool success =
           characteristic->writeValue((uint8_t *)msg.data(), msg.size(), false);
-      if (success) {
-        // Serial.print("📤 Host wrote: ");
-        // Serial.println(msg.c_str());
-        return true;
-      } else {
-        // Serial.println("❌ writeValue() failed");
-        return false;
-      }
+      return success;
     } catch (...) {
-      // Serial.println("❌ Exception writing to peripheral characteristic");
       return false;
     }
   }
+
+  // ⚠️ Make sure to return a value here:
+  return true; // or false depending on your logic
 }

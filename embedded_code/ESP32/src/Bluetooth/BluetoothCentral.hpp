@@ -15,6 +15,7 @@
 #include "Menu/MenuReturn.hpp"
 
 // Include games
+#include "Games/connect4/Connect4.hpp"
 #include "Games/tic_tac_toe/TicTacToe.hpp"
 
 class BluetoothCentral {

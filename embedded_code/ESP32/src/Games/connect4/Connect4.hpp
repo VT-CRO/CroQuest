@@ -23,6 +23,8 @@
 extern TFT_eSPI tft;
 extern JpegDrawing drawing;
 
+extern bool connect4StateChanged;
+
 // ####################################################################################################
 //  Setup & Loop
 // ####################################################################################################
@@ -55,20 +57,28 @@ static void resetMultiplayerState(bool clearScreen = true);
 // ========== Center Piece ========== //
 static void getCellCenter(int col, int row, int &px, int &py);
 
-// ========== Flash Cursor Red (Invalid Move Feedback) ==========
+// ========== Flash Cursor Red (Invalid Move Feedback) ========== //
 static void flashCursorRed();
 
-// ========== AI Setup ==========
+// ========== AI Setup ========== //
 static int findBestConnect4Move(int aiPlayer, int humanPlayer);
 
-// ========== Get Available Row ==========
+// ========== Get Available Row ========== //
 static int getAvailableRow(int col);
 
-// ========== Can Move ==========
+// ========== Can Move ========== //
 static bool canDrop(int col);
 
-// ========== Board Full ==========
+// ========== Board Full ========== //
 static bool isBoardFull();
+
+// ========== Gets Position of Dropped ========== //
+int getDropRow(int col);
+
+// ========== Draw Piece ========== //
+void drawSinglePieceAt(int row, int col);
+
+void drawBoardPieces();
 
 // ####################################################################################################
 //  Game Drawing
@@ -98,6 +108,9 @@ static void drawHomescreenSelect();
 // ========== Draw Title & Grid ========== //
 static void drawTitleAndGrid();
 
+// ========== Draw All Playing ========== //
+static void drawAllPlaying();
+
 // ####################################################################################################
 //  Audio Logic
 // ####################################################################################################
@@ -110,3 +123,19 @@ static void playWinSound();
 
 // ========== Error Sound ========== //
 static void playErrorSound();
+
+// ####################################################################################################
+//  Bluetooth Logic
+// ####################################################################################################
+
+// =================== Generate Connect4 State =================== //
+String generateConnect4StateString();
+
+// ========== Split String ========== //
+static std::vector<String> split(const String &s, char delimiter);
+
+// =================== Read Connect4 State =================== //
+void readConnect4String(String oldState, const char *data);
+
+// ========== Helper ========== //
+static String formatName(String name);

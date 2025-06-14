@@ -41,9 +41,9 @@ extern TicTacToeSession session;
 
 String generateTicTacToeStateString();
 
-String formatName(String name);
+static String formatName(String name);
 
-std::vector<String> split(const String &s, char delimiter);
+static std::vector<String> split(const String &s, char delimiter);
 
 void readTicTacToeString(String oldState, const char *data);
 
@@ -52,4 +52,4 @@ void drawWinLine();
 // ========== Draw Title and Grid ========== //
 static void drawTitleAndGrid();
 
-void drawAllPlaying();
+static void drawAllPlaying();
