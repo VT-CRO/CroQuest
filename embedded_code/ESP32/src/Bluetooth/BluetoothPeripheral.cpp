@@ -54,8 +54,6 @@ void BluetoothPeripheral::beginAdvertising(const std::string &code) {
       CHARACTERISTIC_UUID,
       NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::NOTIFY);
   characteristic->setCallbacks(new CharacteristicCallbacks());
-
-  characteristic->setValue("ACK");
   service->start();
 
   advertising = NimBLEDevice::getAdvertising();

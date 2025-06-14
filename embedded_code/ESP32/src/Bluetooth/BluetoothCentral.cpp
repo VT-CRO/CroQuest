@@ -3,7 +3,6 @@
 #include "BluetoothCentral.hpp"
 #include "ConnectionScreen.hpp"
 
-// Simon funcs + state
 extern bool simonStateChanged;
 extern void readSimonString(String oldState, const char *data);
 extern String generateSimonString(String mode = "full");
@@ -109,7 +108,17 @@ void BluetoothCentral::connectToDevices() {
 
   client->setClientCallbacks(new MyClientCallbacks());
 
-  if (client->connect(&device)) {
+  // Try to connect up to 3 times before giving up
+  bool connected = false;
+  for(int i = 0; i < 3; i++){
+    if(client->connect(&device)){
+      connected = true;
+      break;
+    }
+    delay(200);
+  }
+
+  if (connected) {
     Serial.printf("✅ Connected to %s\n", device.getName().c_str());
     this->connectedClients.push_back(client);
 
@@ -121,44 +130,43 @@ void BluetoothCentral::connectToDevices() {
       NimBLERemoteCharacteristic *charac =
           service->getCharacteristic(CHARACTERISTIC_UUID);
       if (charac && charac->canNotify()) {
-        bool success = charac->subscribe(
-            true, [this](NimBLERemoteCharacteristic *c, uint8_t *data,
-                         size_t length, bool isNotify) {
-              std::string msg(reinterpret_cast<char *>(data), length);
-              Serial.print("📥 Notification received: ");
-              Serial.println(msg.c_str());
+        bool success = charac->subscribe(true, [this](NimBLERemoteCharacteristic *c,
+                                                  uint8_t *data, size_t length,
+                                                  bool isNotify) {
+          std::string msg(reinterpret_cast<char *>(data), length);
+          Serial.print("📥 Notification received: ");
+          Serial.println(msg.c_str());
 
-              if (msg.rfind("ttt@", 0) == 0) {
+          if (msg.rfind("ttt@", 0) == 0) {
 
-                Serial.println("PERIPHERAL RECEIVED: ");
-                Serial.println(msg.c_str());
+            Serial.println("PERIPHERAL RECEIVED: ");
+            Serial.println(msg.c_str());
 
-                // 🧠 Step 1: Apply the new state to the host
-                readTicTacToeString("", msg.c_str());
-                ticTacToeStateChanged = true;
+            // 🧠 Step 1: Apply the new state to the host
+            readTicTacToeString("", msg.c_str());
+            ticTacToeStateChanged = true;
 
-                // 🧼 Step 2: Recalculate and sanitize the game state
-                // String confirmedState = generateTicTacToeStateString();
+            // 🧼 Step 2: Recalculate and sanitize the game state
+            // String confirmedState = generateTicTacToeStateString();
 
-                // 🖼️ Step 3: Draw the updated board
+            // 🖼️ Step 3: Draw the updated board
 
-                // I've also commented out these lines, and will only call them
-                // in TictacToe Unless there is a better solution
-                // drawAllPlaying(); drawWinLine();
+            // I've also commented out these lines, and will only call them in
+            // TictacToe Unless there is a better solution drawAllPlaying();
+            // drawWinLine();
 
-                // 📣 Step 4: Re-broadcast the updated board state to all
-                // clients
-                BluetoothCentral &central = BluetoothManager::getCentral();
-                String confirmedState = String(msg.c_str());
-                for (auto *client : central.getConnectedClients()) {
-                  central.sendToDevice(client, confirmedState.c_str());
-                }
-              } else if (msg.rfind("s@", 0) == 0) {
-                Serial.println("PERIPHERAL SENT SIMON: ");
-                Serial.println(msg.c_str());
+            // 📣 Step 4: Re-broadcast the updated board state to all clients
+            BluetoothCentral &central = BluetoothManager::getCentral();
+            String confirmedState = String(msg.c_str());
+            for (auto *client : central.getConnectedClients()) {
+              central.sendToDevice(client, confirmedState.c_str());
+            }
+          }else if (msg.rfind("s@", 0) == 0) {
+            Serial.println("PERIPHERAL SENT SIMON: ");
+            Serial.println(msg.c_str());
 
-                readSimonString("", msg.c_str());
-                simonStateChanged = true;
+            readSimonString("", msg.c_str());
+            simonStateChanged = true;
 
                 // Sends updated state to all peripherals
                 BluetoothCentral &central = BluetoothManager::getCentral();
@@ -237,13 +245,11 @@ void BluetoothCentral::disconnectAll() {
   this->connectedClients.clear();
 }
 
-// ###################### Getter of Connected Clients #####################
 const std::vector<NimBLEClient *> &
 BluetoothCentral::getConnectedClients() const {
   return connectedClients;
 }
 
-// ###################### Cleans Format of arrays #####################
 std::string BluetoothCentral::sanitize(const std::string &input) {
   size_t start = input.find_first_not_of(" \n\r\t");
   size_t end = input.find_last_not_of(" \n\r\t");

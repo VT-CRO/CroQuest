@@ -141,6 +141,7 @@ void runSimon() {
   // Set initial state
   simon_game_state = SIMON_HOMESCREEN;
   drawSimonHomeScreen();
+  multiplayer = false;
 
   currentPlayer = SimonPlayer(atoi(generate6DigitCode().c_str()),
                               String(settings.name), 0, String("idle"));
@@ -265,6 +266,7 @@ void handleSimonFrame() {
 
             BluetoothManager::getCentral().sendMessage(
                 generateSimonString("full").c_str());
+            multiplayer = true;
 
             simonStartNewGame(); // Start a new game
 
@@ -323,8 +325,8 @@ void handleSimonFrame() {
 
   case SIMON_GAMEOVER_SCREEN: {
     // ENDSCREEN HANDLING
-    std::vector<String> playerNames = {settings.name};
-    std::vector<int> playerScores = {playerScore};
+    std::vector<String> playerNames = {};
+    std::vector<int> playerScores = {};
 
     for (const auto &p : simonPlayers) {
       playerNames.push_back(p.name);
@@ -380,6 +382,7 @@ void handleSimonFrame() {
       if(BluetoothManager::getPeripheral().server && 
           BluetoothManager::getPeripheral().server->getConnectedCount() != 0){
           if(!simonPlayers.empty()){
+            multiplayer = true;
             multiplayerMode = "PERIPHERAL";
     
             currentPlayer.status = "ready";
