@@ -75,11 +75,6 @@ static bool isBoardFull();
 // ========== Gets Position of Dropped ========== //
 int getDropRow(int col);
 
-// ========== Draw Piece ========== //
-void drawSinglePieceAt(int row, int col);
-
-void drawBoardPieces();
-
 // ####################################################################################################
 //  Game Drawing
 // ####################################################################################################
@@ -110,6 +105,9 @@ static void drawTitleAndGrid();
 
 // ========== Draw All Playing ========== //
 static void drawAllPlaying();
+
+// ========== Draw Winner Notification ========== //
+static void drawWinnerMessage();
 
 // ####################################################################################################
 //  Audio Logic

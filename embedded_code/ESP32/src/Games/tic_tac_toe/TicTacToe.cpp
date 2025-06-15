@@ -12,7 +12,6 @@ void drawWinnerMessage();
 void drawWinLine();
 void drawGrid();
 void drawAllPlaying();
-void drawEndScreen();
 void drawHomeScreen();
 void drawHomescreenSelect();
 
@@ -75,10 +74,10 @@ const char *DIS_X_PATH = "/tic_tac_toe_assets/disappearing_x.jpg";
 // Game Board
 String board[9] = {"**", "**", "**", "**", "**", "**", "**", "**", "**"};
 Move moveQueue[6];
-int moveCount = 0;
-int cursorIndex = 0;
-char currentPlayer = 'X';
-char winner = 'N';
+static int moveCount = 0;
+static int cursorIndex = 0;
+static char currentPlayer = 'X';
+static char winner = 'N';
 int winCombo[3] = {-1, -1, -1};
 bool roundEnded = false;
 unsigned long winTime = 0;
@@ -990,56 +989,6 @@ void drawWinnerMessage() {
   tft.drawString(msg, tft.width() / 2, y + boxHeight / 2);
 }
 
-// ========== Draw End Screen ========== //
-void drawEndScreen() {
-
-  // Set text properties
-  tft.setTextDatum(MC_DATUM);
-  tft.setTextColor(TFT_WHITE);
-  tft.setTextSize(4);
-
-  // Display winner
-  String winnerText = (xWins > oWins) ? "X WINS THE GAME!" : "O WINS THE GAME!";
-  tft.drawString(winnerText, screen_width / 2, 80);
-
-  // Display final score
-  tft.setTextSize(3);
-  tft.drawString("FINAL SCORE", screen_width / 2, 130);
-
-  // Draw score display
-  int scoreYPos = 180;
-  int xPos1 = screen_width / 2 - 80;
-  int xPos2 = screen_width / 2 + 80;
-
-  // X score
-  tft.setTextSize(5);
-  tft.drawString("X", xPos1, scoreYPos);
-  tft.drawString(String(xWins), xPos1, scoreYPos + 50);
-
-  // Divider
-  tft.drawString("-", screen_width / 2, scoreYPos);
-
-  // O score
-  tft.drawString("O", xPos2, scoreYPos);
-  tft.drawString(String(oWins), xPos2, scoreYPos + 50);
-
-  // Instructions to continue
-  tft.setTextSize(2);
-  tft.drawString("Return to menu", screen_width / 2, 280);
-
-  // Draw trophy next to winner's symbol
-  if (xWins > oWins) {
-    // Draw small graphic for winner (could use a custom trophy JPG if
-    // available)
-    tft.fillTriangle(xPos1 - 40, scoreYPos, xPos1 - 60, scoreYPos + 20,
-                     xPos1 - 20, scoreYPos + 20, TFT_YELLOW);
-  } else {
-    // Draw small graphic for winner
-    tft.fillTriangle(xPos2 + 40, scoreYPos, xPos2 + 60, scoreYPos + 20,
-                     xPos2 + 20, scoreYPos + 20, TFT_YELLOW);
-  }
-}
-
 // ========== Draw HomeScreen ========== //
 void drawHomeScreen() {
 
@@ -1302,21 +1251,6 @@ String generateTicTacToeStateString() {
   return state;
 }
 
-// ========== Helper: Split String ========== //
-std::vector<String> split(const String &s, char delimiter) {
-  std::vector<String> result;
-  int start = 0;
-  int end = s.indexOf(delimiter);
-
-  while (end != -1) {
-    result.push_back(s.substring(start, end));
-    start = end + 1;
-    end = s.indexOf(delimiter, start);
-  }
-  result.push_back(s.substring(start));
-  return result;
-}
-
 // ========== Reads Tic Tac Toe State String ==========
 void readTicTacToeString(String oldState, const char *data) {
   String input = String(data);
@@ -1450,6 +1384,21 @@ void readTicTacToeString(String oldState, const char *data) {
     Serial.printf("Move %d: %c at %d\n", k, moveQueue[k].symbol,
                   moveQueue[k].index);
   }
+}
+
+// ========== Helper: Split String ========== //
+std::vector<String> split(const String &s, char delimiter) {
+  std::vector<String> result;
+  int start = 0;
+  int end = s.indexOf(delimiter);
+
+  while (end != -1) {
+    result.push_back(s.substring(start, end));
+    start = end + 1;
+    end = s.indexOf(delimiter, start);
+  }
+  result.push_back(s.substring(start));
+  return result;
 }
 
 // ========== Format Name ========== //
