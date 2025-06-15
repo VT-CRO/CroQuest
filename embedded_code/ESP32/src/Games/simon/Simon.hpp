@@ -25,6 +25,7 @@ enum SimonState {
   SIMON_STATE_WATCH,
   SIMON_STATE_PLAY,
   SIMON_MULTIPLAYER_PLAYING,
+  SIMON_START_GAME,
 };
 
 // Button identifiers

@@ -46,12 +46,20 @@ public:
   // ###################### Send Messages (not array) #####################
   bool sendMessage(const std::string &msg);
   bool sendMessagePong(const std::string &msg);
-
+  bool sendExit();
   // ###################### Read Messages #####################
   std::string readMessage();
 
   // ###################### Get Connected Clients #####################
   const std::vector<NimBLEClient *> &getConnectedClients() const;
+
+  class MyClientCallbacks : public NimBLEClientCallbacks {
+  public: 
+    void onDisconnect(NimBLEClient *client, int reason) override;
+    bool intentionalExit = false;
+  };
+
+  MyClientCallbacks * callbacks = nullptr;
 
 private:
   std::string latestMessage = ""; // Latest message sent

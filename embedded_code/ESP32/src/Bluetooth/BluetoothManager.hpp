@@ -36,6 +36,6 @@ static bool getPeripheralActive();
 void stopScan();
 
 // =========== Reset Bluetooth ============ //
-void reset();
+void reset(bool exitToMenu = true);
 
 } // namespace BluetoothManager

@@ -36,18 +36,9 @@ public:
 
   // ###################### Send Messages #####################
   void sendMessage(const std::string &message); // Alias to sendAction
+  void sendExit(); // Sends exit message
 
   NimBLEServer *server = nullptr;
-private:
-  TFT_eSPI &tft;
-  NimBLECharacteristic *characteristic = nullptr;
-  NimBLEAdvertising *advertising = nullptr;
-  std::string accessCode;
-
-  std::string lastHostMessage = "";
-  std::string lastReply = "";
-
-  std::function<std::string(const std::string &)> responseHandler;
 
   // ####################################################################################################
   //  Server Callbacks
@@ -62,14 +53,29 @@ private:
     // ###################### Disconnect #####################
     void onDisconnect(NimBLEServer *pServer, NimBLEConnInfo &connInfo,
                       int reason) override;
-
+    bool intentionalExit = false;
   private:
     BluetoothPeripheral *parent;
   };
 
+  ServerCallbacks * callbackServer = nullptr;
+private:
+  TFT_eSPI &tft;
+  NimBLECharacteristic *characteristic = nullptr;
+  NimBLEAdvertising *advertising = nullptr;
+  std::string accessCode;
+
+  std::string lastHostMessage = "";
+  std::string lastReply = "";
+
+  std::function<std::string(const std::string &)> responseHandler;
+
   class CharacteristicCallbacks : public NimBLECharacteristicCallbacks {
   public:
+    CharacteristicCallbacks(ServerCallbacks * server) : server(server){}
     void onWrite(NimBLECharacteristic *pCharacteristic,
-                 NimBLEConnInfo &connInfo) override;
+      NimBLEConnInfo &connInfo) override;
+  private:
+    ServerCallbacks * server;
   };
 };

@@ -93,7 +93,7 @@ struct SimonPlayer {
   int id;                 // Unique identifier
   String name = "";       // Display name of the player
   int score = 0;          // Current score
-  String status = "idle"; // e.g., "idle", "ready", "playing", "eliminated"
+  String status = "idle"; // e.g., "idle", "ready", "eliminated"
   SimonPlayer(int id_, const String &name_, int score_, const String &status_)
       : id(id_), name(name_), score(score_), status(status_) {}
 };
@@ -103,7 +103,7 @@ static SimonPlayer currentPlayer =
     SimonPlayer(atoi(generate6DigitCode().c_str()), String(settings.name), 0,
                 String("idle"));
 std::vector<SimonPlayer> simonPlayers;
-static String multiplayerMode = "NONE";
+static String multiplayerMode = "SINGLE";
 static bool update = false;
 
 // ======================== Game Entry ========================
@@ -147,7 +147,7 @@ void runSimon() {
                               String(settings.name), 0, String("idle"));
   update = false;
   // reset multiplayer flag
-  multiplayerMode = "NONE";
+  multiplayerMode = "SINGLE";
   code_entered = false;
 
   simonPlayers.clear();
@@ -268,7 +268,8 @@ void handleSimonFrame() {
                 generateSimonString("full").c_str());
             multiplayer = true;
 
-            simonStartNewGame(); // Start a new game
+            // simonStartNewGame(); // Start a new game
+            simon_game_state = SIMON_START_GAME;
 
           } else {
             simon_game_state = SIMON_MULTIPLAYER_SELECTION;
@@ -334,6 +335,11 @@ void handleSimonFrame() {
       playerScores.push_back(p.score);
     }
 
+    // resets the score
+    for(auto &p : simonPlayers){
+      p.score = 0;
+    }
+
     // The index of the current player (used to identify the player)
     int index = -1;
     for(size_t i = 0; i < simonPlayers.size(); i++){
@@ -348,15 +354,49 @@ void handleSimonFrame() {
                         playerScore, index);
 
     if (endScreen.handleUserInput()) {
-      // resets the score
-      for(auto &p : simonPlayers){
-        p.score = 0;
+
+      if(strcmp(multiplayerMode.c_str(), "PERIPHERAL") == 0){
+        currentPlayer.status = "ready";
+        // modify the vector as well
+        for(auto &p : simonPlayers){
+          if(p.id == currentPlayer.id){
+            p.status = "ready";
+          }
+        }
+        BluetoothManager::getPeripheral().sendAction(
+          generateSimonString(String("status")).c_str());
+      }else if(strcmp(multiplayerMode.c_str(), "HOST") == 0){
+        currentPlayer.status = "ready";
+        // modify the vector as well
+        for(auto &p : simonPlayers){
+          if(p.id == currentPlayer.id){
+            p.status = "ready";
+          }
+        }
+        BluetoothManager::getCentral().sendMessage(
+                  generateSimonString("full").c_str());
+
       }
-      simonStartNewGame(); // handleUserInput returns true : game restarts
+
+      for(auto &p : simonPlayers){
+        if(strcmp(p.status.c_str(), "ready") != 0){
+          //Intermediary screen
+          tft.fillScreen(TFT_BLACK);
+          tft.setTextDatum(MC_DATUM);
+          tft.setTextColor(TFT_WHITE);
+          tft.drawString("WAITING FOR OTHER PLAYER...", tft.width()/2, tft.height()/2);
+          tft.setTextDatum(TL_DATUM);
+          break;
+        }
+      }
+
+
+      simon_game_state = SIMON_START_GAME; // handleUserInput returns true : game restarts
     } else {
       if (endScreen.exit) { // exit to menu
         return;
       }
+      BluetoothManager::reset(false);
       simon_game_state = SIMON_HOMESCREEN;
       drawSimonHomeScreen(); // handleUserInput returns false : returns to game
                              // menu
@@ -371,7 +411,7 @@ void handleSimonFrame() {
     }
     break;
 
-  case SIMON_BLUETOOTH_NUMPAD:
+  case SIMON_BLUETOOTH_NUMPAD:{
     pad.handleButtonInput(&lastButtonPressTime, buttonDebounceDelay / 2);
     std::string enteredCode = pad.getCode();
 
@@ -401,12 +441,34 @@ void handleSimonFrame() {
     
             BluetoothManager::getPeripheral().sendAction(ready.c_str());
             code_entered = false;
-            simonStartNewGame();
+            simon_game_state = SIMON_START_GAME;
           }
           
         }
     }
     break;
+  }
+
+    case SIMON_START_GAME:
+      if(strcmp(multiplayerMode.c_str(), "HOST") == 0){
+        for(auto &p : simonPlayers){
+            if(strcmp(p.status.c_str(), "ready") != 0){
+              return;
+            }
+        }
+        // Send the player data to the peripheral
+        BluetoothManager::getCentral().sendMessage(
+                  generateSimonString("full").c_str());
+      }
+      else if(strcmp(multiplayerMode.c_str(), "PERIPHERAL") == 0){
+        for(auto &p : simonPlayers){
+          if(strcmp(p.status.c_str(), "ready") != 0){
+            return;
+          }
+        }
+      }
+      simonStartNewGame();
+      break;
   }
 }
 
@@ -492,12 +554,22 @@ void simonCheckInput(int buttonPressed) {
     // Send eliminated status
     if (strcmp(multiplayerMode.c_str(), "PERIPHERAL") == 0) {
       currentPlayer.status = "eliminated";
+      // Also modify the vector
+      // Game ends when either player messes up
+      for(auto &p : simonPlayers){
+          p.status = "eliminated";
+      }
       BluetoothManager::getPeripheral().sendAction(
           generateSimonString(String("status")).c_str());
     }
 
-    if (strcmp(multiplayerMode.c_str(), "HOST") == 0) {
+    else if (strcmp(multiplayerMode.c_str(), "HOST") == 0) {
       currentPlayer.status = "eliminated";
+      // Also modify the vector
+      // Game ends when either player messes up
+      for(auto &p : simonPlayers){
+        p.status = "eliminated";
+      }
       BluetoothManager::getCentral().sendMessage(
           generateSimonString("status").c_str());
     }
@@ -725,7 +797,7 @@ void drawSimonTriangleOverlay(int buttonId) {
 }
 
 void drawPlayerStatusTable() {
-  if (multiplayerMode.equals("SINGLE") || multiplayerMode.equals("NONE")) {
+  if (multiplayerMode.equals("SINGLE")) {
     const int startX = SCREEN_WIDTH - 160; // "-" Move more to the left
     const int startY = 20;
     const int nameHeight = 20;
@@ -1033,6 +1105,9 @@ void readSimonString(String oldState, const char *data) {
 
 // ========== Elimination Status ========== //
 void onSimonEliminationReceived() {
+  for(auto &p : simonPlayers){
+    p.status = "eliminated";
+  }
   Serial.println(
       "🚨 Remote elimination detected. Ending game for this device.");
   simon_game_state = SIMON_GAMEOVER_SCREEN;

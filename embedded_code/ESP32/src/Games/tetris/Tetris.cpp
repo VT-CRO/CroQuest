@@ -505,6 +505,7 @@ static void clearRow() {
   int cleared[4] = {0, 0, 0, 0}; // 0 == false (no rows cleared)
 
   for (int y = 0; y < 4; y++) {
+    if (currentPiece.y + y < 0 || currentPiece.y + y >= GRID_HEIGHT) continue;
     bool clear = true;
     for (int x = 0; x < GRID_WIDTH; x++) {
       if (grid[currentPiece.y + y][x] == 0) {
