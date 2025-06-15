@@ -19,10 +19,7 @@ const int SCREEN_WIDTH = 480;
 #define BALL_HEIGHT 11
 #define BALL_WIDTH 11
 #define MAX_BALL_SPEED_Y 3.0
-#define MAX_BALL_SPEED_X 10
-
-#define NUM_PAD_LENGTH 4
-#define NUM_PAD_WIDTH 3
+#define MAX_BALL_SPEED_X 9.5
 
 // The three paddle walls used in
 // collision detection
@@ -85,19 +82,14 @@ void initialize_game(Ball *ball, Paddle *paddles, int *level) {
   // Simple direction picker
   if (random() % 2 == 0) {
     // Right direction
-    dx = 4;
+    dx = dx * -1;
     if (random() % 2 == 0) {
-      dy = 4;
-    } else {
-      dy = -4;
+      dy = dy * -1;
     }
   } else {
     // Left direction
-    dx = -4;
     if (random() % 2 == 0) {
-      dy = 4;
-    } else {
-      dx = -4;
+      dy = dy * -1;
     }
   }
 

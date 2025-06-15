@@ -45,6 +45,7 @@ public:
 
   // ###################### Send Messages (not array) #####################
   bool sendMessage(const std::string &msg);
+  bool sendMessagePong(const std::string &msg);
 
   // ###################### Read Messages #####################
   std::string readMessage();

@@ -25,7 +25,7 @@ static int consecutiveWins = 0;
 
 // Multiplayer
 static bool firstFrame = true;
-static bool multiplayerMode = false;
+bool is_multiplayer_pong = false;
 static int player_paddle = 1; // or 0, depending on who the human is
 
 // Declare but do NOT define (no initializer)
@@ -55,7 +55,14 @@ static int prev_pos_x = 0, prev_pos_y = 0;
 
 // Frame rate control variables
 static unsigned long previousMillis = 0;
-static const int targetFPS = 60; // Set your desired frame rate
+static unsigned long previousMillisMultiplayer = 0;
+// Normal game can have a higher FPS
+static const int targetFPS = 60;
+// Bluetooth connection will add latency, thus FPS must be lower
+static const int targetFPSMultiplayer = 20;
+static const unsigned long frameTimeMultiplayer =
+    1000 / targetFPSMultiplayer; // Time per frame in milliseconds
+
 static const unsigned long frameTime =
     1000 / targetFPS; // Time per frame in milliseconds
 static unsigned long currentFPS = 0;
@@ -207,6 +214,8 @@ void handlePongFrame() {
       frameCount = 0;
       fpsUpdateTime = currentMillis;
     }
+    Serial.println("Current FPS");
+    Serial.println(currentFPS);
 
     // ================== HOMESCREEN State =================== //
     if (current_state == STATE_HOMESCREEN) {
@@ -217,7 +226,7 @@ void handlePongFrame() {
 
             // SINGLE PLAYER
             resetMultiplayerState(true);
-            multiplayerMode = false;
+            is_multiplayer_pong = false;
             player_paddle = 1; // Player on the right
 
             // clear scores and paddle states
@@ -242,7 +251,7 @@ void handlePongFrame() {
 
             // MULTIPLAYER MENU
             resetMultiplayerState(true);
-            multiplayerMode = true;
+            is_multiplayer_pong = true;
             current_state = MULTIPLAYER_SELECTION;
             drawHomeSelection();
           }
@@ -317,7 +326,7 @@ void handlePongFrame() {
 
       // ============== SINGLE PLAYER ================= //
       // AI logic
-      if (!multiplayerMode) {
+      if (!is_multiplayer_pong) {
         ai_paddle(&paddles[0], &ball, level); // AI controls left paddle
       }
 
@@ -342,7 +351,7 @@ void handlePongFrame() {
       if (score0 >= GAME_WON || score1 >= GAME_WON) {
 
         // ================= Badge Unlock Logic =================
-        if (!multiplayerMode) {
+        if (!is_multiplayer_pong) {
           bool playerWon =
               score1 >= GAME_WON; // assuming player is on the right
           bool aiWon = score0 >= GAME_WON;
@@ -428,7 +437,7 @@ void handlePongFrame() {
 
             central.scanAndConnectLoop(code);
 
-            multiplayerMode = true;
+            is_multiplayer_pong = true;
 
             if (!central.getConnectedClients().empty()) {
               initialize_game(&ball, paddles, &level);
@@ -471,11 +480,98 @@ void handlePongFrame() {
         lastMoveTime = millis();
       }
     }
+    // ================== BLUETOOTH_NUMPAD State =================== //
+    else if (current_state == BLUETOOTH_NUMPAD) {
+      pad.handleButtonInput(&lastMoveTime, moveDelay);
 
-    else if (current_state == MULTIPLAYER_PLAYING ||
+      std::string enteredCode = pad.getCode();
+      if (enteredCode.length() == 6 && pad.wasEnterPressed()) {
+        current_state = MULTIPLAYER_PLAYING;
+
+        // JOIN = PERIPHERAL
+        BluetoothManager::initPeripheral(tft);
+        BluetoothPeripheral &peripheral = BluetoothManager::getPeripheral();
+        peripheral.beginAdvertising(enteredCode);
+        localPlayerSymbol = 'O';
+
+        initialize_game(&ball, paddles, &level);
+
+        pad.clearCode();
+      }
+
+      // ================== GAME OVER STATE =================== //
+    }
+
+    // ================== GAME OVER STATE =================== //
+    else if (current_state == STATE_GAMEOVER) {
+      String localName = settings.name;
+      int localScore = (is_multiplayer_pong)
+                           ? ((prev_state == HOST_SCREEN) ? score0 : score1)
+                           : score1;
+
+      std::vector<String> playerNames;
+      if (is_multiplayer_pong) {
+        if (prev_state == HOST_SCREEN) {
+          playerNames = {localName, "Player 2"};
+        } else {
+          playerNames = {"Player 1", localName};
+        }
+      } else {
+        playerNames = {"AI", localName};
+      }
+
+      std::vector<int> playerScores = {score0, score1};
+
+      char localNameBuffer[6];
+      localName.toCharArray(localNameBuffer, sizeof(localNameBuffer));
+
+      EndScreen endScreen(playerNames, playerScores, is_multiplayer_pong,
+                          localNameBuffer, localScore);
+
+      bool restart = endScreen.handleUserInput();
+
+      if (restart) {
+        score0 = 0;
+        score1 = 0;
+        prev_score0 = -1;
+        prev_score1 = -1;
+        game_initialized = false;
+        firstFrame = true;
+
+        memset(&ball, 0, sizeof(ball));
+        memset(paddles, 0, sizeof(paddles));
+        memset(prev_paddles, 0, sizeof(prev_paddles));
+
+        if (is_multiplayer_pong) {
+          current_state =
+              (prev_state == HOST_SCREEN) ? HOST_SCREEN : MULTIPLAYER_PLAYING;
+        } else {
+          current_state = STATE_PLAYING;
+        }
+
+        tft.fillScreen(TFT_BLACK);
+      } else if (endScreen.exit) {
+        BluetoothManager::reset();
+        return;
+      } else {
+        current_state = STATE_HOMESCREEN;
+        first_home_draw = true;
+        drawHomeScreen();
+      }
+    }
+  }
+
+  // ############## MULTIPLAYER CODE ######################
+  unsigned long currentMillisMultiplayer = millis();
+  unsigned long elapsedMillisMultiplayer = currentMillisMultiplayer - previousMillisMultiplayer;
+  if (elapsedMillisMultiplayer >= frameTimeMultiplayer) {
+    previousMillisMultiplayer = currentMillisMultiplayer;
+
+    if (current_state == MULTIPLAYER_PLAYING ||
              current_state == HOST_SCREEN) {
+      
+      // Initializes the game
       if (firstFrame) {
-        // Initializes the game
         initialize_game(&ball, paddles, &level);
         // Initializes prev_ball
         prev_ball.x = ball.x;
@@ -504,12 +600,14 @@ void handlePongFrame() {
         firstFrame = false;
       }
 
+      // Handles both the host and peripheral logic
       if (current_state == HOST_SCREEN) {
         handleHostLogic();
       } else {
         handlePeripheralLogic();
       }
 
+      // Checks if the game has been won
       if (checkWinCondition()) {
         current_state = STATE_GAMEOVER;
         prev_state = current_state;
@@ -519,88 +617,10 @@ void handlePongFrame() {
         return;
       }
 
+      // Draws the game state
       drawGameState();
     }
-
-    // ================== BLUETOOTH_NUMPAD State =================== //
-    else if (current_state == BLUETOOTH_NUMPAD) {
-      pad.handleButtonInput(&lastMoveTime, moveDelay);
-
-      std::string enteredCode = pad.getCode();
-      if (enteredCode.length() == 6 && pad.wasEnterPressed()) {
-        current_state = MULTIPLAYER_PLAYING;
-
-        // JOIN = PERIPHERAL
-        BluetoothManager::initPeripheral(tft);
-        BluetoothPeripheral &peripheral = BluetoothManager::getPeripheral();
-        peripheral.beginAdvertising(enteredCode);
-        localPlayerSymbol = 'O';
-
-        initialize_game(&ball, paddles, &level);
-
-        pad.clearCode();
-      }
-
-      // ================== GAME OVER STATE =================== //
-    }
-
-    // ================== GAME OVER STATE =================== //
-    else if (current_state == STATE_GAMEOVER) {
-      String localName = settings.name;
-      int localScore = (multiplayerMode)
-                           ? ((prev_state == HOST_SCREEN) ? score0 : score1)
-                           : score1;
-
-      std::vector<String> playerNames;
-      if (multiplayerMode) {
-        if (prev_state == HOST_SCREEN) {
-          playerNames = {localName, "Player 2"};
-        } else {
-          playerNames = {"Player 1", localName};
-        }
-      } else {
-        playerNames = {"AI", localName};
-      }
-
-      std::vector<int> playerScores = {score0, score1};
-
-      char localNameBuffer[6];
-      localName.toCharArray(localNameBuffer, sizeof(localNameBuffer));
-
-      EndScreen endScreen(playerNames, playerScores, multiplayerMode,
-                          localNameBuffer, localScore);
-
-      bool restart = endScreen.handleUserInput();
-
-      if (restart) {
-        score0 = 0;
-        score1 = 0;
-        prev_score0 = -1;
-        prev_score1 = -1;
-        game_initialized = false;
-        firstFrame = true;
-
-        memset(&ball, 0, sizeof(ball));
-        memset(paddles, 0, sizeof(paddles));
-        memset(prev_paddles, 0, sizeof(prev_paddles));
-
-        if (multiplayerMode) {
-          current_state =
-              (prev_state == HOST_SCREEN) ? HOST_SCREEN : MULTIPLAYER_PLAYING;
-        } else {
-          current_state = STATE_PLAYING;
-        }
-
-        tft.fillScreen(TFT_BLACK);
-      } else if (endScreen.exit) {
-        BluetoothManager::reset();
-        return;
-      } else {
-        current_state = STATE_HOMESCREEN;
-        first_home_draw = true;
-        drawHomeScreen();
-      }
-    }
+    // Multiplayer Code
   }
 }
 
@@ -620,7 +640,7 @@ void updateFPS() {
 
 // ========== Reset Multiplayer Values ========== //
 void resetMultiplayerState(bool fullReset) {
-  multiplayerMode = false;
+  is_multiplayer_pong = false;
   localPlayerSide = ' '; // or 0/1 if using int instead of char
   player_paddle = 1;     // Default paddle side for single-player
   // if (fullReset) {
@@ -925,14 +945,27 @@ void handleHostLogic() {
 
   if (up.isPressed()) {
     updatePaddle(true, &paddles[0]);
+    updatePaddle(true, &paddles[0]);
+    updatePaddle(true, &paddles[0]);
     prev_paddles[0].paddle_mod = true;
   } else if (down.isPressed()) {
+    updatePaddle(false, &paddles[0]);
+    updatePaddle(false, &paddles[0]);
     updatePaddle(false, &paddles[0]);
     prev_paddles[0].paddle_mod = true;
   }
 
   prev_ball.x = ball.x;
   prev_ball.y = ball.y;
+  updateBall(&ball, paddles, &level, &score0, &score1);
+
+  // Store temp / intermediary values
+  Ball middlePrev = prev_ball;
+  Ball middleBall = ball;
+
+  prev_ball.x = ball.x;
+  prev_ball.y = ball.y;
+
   updateBall(&ball, paddles, &level, &score0, &score1);
 
   // Checks if the paddle positions have been modified
@@ -946,7 +979,12 @@ void handleHostLogic() {
   char state[64];
   sprintf(state, "@pong@state@%d,%d,%d,%.1f,%.1f", paddles[0].y, score0, score1,
           ball.x, ball.y);
-  central.sendMessage(state);
+  central.sendMessagePong(state);
+
+  //Draw that intermediary ball
+  eraseBall(&middlePrev);
+  drawBall(&middleBall);
+  delay(10);
 }
 
 void handlePeripheralLogic() {
@@ -967,7 +1005,8 @@ void handlePeripheralLogic() {
     if (score0 != s0 || score1 != s1) {
       initialize_game(&ball, paddles, &level);
     }
-
+    ball.x = prev_ball.x + ((bx - prev_ball.x)/2);
+    ball.y = prev_ball.y + ((by - prev_ball.y)/2);
     paddles[0].y = y0;
     score0 = s0;
     score1 = s1;
@@ -975,37 +1014,16 @@ void handlePeripheralLogic() {
     prev_paddles[0].paddle_mod = true;
     prev_paddles[1].paddle_mod = true;
 
-    ball.x = prev_ball.x + ((bx - prev_ball.x) * (1.0/4));
-    ball.y = prev_ball.y + ((by - prev_ball.y) * (1.0/4));
-
-
     eraseBall(&prev_ball);
     drawBall(&ball);
 
-    prev_ball.x = ball.x;
-    prev_ball.y = ball.y;
-
-    ball.x = prev_ball.x + ((bx - prev_ball.x) * (2.0/4));
-    ball.y = prev_ball.y + ((by - prev_ball.y) * (2.0/4));
-
-    eraseBall(&prev_ball);
-    drawBall(&ball);
-
-    prev_ball.x = ball.x;
-    prev_ball.y = ball.y;
-
-    ball.x = prev_ball.x + ((bx - prev_ball.x) * (3.0/4));
-    ball.y = prev_ball.y + ((by - prev_ball.y) * (3.0/4));
-
-    eraseBall(&prev_ball);
-    drawBall(&ball);
+    delay(10);
 
     prev_ball.x = ball.x;
     prev_ball.y = ball.y;
 
     ball.x = bx;
     ball.y = by;
-
   }
 
   // ========== 2. Handle Paddle Movement ==========
@@ -1013,9 +1031,13 @@ void handlePeripheralLogic() {
 
   if (up.isPressed()) {
     updatePaddle(true, &paddles[1]);
+    updatePaddle(true, &paddles[1]);
+    updatePaddle(true, &paddles[1]);
     prev_paddles[1].paddle_mod = true;
     moved = true;
   } else if (down.isPressed()) {
+    updatePaddle(false, &paddles[1]);
+    updatePaddle(false, &paddles[1]);
     updatePaddle(false, &paddles[1]);
     prev_paddles[1].paddle_mod = true;
     moved = true;

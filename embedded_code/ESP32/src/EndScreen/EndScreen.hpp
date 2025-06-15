@@ -27,6 +27,15 @@ public:
     exit = false;
   }
 
+  
+  // Overloaded Constructor, used for games w/ ties
+  EndScreen(std::vector<String> &names, std::vector<int> &scores,
+            bool multiplayer, char *playerName, int score, int index)
+      : playerNames(names), playerScores(scores), multiplayer(multiplayer),
+        playerName(playerName), score(score), index(index) {
+    exit = false;
+  }
+
 private:
   enum State { SCORE_BOARD, ENDSCREEN };
   State currentState = SCORE_BOARD;
@@ -37,6 +46,7 @@ private:
   std::vector<int> &playerScores;
   char *playerName;
   int score;
+  int index = -1;
 
   // ========== Draw Seleciton Buttons ========== //
   void drawingSelections(uint16_t bgcolor);

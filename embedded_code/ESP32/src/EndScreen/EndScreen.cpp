@@ -146,10 +146,22 @@ void EndScreen::scoreBoardScreen() {
     String displayName = playerNames[i];
 
     // If it's the local user, format name and add (you)
-    if (playerNames[i] == settings.name) {
-      displayName.toLowerCase();
-      displayName[0] = toupper(displayName[0]);
-      displayName += "   (You)";
+    if (playerNames[i] == settings.name && playerScores[i] == score) {
+      // Some of the games never have ties, so it's still useful to have the 
+      // default "else" statement
+      if(index != -1){
+        // Makes sure the proper player is labeled (When there is a possibility for players
+        // to tie, they may have the same name, thus name and score aren't enough)
+        if(i == index){
+          displayName.toLowerCase();
+          displayName[0] = toupper(displayName[0]);
+          displayName += "   (You)";
+        }
+      }else{
+        displayName.toLowerCase();
+        displayName[0] = toupper(displayName[0]);
+        displayName += "   (You)";
+      }
     } else {
       displayName.toLowerCase();
       displayName[0] = toupper(displayName[0]);
