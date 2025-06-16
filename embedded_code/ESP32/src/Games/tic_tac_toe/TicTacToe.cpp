@@ -84,6 +84,7 @@ unsigned long winTime = 0;
 
 // Game State
 State game_state = HOMESCREEN;
+State prev_game_state = HOMESCREEN;
 int selection = 0;
 int subselection = 0;
 const unsigned long moveDelay = 100;
@@ -117,6 +118,7 @@ void runTicTacToe() {
 
   resetExitFlag(); // Resets flag for Main Menu
   game_state = HOMESCREEN;
+  prev_game_state = HOMESCREEN;
 
   tft.fillScreen(orange_color);
 
@@ -438,6 +440,7 @@ void handleTicTacToeFrame() {
       drawAllPlaying();
 
     } else if (xWins >= 2 || oWins >= 2) {
+      prev_game_state = game_state;
       game_state = GAMEOVER_SCREEN;
       resetBoardState(true);
     }
@@ -633,7 +636,13 @@ void handleTicTacToeFrame() {
       winner = 'N';
       winCombo[0] = winCombo[1] = winCombo[2] = -1;
 
-      game_state = multiplayer ? MULTIPLAYER_PLAYING : SINGLE_PLAYER;
+      if(multiplayer){
+        game_state = prev_game_state;
+      }else{
+        game_state = SINGLE_PLAYER;
+      }
+
+      prev_game_state = game_state;
 
       // ==== Immediately redraw everything like the start of a game ====
       drawGrid();
@@ -651,6 +660,8 @@ void handleTicTacToeFrame() {
     // Exit to game menu
     xWins = 0;
     oWins = 0;
+
+    BluetoothManager::reset(false);
 
     selection = 0;
     subselection = 0;

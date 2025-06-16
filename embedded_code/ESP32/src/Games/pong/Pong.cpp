@@ -134,6 +134,8 @@ void runPong() {
   buttonAPressed = false;
   buttonBPressed = false;
   firstFrame = true;
+  localPlayerSide = ' ';
+  localPlayerSymbol = ' ';
 
   // clear sprite and cache
   drawing.clearCache();
@@ -486,16 +488,18 @@ void handlePongFrame() {
 
       std::string enteredCode = pad.getCode();
       if (enteredCode.length() == 6 && pad.wasEnterPressed()) {
-        current_state = MULTIPLAYER_PLAYING;
-
         // JOIN = PERIPHERAL
         BluetoothManager::initPeripheral(tft);
         BluetoothPeripheral &peripheral = BluetoothManager::getPeripheral();
         peripheral.beginAdvertising(enteredCode);
         localPlayerSymbol = 'O';
 
+        if(!peripheral.sendAction("testing")){
+          pad.clearCode();
+          return;
+        }
+        current_state = MULTIPLAYER_PLAYING;
         initialize_game(&ball, paddles, &level);
-
         pad.clearCode();
       }
 
@@ -538,10 +542,6 @@ void handlePongFrame() {
         game_initialized = false;
         firstFrame = true;
 
-        memset(&ball, 0, sizeof(ball));
-        memset(paddles, 0, sizeof(paddles));
-        memset(prev_paddles, 0, sizeof(prev_paddles));
-
         if (is_multiplayer_pong) {
           current_state =
               (prev_state == HOST_SCREEN) ? HOST_SCREEN : MULTIPLAYER_PLAYING;
@@ -554,6 +554,13 @@ void handlePongFrame() {
         BluetoothManager::reset();
         return;
       } else {
+        BluetoothManager::reset(false);
+        score0 = 0;
+        score1 = 0;
+        prev_score0 = -1;
+        prev_score1 = -1;
+        game_initialized = false;
+        firstFrame = true;
         current_state = STATE_HOMESCREEN;
         first_home_draw = true;
         drawHomeScreen();
@@ -984,13 +991,29 @@ void handleHostLogic() {
   //Draw that intermediary ball
   eraseBall(&middlePrev);
   drawBall(&middleBall);
-  delay(10);
 }
 
 void handlePeripheralLogic() {
   BluetoothPeripheral &peripheral = BluetoothManager::getPeripheral();
 
-  // ========== 1. Apply New State from Host ==========
+  // ========== 1. Handle Paddle Movement ==========
+  bool moved = false;
+
+  if (up.isPressed()) {
+    updatePaddle(true, &paddles[1]);
+    updatePaddle(true, &paddles[1]);
+    updatePaddle(true, &paddles[1]);
+    prev_paddles[1].paddle_mod = true;
+    moved = true;
+  } else if (down.isPressed()) {
+    updatePaddle(false, &paddles[1]);
+    updatePaddle(false, &paddles[1]);
+    updatePaddle(false, &paddles[1]);
+    prev_paddles[1].paddle_mod = true;
+    moved = true;
+  }
+
+  // ========== 2. Apply New State from Host ==========
   if (hasNewPongState) {
     hasNewPongState = false;
 
@@ -1017,30 +1040,11 @@ void handlePeripheralLogic() {
     eraseBall(&prev_ball);
     drawBall(&ball);
 
-    delay(10);
-
     prev_ball.x = ball.x;
     prev_ball.y = ball.y;
 
     ball.x = bx;
     ball.y = by;
-  }
-
-  // ========== 2. Handle Paddle Movement ==========
-  bool moved = false;
-
-  if (up.isPressed()) {
-    updatePaddle(true, &paddles[1]);
-    updatePaddle(true, &paddles[1]);
-    updatePaddle(true, &paddles[1]);
-    prev_paddles[1].paddle_mod = true;
-    moved = true;
-  } else if (down.isPressed()) {
-    updatePaddle(false, &paddles[1]);
-    updatePaddle(false, &paddles[1]);
-    updatePaddle(false, &paddles[1]);
-    prev_paddles[1].paddle_mod = true;
-    moved = true;
   }
 
   // Throttle message send to avoid BLE congestion

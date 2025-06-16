@@ -47,13 +47,14 @@ void BluetoothPeripheral::beginAdvertising(const std::string &code) {
   Serial.println("🔧 NimBLE initialized");
 
   server = NimBLEDevice::createServer();
-  server->setCallbacks(new ServerCallbacks(this));
+  callbackServer = new ServerCallbacks(this);
+  server->setCallbacks(callbackServer);
 
   NimBLEService *service = server->createService(SERVICE_UUID);
   characteristic = service->createCharacteristic(
       CHARACTERISTIC_UUID,
       NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::NOTIFY);
-  characteristic->setCallbacks(new CharacteristicCallbacks());
+  characteristic->setCallbacks(new CharacteristicCallbacks(callbackServer));
   service->start();
 
   advertising = NimBLEDevice::getAdvertising();
@@ -145,7 +146,11 @@ void BluetoothPeripheral::ServerCallbacks::onDisconnect(
 
   delay(1000); // Optional: brief pause before returning
 
-  shouldExitToMenu = true; // Triggers exit in runTicTacToe()
+  if(!intentionalExit){
+    shouldExitToMenu = true; // Triggers return to menu
+  }
+
+  intentionalExit = false;
 
   if (parent->advertising) {
     parent->advertising->start(); // Optional: resume advertising if desired
@@ -208,6 +213,20 @@ void BluetoothPeripheral::sendMessage(const std::string &message) {
   characteristic->notify();
 }
 
+void BluetoothPeripheral::sendExit() {
+  if(callbackServer){
+    callbackServer->intentionalExit = true;
+  }
+
+  if (!characteristic) {
+    Serial.println("❌ No characteristic available");
+    return;
+  }
+  std::string message = "exit";
+  characteristic->setValue((uint8_t *)message.data(), message.size());
+  characteristic->notify();
+}
+
 void BluetoothPeripheral::CharacteristicCallbacks::onWrite(
     NimBLECharacteristic *pCharacteristic, NimBLEConnInfo &connInfo) {
   (void)connInfo; // suppress unused warning if not needed
@@ -229,5 +248,7 @@ void BluetoothPeripheral::CharacteristicCallbacks::onWrite(
   } else if (val.rfind("c4@", 0) == 0) {
     readConnect4String("", val.c_str()); // Apply
     connect4StateChanged = true;         // Mark for redraw
+  }else if(strcmp(val.c_str(), "exit") == 0){
+      server->intentionalExit = true;
   }
 }

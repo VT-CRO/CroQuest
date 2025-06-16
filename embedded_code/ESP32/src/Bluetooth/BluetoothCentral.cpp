@@ -82,16 +82,17 @@ void BluetoothCentral::scanAndConnectLoop(const std::string &accessCode) {
 }
 
 // ###################### In case of Disconnect #####################
-class MyClientCallbacks : public NimBLEClientCallbacks {
-  void onDisconnect(NimBLEClient *client, int reason) override {
-    Serial.println("🔌 Peripheral disconnected.");
-    ConnectionScreen::showMessage("Peripheral disconnected.");
+void BluetoothCentral::MyClientCallbacks::onDisconnect(NimBLEClient *client, int reason) {
+  Serial.println("🔌 Peripheral disconnected.");
+  ConnectionScreen::showMessage("Peripheral disconnected.");
 
-    delay(1000); // Optional delay to let user see the message
+  delay(1000); // Optional delay to let user see the message
 
-    shouldExitToMenu = true; // Trigger return to home menu
+  if(!intentionalExit){
+    shouldExitToMenu = true; // Triggers return to menu
   }
-};
+  intentionalExit = false;
+}
 
 // ###################### Connect to All Devices #####################
 void BluetoothCentral::connectToDevices() {
@@ -110,7 +111,8 @@ void BluetoothCentral::connectToDevices() {
 
   NimBLEClient *client = NimBLEDevice::createClient();
 
-  client->setClientCallbacks(new MyClientCallbacks());
+  callbacks = new MyClientCallbacks();
+  client->setClientCallbacks(callbacks);
 
   // Try to connect up to 3 times before giving up
   bool connected = false;
@@ -184,7 +186,10 @@ void BluetoothCentral::connectToDevices() {
                 for (auto *client : central.getConnectedClients()) {
                   central.sendToDevice(client, confirmedState.c_str());
                 }
-              } else {
+              }else if (strcmp(msg.c_str(), "exit") == 0){
+                callbacks->intentionalExit = true;
+              }
+               else {
                 Serial.println("⚠️ Unknown message format (notify).");
               }
             });
@@ -304,6 +309,42 @@ bool BluetoothCentral::sendMessage(const std::string &msg) {
     }
 
     try {
+      bool success =
+          characteristic->writeValue((uint8_t *)msg.data(), msg.size(), true);
+      return success;
+    } catch (...) {
+      return false;
+    }
+  }
+
+  // ⚠️ Make sure to return a value here:
+  return true; // or false depending on your logic
+}
+
+bool BluetoothCentral::sendExit() {
+  if(callbacks){
+    callbacks->intentionalExit = true;
+  }
+  
+  if (connectedClients.empty())
+    return false;
+
+  for (auto *client : this->connectedClients) {
+    if (!client || !client->isConnected())
+      return false;
+
+    NimBLERemoteService *service = client->getService(SERVICE_UUID);
+    if (!service)
+      return false;
+
+    NimBLERemoteCharacteristic *characteristic =
+        service->getCharacteristic(CHARACTERISTIC_UUID);
+    if (!characteristic || !characteristic->canWrite()) {
+      return false;
+    }
+
+    try {
+      std::string msg = "exit";
       bool success =
           characteristic->writeValue((uint8_t *)msg.data(), msg.size(), true);
       return success;

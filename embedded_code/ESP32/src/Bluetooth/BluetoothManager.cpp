@@ -78,12 +78,20 @@ void BluetoothManager::stopScan() {
 }
 
 // =========== Reset Bluetooth ============ //
-void BluetoothManager::reset() {
+void BluetoothManager::reset(bool exitToMenu) {
   if (central) {
+    if(!exitToMenu){
+      central->sendExit();
+      delay(100);
+    }
     delete central;
     central = nullptr;
   }
   if (peripheral) {
+    if(!exitToMenu){
+      peripheral->sendExit();
+      delay(100);
+    }
     delete peripheral;
     peripheral = nullptr;
   }
