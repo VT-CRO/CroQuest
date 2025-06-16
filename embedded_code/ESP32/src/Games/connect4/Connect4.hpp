@@ -109,6 +109,9 @@ static void drawAllPlaying();
 // ========== Draw Winner Notification ========== //
 static void drawWinnerMessage();
 
+// ========== Reset and Redraw Full Game UI ========== //
+void redrawFullGameUI();
+
 // ####################################################################################################
 //  Audio Logic
 // ####################################################################################################

@@ -36,6 +36,7 @@ static int cursorIndex = 0;
 // Bluetooth Turns
 static int localPlayerId = 1; // 1 for red, 2 for blue
 
+bool shouldRedrawNextFrame = false;
 bool suppressNextDropAnimation = false;
 static char winner = 'N';
 
@@ -271,11 +272,20 @@ void handleConnect4Frame() {
   // ================== HOST_SCREEN State =================== //
   else if (game_state == HOST_SCREEN) {
 
-    BluetoothCentral &central = BluetoothManager::getCentral();
+    BluetoothManager::getCentral().update();
   }
 
   // ================== MULTIPLAYER_PLAYING State =================== //
   else if (game_state == MULTIPLAYER_PLAYING) {
+
+    if (shouldRedrawNextFrame) {
+      tft.fillScreen(bgColor);
+      drawGrid();
+      drawCursor();
+      drawScorePanel(player1Wins, player2Wins, currentPlayer);
+
+      shouldRedrawNextFrame = false;
+    }
 
     BluetoothManager::getPeripheral().update();
   }
@@ -339,6 +349,14 @@ void handleConnect4Frame() {
 
       suppressNextDropAnimation = false;
       connect4StateChanged = false;
+
+      if (game_state == HOST_SCREEN && roundEnded &&
+          (player1Wins >= 2 || player2Wins >= 2)) {
+        Serial.println("Host: Detected match end from BLE. Showing EndScreen.");
+        delay(1500);
+        game_state = GAMEOVER_SCREEN;
+        return;
+      }
     }
 
     // Turn Indicator
@@ -386,19 +404,36 @@ void handleConnect4Frame() {
         bool didWin = checkWin(currentPlayer);
         bool draw = isBoardFull();
 
+        // Logic for cleaning screen Host & Peripheral
         if (didWin || draw) {
           roundEnded = true;
           winTime = millis();
           winner = didWin ? ((currentPlayer == 1) ? 'R' : 'B') : 'D';
 
+          // Update score
+          if (didWin) {
+            if (currentPlayer == 1) {
+              player1Wins++;
+            } else {
+              player2Wins++;
+            }
+          }
+
           // Send final state with win/draw
           String finalState = generateConnect4StateString();
 
           if (game_state == HOST_SCREEN) {
+            // Send to peripherals
             BluetoothCentral &central = BluetoothManager::getCentral();
             for (auto *client : central.getConnectedClients()) {
               central.sendToDevice(client, finalState.c_str());
             }
+
+            // Host parses its own win state
+            readConnect4String("", finalState.c_str());
+            connect4StateChanged = true;
+            shouldRedrawNextFrame = true;
+
           } else if (game_state == MULTIPLAYER_PLAYING) {
             BluetoothPeripheral &peripheral = BluetoothManager::getPeripheral();
             peripheral.sendAction(finalState.c_str());
@@ -406,6 +441,14 @@ void handleConnect4Frame() {
 
           // Draw after confirming the final state is sent
           drawWinLine(currentPlayer);
+          drawWinnerMessage();
+
+          // Check for match over (best of 3)
+          if (player1Wins >= 2 || player2Wins >= 2) {
+            delay(1500); // optional pause to let win screen display
+            game_state = GAMEOVER_SCREEN;
+            return;
+          }
         }
 
         else {
@@ -455,9 +498,13 @@ void handleConnect4Frame() {
 
     // Auto Restart
     if (roundEnded && millis() - winTime >= 5000) {
+
+      bool wasHost = (game_state == HOST_SCREEN); // capture before changing
+
       if (player1Wins >= 2 || player2Wins >= 2) {
         resetConnect4Board(true);
         game_state = GAMEOVER_SCREEN;
+
       } else {
         // Reset internal game state FIRST
         winner = 'N';
@@ -467,27 +514,38 @@ void handleConnect4Frame() {
         cursorCol = 0;
 
         resetConnect4Board(true);
-        drawAllPlaying();
+        drawCursor();
+        drawScorePanel(player1Wins, player2Wins, currentPlayer);
       }
 
       // === Tell peripheral the new game started ===
-      Serial.println("🔁 Host: Sending NEW ROUND clean state.");
-      String newRoundState = generateConnect4StateString();
+      if (wasHost) {
+        Serial.println("Host: Sending NEW ROUND clean state.");
+        String newRoundState = generateConnect4StateString();
 
-      if (game_state == HOST_SCREEN) {
         BluetoothCentral &central = BluetoothManager::getCentral();
+        central.update();
+
         for (auto *client : central.getConnectedClients()) {
           central.sendToDevice(client, newRoundState.c_str());
         }
+        // Host parses its own win state
+        readConnect4String("", newRoundState.c_str());
+        connect4StateChanged = true;
+        shouldRedrawNextFrame = true;
       }
     }
   }
 
   // ================== SINGLE_PLAYER ================== //
   else if (game_state == SINGLE_PLAYER) {
-    if (firstFrame) {
-      drawAllPlaying();
+
+    if (firstFrame == true) {
+      drawGrid();
+      drawCursor();
+      drawScorePanel(player1Wins, player2Wins, currentPlayer);
       firstFrame = false;
+      return;
     }
 
     // Cursor movement
@@ -585,13 +643,10 @@ void handleConnect4Frame() {
     // ===== Auto Restart ===== //
     if (roundEnded && millis() - winTime >= 5000) {
       if (player1Wins >= 2 || player2Wins >= 2) {
-        game_state = GAMEOVER_SCREEN;
         resetConnect4Board(true);
+        game_state = GAMEOVER_SCREEN;
       } else {
         resetConnect4Board(true);
-
-        drawScorePanel(player1Wins, player2Wins, currentPlayer);
-        drawCursor();
       }
     }
   }
@@ -601,56 +656,83 @@ void handleConnect4Frame() {
     std::vector<String> playerNames;
     std::vector<int> playerScores;
 
-    // Multiplayer: show both names and scores
-    if (multiplayerMode) {
+    bool multiplayer = multiplayerMode;
+
+    if (multiplayer) {
       String redName = (localPlayerId == 1) ? settings.name : remotePlayerName;
       String blueName = (localPlayerId == 2) ? settings.name : remotePlayerName;
 
-      playerNames.push_back(redName);
-      playerNames.push_back(blueName);
-      playerScores.push_back(player1Wins);
-      playerScores.push_back(player2Wins);
-
-      String winnerName = (player1Wins > player2Wins) ? redName : blueName;
-
-      EndScreen endScreen(playerNames, playerScores, true, settings.name,
-                          max(player1Wins, player2Wins));
-
-      if (endScreen.handleUserInput()) {
-        player1Wins = 0;
-        player2Wins = 0;
-        tft.fillScreen(TFT_BLACK);
-        resetConnect4Board(true);
-        game_state = HOST_SCREEN; // or MULTIPLAYER_PLAYING if peripheral
-        return;
-      } else if (endScreen.exit) {
-        return;
-      }
-
+      playerNames = {redName, blueName};
+      playerScores = {player1Wins, player2Wins};
     } else {
-      // Single Player
-      playerNames = {settings.name};
-      playerScores = {player1Wins};
-
-      EndScreen endScreen(playerNames, playerScores, false, settings.name,
-                          player1Wins);
-
-      if (endScreen.handleUserInput()) {
-        player1Wins = 0;
-        player2Wins = 0;
-        tft.fillScreen(TFT_BLACK);
-        resetConnect4Board(true);
-        game_state = SINGLE_PLAYER;
-        return;
-      } else if (endScreen.exit) {
-        return;
-      }
+      playerNames = {"AI", settings.name};
+      playerScores = {player2Wins, player1Wins}; // AI is player2
     }
 
-    // Return to menu fallback
+    EndScreen endScreen(playerNames, playerScores, multiplayer, settings.name,
+                        player1Wins);
+
+    if (endScreen.handleUserInput()) {
+
+      // ==== Shared reset ==== //
+      player1Wins = 0;
+      player2Wins = 0;
+      roundEnded = false;
+      winner = 'N';
+      lastDropRow = -1;
+      lastDropCol = -1;
+      currentPlayer = 1;
+      cursorCol = 3;
+      suppressNextDropAnimation = false;
+      firstFrame = true;
+
+      // ===== Reset Board Data =====
+      for (int r = 0; r < ROWS; r++)
+        for (int c = 0; c < COLS; c++)
+          board[r][c] = 0;
+
+      // ==== Multiplayer-specific state ====
+      if (multiplayer) {
+
+        game_state = HOST_SCREEN;
+        prevGameState = HOST_SCREEN;
+
+        // ***********************************************************
+
+        connect4StateChanged = true;
+
+        // Notify all connected clients of new round
+        String newRoundState = generateConnect4StateString();
+        BluetoothCentral &central = BluetoothManager::getCentral();
+        for (auto *client : central.getConnectedClients()) {
+          central.sendToDevice(client, newRoundState.c_str());
+        }
+
+      }
+
+      // ***********************************************************
+
+      else {
+
+        game_state = SINGLE_PLAYER;
+        prevGameState = SINGLE_PLAYER;
+      }
+
+      // ===== Redraw Everything Both States =====
+      drawGrid();
+      drawCursor();
+      drawScorePanel(player1Wins, player2Wins, currentPlayer);
+
+      return;
+
+    } else if (endScreen.exit) {
+      return;
+    }
+
+    // ===== Return to Menu =====
     player1Wins = 0;
     player2Wins = 0;
-    tft.fillScreen(TFT_BLACK);
+    BluetoothManager::reset(false);
     game_state = HOMESCREEN;
     drawHomeScreen();
   }
@@ -670,16 +752,20 @@ void handleConnect4Frame() {
 
       localPlayerId = 2;
       multiplayerMode = true;
-      game_state = MULTIPLAYER_PLAYING;
-      pad.clearCode();
 
       // Initial setup
-      tft.fillScreen(bgColor);
       firstFrame = true;
       cursorCol = 0;
       roundEnded = false;
 
-      drawAllPlaying();
+      // // drawGrid();
+      // drawCursor();
+      // drawScorePanel(player1Wins, player2Wins, currentPlayer);
+
+      tft.fillScreen(bgColor);
+
+      game_state = MULTIPLAYER_PLAYING;
+      pad.clearCode();
     }
   }
 }
@@ -765,7 +851,6 @@ bool checkWin(int player) {
 
 // ========== Reset Game Board ========== //
 void resetConnect4Board(bool clearScreen) {
-
   winner = 'N';
 
   for (int r = 0; r < ROWS; r++)
@@ -778,9 +863,13 @@ void resetConnect4Board(bool clearScreen) {
   winTime = 0;
   winStartRow = winStartCol = winDirRow = winDirCol = 0;
   firstFrame = true;
+  lastDropRow = -1;
+  lastDropCol = -1;
+  suppressNextDropAnimation = false;
 
-  if (clearScreen)
-    tft.fillScreen(bgColor);
+  if (clearScreen) {
+    redrawFullGameUI(); // Ensures entire board and UI is restored
+  }
 }
 
 // ========== Reset Single Player Defaults ========== //
@@ -799,6 +888,10 @@ void resetMultiplayerState(bool clearScreen) {
   currentPlayer = 1;
   cursorCol = 3;
   roundEnded = false;
+  winner = 'N'; // Important for logic consistency
+  winTime = 0;  // Sync with draw logic
+  firstFrame = true;
+
   player1Wins = 0;
   player2Wins = 0;
   winStartRow = winStartCol = winDirRow = winDirCol = 0;
@@ -911,11 +1004,13 @@ int getDropRow(int col) {
 void drawGrid() {
   tft.fillScreen(bgColor);
 
-  // Now draw your board on top of that
+  // Always start fresh
+  drawing.deleteSprite();         // Safety
+  drawing.createBuffer(480, 320); // or screen width/height
+  drawing.clearSprite(bgColor);
+
   drawing.drawSdJpeg("/connect4/assets/connectBoard.jpg", IMAGE_X, IMAGE_Y);
-  drawing.pushSprite(false, true,
-                     TFT_WHITE); // Or bgColor if needed — doesn't matter now
-  tft.setTextColor(TFT_WHITE);
+  drawing.pushSprite(true, TFT_WHITE);
 
   for (int r = 0; r < ROWS; r++) {
     for (int c = 0; c < COLS; c++) {
@@ -933,6 +1028,8 @@ void drawGrid() {
       }
     }
   }
+
+  drawing.deleteSprite(); // cleanup
 }
 
 // ========== Draw Cursor ========== //
@@ -1199,6 +1296,15 @@ void drawWinnerMessage() {
   tft.drawString(msg, tft.width() / 2, tft.height() / 2);
 }
 
+// ========== Reset and Redraw Full Game UI ========== //
+void redrawFullGameUI() {
+  drawing.deleteSprite(); // safety
+  tft.fillScreen(bgColor);
+  drawGrid();
+  drawCursor();
+  drawScorePanel(player1Wins, player2Wins, currentPlayer);
+}
+
 // ####################################################################################################
 //  Audio Logic
 // ####################################################################################################
@@ -1249,7 +1355,7 @@ String generateConnect4StateString() {
   // Move Drop Position UP to line 4
   state += String(lastDropRow) + "," + String(lastDropCol) + ";\n"; // line 4
 
-  // Now board comes AFTER drop position
+  // Board State
   for (int r = 0; r < ROWS; r++) {
     for (int c = 0; c < COLS; c++) {
       if (board[r][c] == 0)
@@ -1263,24 +1369,19 @@ String generateConnect4StateString() {
   }
   state += ";\n"; // line 5
 
+  // Cursor column
   state += String(cursorCol) + ";\n"; // line 6
 
-  // Winner and win info
-  state += "winner=";
-  if (roundEnded && (winner == 'R' || winner == 'B' || winner == 'D')) {
-    state += String(winner) + ",";
-    state += String(winStartRow) + "," + String(winStartCol) + ",";
-    state += String(winDirRow) + "," + String(winDirCol);
-  } else {
-    state += "N";
-  }
-  state += ";\n";
+  // Winner and win direction
+  state += winner + "," + String(winStartRow) + "," + String(winStartCol) +
+           "," + String(winDirRow) + "," + String(winDirCol) + ";\n"; // line 7
 
   return state;
 }
 
 // =================== Read Connect4 State =================== //
 void readConnect4String(String oldState, const char *data) {
+
   String input = String(data);
   input.trim();
   input.replace("c4@", "");
@@ -1411,8 +1512,8 @@ void readConnect4String(String oldState, const char *data) {
     lastDropCol = -1;
     cursorCol = 0;
 
-    // tft.fillScreen(TFT_BLACK);
-    // drawAllPlaying();
+    // Defer drawing until next frame
+    shouldRedrawNextFrame = true;
 
     suppressNextDropAnimation = true;
     firstFrame = true;
@@ -1421,9 +1522,12 @@ void readConnect4String(String oldState, const char *data) {
     return; // Prevents drawing old win line after board was wiped
   }
 
-  // ========== React to Winner Info (Peripheral Side Only) ==========
-  if (roundEnded && (winner == 'R' || winner == 'B' || winner == 'D')) {
-    Serial.println("Drawing win visuals from host.");
+  // ========== Host Reacts to Peripheral Win ========== //
+  if (game_state == HOST_SCREEN && roundEnded &&
+      (winner == 'R' || winner == 'B' || winner == 'D') &&
+      currentPlayer != localPlayerId) {
+
+    Serial.println("🟥 Host: Reacting to peripheral win.");
 
     if (winner == 'R')
       drawWinLine(1);
@@ -1433,7 +1537,90 @@ void readConnect4String(String oldState, const char *data) {
     playWinSound();
     drawWinnerMessage();
 
-    winTime = millis(); // Sync restart timer
+    winTime = millis(); // Trigger auto-restart countdown
+  }
+
+  // ========== Host Reacts to Peripheral Win ========== //
+  if (game_state == HOST_SCREEN && roundEnded &&
+      (winner == 'R' || winner == 'B' || winner == 'D') &&
+      currentPlayer != localPlayerId) {
+
+    Serial.println("🟥 Host: Reacting to peripheral win.");
+
+    drawGrid();
+    drawCursor();
+    drawScorePanel(player1Wins, player2Wins, currentPlayer);
+
+    if (winner == 'R')
+      drawWinLine(1);
+    else if (winner == 'B')
+      drawWinLine(2);
+    else
+      drawWinnerMessage();
+
+    playWinSound();
+    drawWinnerMessage();
+
+    winTime = millis(); // Trigger auto-restart countdown
+    connect4StateChanged = true;
+  }
+
+  if (roundEnded && (player1Wins >= 2 || player2Wins >= 2)) {
+    Serial.println("🏁 Peripheral: Match is over. Showing EndScreen.");
+
+    multiplayerMode = true;
+
+    std::vector<String> playerNames;
+    std::vector<int> playerScores;
+
+    String redName = (localPlayerId == 1) ? settings.name : remotePlayerName;
+    String blueName = (localPlayerId == 2) ? settings.name : remotePlayerName;
+
+    playerNames = {redName, blueName};
+    playerScores = {player1Wins, player2Wins};
+
+    int score = (localPlayerId == 1) ? player1Wins : player2Wins;
+    char nameBuffer[6];
+    strncpy(nameBuffer, settings.name, sizeof(nameBuffer) - 1);
+    nameBuffer[5] = '\0';
+
+    EndScreen endScreen(playerNames, playerScores, true, nameBuffer, score);
+
+    if (endScreen.handleUserInput()) {
+      Serial.println("Peripheral: Restarting match.");
+
+      // Reset everything for new match
+      player1Wins = 0;
+      player2Wins = 0;
+      roundEnded = false;
+      winner = 'N';
+      lastDropRow = -1;
+      lastDropCol = -1;
+      cursorCol = 0;
+      suppressNextDropAnimation = false;
+      firstFrame = true;
+
+      for (int r = 0; r < ROWS; r++)
+        for (int c = 0; c < COLS; c++)
+          board[r][c] = 0;
+
+      game_state = MULTIPLAYER_PLAYING;
+      prevGameState = MULTIPLAYER_PLAYING;
+
+      tft.fillScreen(bgColor);
+      drawGrid();
+      drawCursor();
+      drawScorePanel(player1Wins, player2Wins, currentPlayer);
+
+      return;
+
+    } else if (endScreen.exit) {
+      Serial.println("Peripheral: Exiting to menu.");
+      game_state = HOMESCREEN;
+      drawHomeScreen();
+
+      return;
+    }
   }
 }
 

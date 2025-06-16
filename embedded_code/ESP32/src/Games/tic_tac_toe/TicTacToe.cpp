@@ -636,9 +636,9 @@ void handleTicTacToeFrame() {
       winner = 'N';
       winCombo[0] = winCombo[1] = winCombo[2] = -1;
 
-      if(multiplayer){
+      if (multiplayer) {
         game_state = prev_game_state;
-      }else{
+      } else {
         game_state = SINGLE_PLAYER;
       }
 

@@ -27,7 +27,6 @@ public:
     exit = false;
   }
 
-  
   // Overloaded Constructor, used for games w/ ties
   EndScreen(std::vector<String> &names, std::vector<int> &scores,
             bool multiplayer, char *playerName, int score, int index)

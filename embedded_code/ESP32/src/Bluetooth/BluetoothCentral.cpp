@@ -82,13 +82,14 @@ void BluetoothCentral::scanAndConnectLoop(const std::string &accessCode) {
 }
 
 // ###################### In case of Disconnect #####################
-void BluetoothCentral::MyClientCallbacks::onDisconnect(NimBLEClient *client, int reason) {
+void BluetoothCentral::MyClientCallbacks::onDisconnect(NimBLEClient *client,
+                                                       int reason) {
   Serial.println("🔌 Peripheral disconnected.");
   ConnectionScreen::showMessage("Peripheral disconnected.");
 
   delay(1000); // Optional delay to let user see the message
 
-  if(!intentionalExit){
+  if (!intentionalExit) {
     shouldExitToMenu = true; // Triggers return to menu
   }
   intentionalExit = false;
@@ -186,10 +187,9 @@ void BluetoothCentral::connectToDevices() {
                 for (auto *client : central.getConnectedClients()) {
                   central.sendToDevice(client, confirmedState.c_str());
                 }
-              }else if (strcmp(msg.c_str(), "exit") == 0){
+              } else if (strcmp(msg.c_str(), "exit") == 0) {
                 callbacks->intentionalExit = true;
-              }
-               else {
+              } else {
                 Serial.println("⚠️ Unknown message format (notify).");
               }
             });
@@ -279,7 +279,32 @@ std::string BluetoothCentral::sanitize(const std::string &input) {
 
 // ###################### Update Poll #####################
 void BluetoothCentral::update() {
-  // No-op for now, or you can implement polling logic here if needed
+  std::string msg = readMessage();
+
+  if (msg.empty())
+    return;
+
+  Serial.print("📥 Central received via polling: ");
+  Serial.println(msg.c_str());
+
+  if (msg.rfind("ttt@", 0) == 0) {
+    readTicTacToeString("", msg.c_str());
+    ticTacToeStateChanged = true;
+
+  } else if (msg.rfind("s@", 0) == 0) {
+    readSimonString("", msg.c_str());
+    simonStateChanged = true;
+
+  } else if (msg.rfind("c4@", 0) == 0) {
+    readConnect4String("", msg.c_str());
+    connect4StateChanged = true;
+
+  } else if (msg == "exit") {
+    callbacks->intentionalExit = true;
+
+  } else {
+    Serial.println("⚠️ Unknown message format (polled).");
+  }
 }
 
 // ###################### Read Messages #####################
@@ -322,10 +347,10 @@ bool BluetoothCentral::sendMessage(const std::string &msg) {
 }
 
 bool BluetoothCentral::sendExit() {
-  if(callbacks){
+  if (callbacks) {
     callbacks->intentionalExit = true;
   }
-  
+
   if (connectedClients.empty())
     return false;
 

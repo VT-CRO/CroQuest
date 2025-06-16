@@ -146,7 +146,7 @@ void BluetoothPeripheral::ServerCallbacks::onDisconnect(
 
   delay(1000); // Optional: brief pause before returning
 
-  if(!intentionalExit){
+  if (!intentionalExit) {
     shouldExitToMenu = true; // Triggers return to menu
   }
 
@@ -214,7 +214,7 @@ void BluetoothPeripheral::sendMessage(const std::string &message) {
 }
 
 void BluetoothPeripheral::sendExit() {
-  if(callbackServer){
+  if (callbackServer) {
     callbackServer->intentionalExit = true;
   }
 
@@ -248,7 +248,7 @@ void BluetoothPeripheral::CharacteristicCallbacks::onWrite(
   } else if (val.rfind("c4@", 0) == 0) {
     readConnect4String("", val.c_str()); // Apply
     connect4StateChanged = true;         // Mark for redraw
-  }else if(strcmp(val.c_str(), "exit") == 0){
-      server->intentionalExit = true;
+  } else if (strcmp(val.c_str(), "exit") == 0) {
+    server->intentionalExit = true;
   }
 }
