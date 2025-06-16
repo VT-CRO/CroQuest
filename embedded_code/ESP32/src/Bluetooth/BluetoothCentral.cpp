@@ -305,7 +305,7 @@ bool BluetoothCentral::sendMessage(const std::string &msg) {
 
     try {
       bool success =
-          characteristic->writeValue((uint8_t *)msg.data(), msg.size(), false);
+          characteristic->writeValue((uint8_t *)msg.data(), msg.size(), true);
       return success;
     } catch (...) {
       return false;
@@ -313,5 +313,37 @@ bool BluetoothCentral::sendMessage(const std::string &msg) {
   }
 
   // ⚠️ Make sure to return a value here:
+  return true; // or false depending on your logic
+}
+
+// ###################### Send Messages (not array) #####################
+bool BluetoothCentral::sendMessagePong(const std::string &msg) {
+  if (connectedClients.empty())
+    return false;
+
+  for (auto *client : this->connectedClients) {
+    if (!client || !client->isConnected())
+      return false;
+
+    NimBLERemoteService *service = client->getService(SERVICE_UUID);
+    if (!service)
+      return false;
+
+    NimBLERemoteCharacteristic *characteristic =
+        service->getCharacteristic(CHARACTERISTIC_UUID);
+    if (!characteristic || !characteristic->canWrite()) {
+      return false;
+    }
+
+    try {
+      bool success =
+          characteristic->writeValue((uint8_t *)msg.data(), msg.size(), false);
+      return success;
+    } catch (...) {
+      return false;
+    }
+  }
+
+  // Make sure to return a value here:
   return true; // or false depending on your logic
 }

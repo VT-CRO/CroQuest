@@ -328,13 +328,24 @@ void handleSimonFrame() {
     std::vector<String> playerNames = {};
     std::vector<int> playerScores = {};
 
+    // Creates the vectors required for the endscreen + scoreboard
     for (const auto &p : simonPlayers) {
       playerNames.push_back(p.name);
       playerScores.push_back(p.score);
     }
 
+    // The index of the current player (used to identify the player)
+    int index = -1;
+    for(size_t i = 0; i < simonPlayers.size(); i++){
+      // Finds the index of the current player
+      if(simonPlayers[i].id == currentPlayer.id){
+        index = i;
+      }
+    }
+
+    // Creates the endscreen object
     EndScreen endScreen(playerNames, playerScores, multiplayer, settings.name,
-                        playerScore);
+                        playerScore, index);
 
     if (endScreen.handleUserInput()) {
       // resets the score

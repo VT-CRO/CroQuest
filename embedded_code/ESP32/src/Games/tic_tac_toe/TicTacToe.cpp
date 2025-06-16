@@ -320,6 +320,7 @@ void handleTicTacToeFrame() {
       ticTacToeStateChanged = false;
     }
 
+    // Turn Indicator
     tft.setTextSize(2);
     tft.setTextDatum(MC_DATUM);
     tft.setTextColor(TFT_WHITE, orange_color);

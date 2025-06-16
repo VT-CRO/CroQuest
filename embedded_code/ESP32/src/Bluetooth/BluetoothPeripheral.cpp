@@ -135,15 +135,6 @@ void BluetoothPeripheral::ServerCallbacks::onConnect(NimBLEServer *pServer,
                                                      NimBLEConnInfo &connInfo) {
   Serial.println("✅ Host connected!");
   ConnectionScreen::showMessage("Connected to Host!");
-
-  // // Optional: Start the conversation from the peripheral
-  // if (parent && parent->characteristic) {
-  //   // std::string greeting = "hello host";
-  //   parent->characteristic->setValue(greeting);
-  //   parent->lastReply = greeting;
-  //   Serial.print("📤 Sent initial: ");
-  //   Serial.println(greeting.c_str());
-  // }
 }
 
 // ###################### Disconnect #####################
@@ -235,7 +226,7 @@ void BluetoothPeripheral::CharacteristicCallbacks::onWrite(
     readSimonString("", val.c_str());
     simonBuffer = String(val.c_str());
     hasNewSimonState = true;
-  } else if (val.rfind("connect4@", 0) == 0) {
+  } else if (val.rfind("c4@", 0) == 0) {
     readConnect4String("", val.c_str()); // Apply
     connect4StateChanged = true;         // Mark for redraw
   }
