@@ -1,5 +1,6 @@
 #include "Pong.hpp"
 #include "pong_logic.hpp"
+#include <unordered_map>
 
 #define orange_color TFT_ORANGE
 
@@ -71,7 +72,7 @@ static unsigned int frameCount = 0;
 static unsigned long lastButtonPressTime = 0;
 
 // button timing
-static long moveDelay = 200;
+static long moveDelay = 100;
 static unsigned long lastMoveTime = 0;
 
 static bool buttonAPressed = false;
@@ -114,6 +115,11 @@ static NumPad<GameState> pad(
     &current_state, STATE_HOMESCREEN,
     STATE_PLAYING // or another post-confirm state
 );
+
+// Handle ready message
+extern void handleReadyMessage(const std::string& message);
+
+extern std::unordered_map<std::string, bool> ready;
 
 // ####################################################################################################
 //  Setup & Loop
@@ -158,6 +164,8 @@ void runPong() {
   fpsUpdateTime = previousMillis;
 
   drawHomeScreen();
+  ready["periph"] = false;
+  ready["host"] = false;
 
   // Main pong loop
   while (true) {
@@ -216,8 +224,6 @@ void handlePongFrame() {
       frameCount = 0;
       fpsUpdateTime = currentMillis;
     }
-    Serial.println("Current FPS");
-    Serial.println(currentFPS);
 
     // ================== HOMESCREEN State =================== //
     if (current_state == STATE_HOMESCREEN) {
@@ -257,18 +263,19 @@ void handlePongFrame() {
             current_state = MULTIPLAYER_SELECTION;
             drawHomeSelection();
           }
+          lastMoveTime = millis();
         }
 
         // Selection logic
         if (up.wasJustPressed()) {
           selection = 0;
           drawHomeSelection();
+          lastMoveTime = millis();
         } else if (down.wasJustPressed()) {
           selection = 1;
           drawHomeSelection();
+          lastMoveTime = millis();
         }
-
-        lastMoveTime = millis();
       }
     }
 
@@ -446,23 +453,27 @@ void handlePongFrame() {
               localPlayerSide = 'X'; // or 0/1 if you want paddle 0
               current_state = HOST_SCREEN;
               firstFrame = true;
-              tft.fillScreen(TFT_BLACK); // or your orange_color
+              // Button debounce flush
+              delay(300);
+              while (A.isPressed() || up.isPressed() || down.isPressed() ||
+                    left.isPressed() || right.isPressed()) {
+                delay(10);
+              }
+              //send ready string
+              ready["host"] = true;
+              BluetoothManager::getCentral().sendMessage("ready@host,true");
+
+              tft.fillScreen(TFT_BLACK);
             } else {
               current_state = MULTIPLAYER_SELECTION;
               tft.fillScreen(TFT_BLACK);
               ConnectionScreen::showMessage("Connection failed.\nTry again.");
             }
 
-            // Button debounce flush
-            delay(300);
-            while (A.isPressed() || up.isPressed() || down.isPressed() ||
-                   left.isPressed() || right.isPressed()) {
-              delay(10);
-            }
-
           } else {
             // === JOIN FLOW === //
             current_state = BLUETOOTH_NUMPAD;
+            first_home_draw = true;
             pad.numPadSetup();
           }
         }
@@ -471,41 +482,18 @@ void handlePongFrame() {
         if (up.wasJustPressed()) {
           current_state = STATE_HOMESCREEN;
           drawHomeSelection();
+          lastMoveTime = millis();
         } else if (left.wasJustPressed() && subselection == 1) {
           subselection = 0;
           drawHomeSelection();
+          lastMoveTime = millis();
         } else if (right.wasJustPressed() && subselection == 0) {
           subselection = 1;
           drawHomeSelection();
+          lastMoveTime = millis();
         }
-
-        lastMoveTime = millis();
       }
     }
-    // ================== BLUETOOTH_NUMPAD State =================== //
-    else if (current_state == BLUETOOTH_NUMPAD) {
-      pad.handleButtonInput(&lastMoveTime, moveDelay);
-
-      std::string enteredCode = pad.getCode();
-      if (enteredCode.length() == 6 && pad.wasEnterPressed()) {
-        // JOIN = PERIPHERAL
-        BluetoothManager::initPeripheral(tft);
-        BluetoothPeripheral &peripheral = BluetoothManager::getPeripheral();
-        peripheral.beginAdvertising(enteredCode);
-        localPlayerSymbol = 'O';
-
-        if(!peripheral.sendAction("testing")){
-          pad.clearCode();
-          return;
-        }
-        current_state = MULTIPLAYER_PLAYING;
-        initialize_game(&ball, paddles, &level);
-        pad.clearCode();
-      }
-
-      // ================== GAME OVER STATE =================== //
-    }
-
     // ================== GAME OVER STATE =================== //
     else if (current_state == STATE_GAMEOVER) {
       String localName = settings.name;
@@ -541,6 +529,7 @@ void handlePongFrame() {
         prev_score1 = -1;
         game_initialized = false;
         firstFrame = true;
+        initialize_game(&ball, paddles, &level);
 
         if (is_multiplayer_pong) {
           current_state =
@@ -549,7 +538,23 @@ void handlePongFrame() {
           current_state = STATE_PLAYING;
         }
 
-        tft.fillScreen(TFT_BLACK);
+              // set ready status
+      if(current_state == MULTIPLAYER_PLAYING){
+        ready["periph"] = true;
+        BluetoothManager::getPeripheral().sendMessage("ready@periph,true");
+      }else if(current_state == HOST_SCREEN){
+        ready["host"] = true;
+        BluetoothManager::getCentral().sendMessage("ready@host,true");
+      }
+
+      // Show intermediary waiting screen
+      if(!ready["periph"] || !ready["host"]){
+          tft.fillScreen(TFT_BLACK);
+          tft.setTextDatum(MC_DATUM);
+          tft.setTextColor(TFT_WHITE);
+          tft.drawString("WAITING FOR OTHER PLAYER...", tft.width()/2, tft.height()/2);
+          tft.setTextDatum(TL_DATUM);
+      }
       } else if (endScreen.exit) {
         BluetoothManager::reset();
         return;
@@ -576,6 +581,9 @@ void handlePongFrame() {
 
     if (current_state == MULTIPLAYER_PLAYING ||
              current_state == HOST_SCREEN) {
+      // Don't continue if the host or peripheral aren't ready yet
+      if(!ready["host"] || !ready["periph"])
+        return;
       
       // Initializes the game
       if (firstFrame) {
@@ -616,11 +624,13 @@ void handlePongFrame() {
 
       // Checks if the game has been won
       if (checkWinCondition()) {
-        current_state = STATE_GAMEOVER;
         prev_state = current_state;
+        current_state = STATE_GAMEOVER;
         tft.fillScreen(TFT_BLACK);
         draw_endscreen(score0, score1);
         firstFrame = true;
+        ready["host"] = false;
+        ready["periph"] = false;
         return;
       }
 
@@ -628,6 +638,30 @@ void handlePongFrame() {
       drawGameState();
     }
     // Multiplayer Code
+  }
+  // ================== BLUETOOTH_NUMPAD State =================== //
+  if (current_state == BLUETOOTH_NUMPAD) {
+    pad.handleButtonInput(&lastMoveTime, moveDelay);
+
+    std::string enteredCode = pad.getCode();
+    if (enteredCode.length() == 6 && pad.wasEnterPressed()) {
+      // JOIN = PERIPHERAL
+      BluetoothManager::initPeripheral(tft);
+      BluetoothPeripheral &peripheral = BluetoothManager::getPeripheral();
+      peripheral.beginAdvertising(enteredCode);
+      localPlayerSymbol = 'O';
+
+      is_multiplayer_pong = true;
+      initialize_game(&ball, paddles, &level);
+      pad.clearCode();
+      ready["periph"] = true;
+    }
+
+        // Only start the game when both the host and peripheral are ready
+    if(ready["periph"] && ready["host"]){
+      BluetoothManager::getPeripheral().sendMessage("ready@periph,true"); // send ready message
+      current_state = MULTIPLAYER_PLAYING;
+    }
   }
 }
 
@@ -991,6 +1025,7 @@ void handleHostLogic() {
   //Draw that intermediary ball
   eraseBall(&middlePrev);
   drawBall(&middleBall);
+  delay(10);
 }
 
 void handlePeripheralLogic() {
@@ -1014,13 +1049,15 @@ void handlePeripheralLogic() {
   }
 
   // ========== 2. Apply New State from Host ==========
+  bool appliedNewState = false;
+  float bx = 0, by = 0;
+  Ball prevBallCopy;
+
   if (hasNewPongState) {
     hasNewPongState = false;
 
     int y0, s0, s1;
-    float bx, by;
-    sscanf(pongStateBuffer.substring(12).c_str(), "%d,%d,%d,%f,%f", &y0, &s0,
-           &s1, &bx, &by);
+    sscanf(pongStateBuffer.substring(12).c_str(), "%d,%d,%d,%f,%f", &y0, &s0, &s1, &bx, &by);
 
     prev_ball.x = ball.x;
     prev_ball.y = ball.y;
@@ -1028,8 +1065,9 @@ void handlePeripheralLogic() {
     if (score0 != s0 || score1 != s1) {
       initialize_game(&ball, paddles, &level);
     }
-    ball.x = prev_ball.x + ((bx - prev_ball.x)/2);
-    ball.y = prev_ball.y + ((by - prev_ball.y)/2);
+
+    ball.x = prev_ball.x + ((bx - prev_ball.x) / 2);
+    ball.y = prev_ball.y + ((by - prev_ball.y) / 2);
     paddles[0].y = y0;
     score0 = s0;
     score1 = s1;
@@ -1037,21 +1075,29 @@ void handlePeripheralLogic() {
     prev_paddles[0].paddle_mod = true;
     prev_paddles[1].paddle_mod = true;
 
-    eraseBall(&prev_ball);
+    // Save values to apply after moved-message
+    appliedNewState = true;
+    prevBallCopy = prev_ball;
+  }
+
+  // ========== 3. Send Paddle Move ==========
+  if (moved) {
+    char buf[32];
+    sprintf(buf, "@pong@move@%d", paddles[1].y);
+    peripheral.sendMessage(buf);
+  }
+
+  // ========== 4. Draw Ball After Send ==========
+  if (appliedNewState) {
+    eraseBall(&prevBallCopy);
     drawBall(&ball);
+    delay(10);
 
     prev_ball.x = ball.x;
     prev_ball.y = ball.y;
 
     ball.x = bx;
     ball.y = by;
-  }
-
-  // Throttle message send to avoid BLE congestion
-  if (moved) {
-    char buf[32];
-    sprintf(buf, "@pong@move@%d", paddles[1].y);
-    peripheral.sendMessage(buf);
   }
 }
 

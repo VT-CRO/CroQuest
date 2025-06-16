@@ -57,7 +57,7 @@ bool multiplayer = false;
 
 // Timing variables
 unsigned long lastButtonPressTime = 0;
-unsigned long buttonDebounceDelay = 200;
+unsigned long buttonDebounceDelay = 100;
 unsigned long lastSequenceTime = 0;
 unsigned long sequenceDisplayDelay = 800;
 unsigned long gameOverTime = 0;

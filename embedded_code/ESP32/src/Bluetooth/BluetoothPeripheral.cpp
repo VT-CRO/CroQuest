@@ -8,6 +8,11 @@ volatile bool hasNewPongState = false;
 
 String pongStateBuffer = "";
 
+// Ready buffer (messages will be of this format -> "ready@host,false" or 
+// "ready@host,true" or "ready@periph,true" or "ready@periph,false")
+// This will be used in the games -> hashmap = {"host" : <bool>, "periph" : <bool>}
+extern void handleReadyMessage(const std::string& message);
+
 volatile bool hasNewTicTacToeState = false;
 
 String tttBuffer = "";
@@ -259,5 +264,7 @@ void BluetoothPeripheral::CharacteristicCallbacks::onWrite(
     connect4StateChanged = true;         // Mark for redraw
   }else if(strcmp(val.c_str(), "exit") == 0){
       server->intentionalExit = true;
+  }else if(val.rfind("ready@", 0) == 0){
+    handleReadyMessage(val.c_str());
   }
 }

@@ -7,6 +7,9 @@ extern bool simonStateChanged;
 extern void readSimonString(String oldState, const char *data);
 extern String generateSimonString(String mode = "full");
 
+//Ready string
+extern void handleReadyMessage(const std::string& message);
+
 // Connect4
 extern bool connect4StateChanged;
 extern void readConnect4String(String oldState, const char *data);
@@ -188,6 +191,8 @@ void BluetoothCentral::connectToDevices() {
                 }
               }else if (strcmp(msg.c_str(), "exit") == 0){
                 callbacks->intentionalExit = true;
+              }else if(msg.rfind("ready@", 0) == 0){
+                handleReadyMessage(msg.c_str());
               }
                else {
                 Serial.println("⚠️ Unknown message format (notify).");
