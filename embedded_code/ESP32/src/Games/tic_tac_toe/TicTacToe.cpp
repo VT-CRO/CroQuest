@@ -163,6 +163,9 @@ void runTicTacToe() {
   prevGameState = static_cast<State>(-1);
 
   drawHomeScreen();
+  ready["periph"] = false;
+  ready["host"] = false;
+
 
   while (true) {
     handleTicTacToeFrame();
@@ -227,6 +230,9 @@ void handleTicTacToeFrame() {
   else if (game_state == MULTIPLAYER_SELECTION) {
     if (!roundEnded && millis() - lastMoveTime > moveDelay) {
       if (A.wasJustPressed()) {
+        //clear ready status
+        ready["periph"] = false;
+        ready["host"] = false;
         if (subselection == 0) {
 
           // HOST = CENTRAL
@@ -590,6 +596,7 @@ void handleTicTacToeFrame() {
   // ================== BLUETOOTH_NUMPAD State =================== //
   else if (game_state == BLUETOOTH_NUMPAD) {
     pad.handleButtonInput(&lastMoveTime, moveDelay);
+    Serial.println("Testing Crash");
 
     std::string enteredCode = pad.getCode();
     if (enteredCode.length() == 6 && pad.wasEnterPressed()) {

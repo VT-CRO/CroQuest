@@ -229,7 +229,9 @@ void handlePongFrame() {
     if (current_state == STATE_HOMESCREEN) {
       if (millis() - lastMoveTime > moveDelay / 2) {
         if (A.wasJustPressed()) {
-
+          //clear ready status
+          ready["periph"] = false;
+          ready["host"] = false;
           if (selection == 0) {
 
             // SINGLE PLAYER
