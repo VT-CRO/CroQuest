@@ -180,16 +180,7 @@ void BluetoothCentral::connectToDevices() {
               } else if (msg.rfind("c4@", 0) == 0) {
                 Serial.println("PERIPHERAL SENT CONNECT4:");
                 Serial.println(msg.c_str());
-
                 readConnect4String("", msg.c_str());
-                connect4StateChanged = true;
-
-                // Optional: re-broadcast to other peripherals if more than one
-                BluetoothCentral &central = BluetoothManager::getCentral();
-                String confirmedState = String(msg.c_str());
-                for (auto *client : central.getConnectedClients()) {
-                  central.sendToDevice(client, confirmedState.c_str());
-                }
               } else if (strcmp(msg.c_str(), "exit") == 0) {
                 callbacks->intentionalExit = true;
               }else if(msg.rfind("ready@", 0) == 0){
@@ -303,7 +294,6 @@ void BluetoothCentral::update() {
 
   } else if (msg.rfind("c4@", 0) == 0) {
     readConnect4String("", msg.c_str());
-    connect4StateChanged = true;
 
   } else if (msg == "exit") {
     callbacks->intentionalExit = true;

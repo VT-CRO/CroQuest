@@ -684,12 +684,14 @@ void handleTicTacToeFrame() {
       }
 
       // Show intermediary waiting screen
-      if(!ready["periph"] || !ready["host"]){
-          tft.fillScreen(TFT_BLACK);
-          tft.setTextDatum(MC_DATUM);
-          tft.setTextColor(TFT_WHITE);
-          tft.drawString("WAITING FOR OTHER PLAYER...", tft.width()/2, tft.height()/2);
-          tft.setTextDatum(TL_DATUM);
+      if(game_state == MULTIPLAYER_PLAYING || game_state == HOST_SCREEN){
+        if(!ready["periph"] || !ready["host"]){
+            tft.fillScreen(TFT_BLACK);
+            tft.setTextDatum(MC_DATUM);
+            tft.setTextColor(TFT_WHITE);
+            tft.drawString("WAITING FOR OTHER PLAYER...", tft.width()/2, tft.height()/2);
+            tft.setTextDatum(TL_DATUM);
+        }
       }
 
       prev_game_state = game_state;

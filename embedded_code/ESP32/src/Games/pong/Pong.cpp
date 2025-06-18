@@ -540,7 +540,7 @@ void handlePongFrame() {
           current_state = STATE_PLAYING;
         }
 
-              // set ready status
+      // set ready status
       if(current_state == MULTIPLAYER_PLAYING){
         ready["periph"] = true;
         BluetoothManager::getPeripheral().sendMessage("ready@periph,true");
@@ -550,12 +550,14 @@ void handlePongFrame() {
       }
 
       // Show intermediary waiting screen
-      if(!ready["periph"] || !ready["host"]){
-          tft.fillScreen(TFT_BLACK);
-          tft.setTextDatum(MC_DATUM);
-          tft.setTextColor(TFT_WHITE);
-          tft.drawString("WAITING FOR OTHER PLAYER...", tft.width()/2, tft.height()/2);
-          tft.setTextDatum(TL_DATUM);
+      if(current_state == MULTIPLAYER_PLAYING || current_state == HOST_SCREEN){
+        if(!ready["periph"] || !ready["host"]){
+            tft.fillScreen(TFT_BLACK);
+            tft.setTextDatum(MC_DATUM);
+            tft.setTextColor(TFT_WHITE);
+            tft.drawString("WAITING FOR OTHER PLAYER...", tft.width()/2, tft.height()/2);
+            tft.setTextDatum(TL_DATUM);
+        }
       }
       } else if (endScreen.exit) {
         BluetoothManager::reset();
@@ -659,7 +661,7 @@ void handlePongFrame() {
       ready["periph"] = true;
     }
 
-        // Only start the game when both the host and peripheral are ready
+    // Only start the game when both the host and peripheral are ready
     if(ready["periph"] && ready["host"]){
       BluetoothManager::getPeripheral().sendMessage("ready@periph,true"); // send ready message
       current_state = MULTIPLAYER_PLAYING;

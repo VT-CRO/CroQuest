@@ -251,8 +251,7 @@ void BluetoothPeripheral::CharacteristicCallbacks::onWrite(
     simonBuffer = String(val.c_str());
     hasNewSimonState = true;
   } else if (val.rfind("c4@", 0) == 0) {
-    readConnect4String("", val.c_str()); // Apply
-    connect4StateChanged = true;         // Mark for redraw
+    readConnect4String("", val.c_str());
   }else if(strcmp(val.c_str(), "exit") == 0){
       server->intentionalExit = true;
   }else if(val.rfind("ready@", 0) == 0){
