@@ -4,6 +4,7 @@
 
 #include <SPI.h>
 #include <TFT_eSPI.h>
+#include <SD.h>
 
 // ###################### Definitions ######################
 // Function to print messages to the screen
@@ -28,6 +29,46 @@ void setup() {
 
   tft.init();
   tft.setRotation(3);
+  tft.fillScreen(TFT_BLACK);
+
+  // Testing Sound
+  // ======================== Speaker Start up noise ========================
+  ledcAttachPin(21, 0);
+  int melody[] = {440, 554, 659,
+                  880}; // A4, C#5, E5, A5 - simple ascending notes
+  int noteDurations[] = {150, 150, 150, 300}; // durations in ms
+
+  for (int i = 0; i < 4; i++) {
+    ledcWriteTone(0, melody[i]);
+
+    ledcWrite(0, 255);
+    delay(noteDurations[i]);
+  }
+  ledcWrite(0, 0); // Stop tone
+
+  tft.setTextSize(4);
+  tft.setTextDatum(MC_DATUM);
+
+  tft.drawString("<<< TESTING >>>", tft.width() /2, tft.height()/ 2);
+  delay(1000);
+
+  tft.fillScreen(TFT_BLACK);
+  
+  // Testing SD Mounting
+  if(!SD.begin(5)){}
+
+  if (!SD.begin(5)) {
+    tft.setTextColor(TFT_RED);
+    tft.drawString("CARD MOUNT FAILED", tft.width() / 2, tft.height()/2);
+    delay(1000);
+    Serial.println("Card Mount Failed");
+  }else{
+    tft.setTextColor(TFT_GREEN);
+    tft.drawString("CARD MOUNT SUCCESS", tft.width() / 2, tft.height()/2);
+    delay(1000);
+  }
+  tft.setTextColor(TFT_WHITE);
+  tft.setTextDatum(TL_DATUM);
 
   // Set all button pins as input
   pinMode(Button_A_B_Start, INPUT);
@@ -61,11 +102,12 @@ void printMessage(String text) {
   tft.setTextSize(1);
   tft.setCursor(0, 0);
 
-  int y = 10;
-  int lineHeight = 20;
-
+  int y = (tft.height() / 2) - 40;
+  int lineHeight = 35;
+  tft.setTextDatum(MC_DATUM);
+  tft.setTextSize(4);
   for (int i = 0; i < MAX_LINES; i++) {
-    tft.drawString(messageBuffer[i], 10, y);
+    tft.drawString(messageBuffer[i], tft.width() / 2, y);
     y += lineHeight;
   }
 }
