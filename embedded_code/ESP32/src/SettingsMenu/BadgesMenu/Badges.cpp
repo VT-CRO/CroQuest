@@ -40,7 +40,7 @@ const char *badgePaths[badgeCount] = {
 const char *badgeDescriptions[badgeCount] = {
 
     "Eat 150 apples in Snake", "Perfect Pong", "Perfect Tic Tac Toe 3 times",
-    "Reach Level 25 in Simon", "Win 3 matches in a row",
+    "Reach Level 25 in Simon", "Win 3 matches in a row in Connect 4",
     "Perfect Breakout 3 times", "Win Matching in less than 150 seconds",
     "Reach 5000 points in Tetris",
     // "Captured the Queen",
