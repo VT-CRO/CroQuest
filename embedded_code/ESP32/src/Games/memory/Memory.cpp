@@ -442,7 +442,7 @@ static void checkWinCondition() {
     playWinSound();
 
     // Badge Logic | 150s
-    if (totalTime < 250 && !badgeProgress[6] && !session.badgeUnlocked) {
+    if (totalTime < 150 && !badgeProgress[6] && !session.badgeUnlocked) {
       // if (currentLevel == 0 && !badgeProgress[3] && !session.badgeUnlocked) {
       badgeProgress[6] = true;
       isUnlocked[6] = true;

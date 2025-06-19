@@ -34,15 +34,15 @@ static int gridHeight = 0;
 const char *badgePaths[badgeCount] = {
     "/badges/assets/0.jpg", "/badges/assets/1.jpg", "/badges/assets/2.jpg",
     "/badges/assets/3.jpg", "/badges/assets/4.jpg", "/badges/assets/5.jpg",
-    "/badges/assets/6.jpg", "/badges/assets/7.jpg", "/badges/assets/9.jpg"};
+    "/badges/assets/6.jpg", "/badges/assets/7.jpg", "/badges/assets/8.jpg"};
 // "/badges/assets/9.jpg"};
 
 const char *badgeDescriptions[badgeCount] = {
 
-    "Eat 25 apples in Snake", "Perfect Pong", "Perfect Tic Tac Toe 3 times",
-    "Reach Level 5 in Simon", "Win a matches of Connect 4",
-    "Perfect Breakout 2 times", "Win Matching in less than 250 seconds",
-    "Reach 2500 points in Tetris",
+    "Eat 150 apples in Snake", "Perfect Pong", "Perfect Tic Tac Toe 3 times",
+    "Reach Level 25 in Simon", "Win 3 matches of Connect 4",
+    "Perfect Breakout 2 times", "Win Matching in less than 150 seconds",
+    "Reach 5000 points in Tetris",
     // "Captured the Queen",
     "Get all 8 badges!"};
 
