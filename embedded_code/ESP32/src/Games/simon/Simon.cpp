@@ -344,15 +344,15 @@ void handleSimonFrame() {
     }
 
     // resets the score
-    for(auto &p : simonPlayers){
+    for (auto &p : simonPlayers) {
       p.score = 0;
     }
 
     // The index of the current player (used to identify the player)
     int index = -1;
-    for(size_t i = 0; i < simonPlayers.size(); i++){
+    for (size_t i = 0; i < simonPlayers.size(); i++) {
       // Finds the index of the current player
-      if(simonPlayers[i].id == currentPlayer.id){
+      if (simonPlayers[i].id == currentPlayer.id) {
         index = i;
       }
     }
@@ -363,43 +363,43 @@ void handleSimonFrame() {
 
     if (endScreen.handleUserInput()) {
 
-      if(strcmp(multiplayerMode.c_str(), "PERIPHERAL") == 0){
+      if (strcmp(multiplayerMode.c_str(), "PERIPHERAL") == 0) {
         currentPlayer.status = "ready";
         // modify the vector as well
-        for(auto &p : simonPlayers){
-          if(p.id == currentPlayer.id){
+        for (auto &p : simonPlayers) {
+          if (p.id == currentPlayer.id) {
             p.status = "ready";
           }
         }
         BluetoothManager::getPeripheral().sendAction(
-          generateSimonString(String("status")).c_str());
-      }else if(strcmp(multiplayerMode.c_str(), "HOST") == 0){
+            generateSimonString(String("status")).c_str());
+      } else if (strcmp(multiplayerMode.c_str(), "HOST") == 0) {
         currentPlayer.status = "ready";
         // modify the vector as well
-        for(auto &p : simonPlayers){
-          if(p.id == currentPlayer.id){
+        for (auto &p : simonPlayers) {
+          if (p.id == currentPlayer.id) {
             p.status = "ready";
           }
         }
         BluetoothManager::getCentral().sendMessage(
-                  generateSimonString("full").c_str());
-
+            generateSimonString("full").c_str());
       }
 
-      for(auto &p : simonPlayers){
-        if(strcmp(p.status.c_str(), "ready") != 0){
-          //Intermediary screen
+      for (auto &p : simonPlayers) {
+        if (strcmp(p.status.c_str(), "ready") != 0) {
+          // Intermediary screen
           tft.fillScreen(TFT_BLACK);
           tft.setTextDatum(MC_DATUM);
           tft.setTextColor(TFT_WHITE);
-          tft.drawString("WAITING FOR OTHER PLAYER...", tft.width()/2, tft.height()/2);
+          tft.drawString("WAITING FOR OTHER PLAYER...", tft.width() / 2,
+                         tft.height() / 2);
           tft.setTextDatum(TL_DATUM);
           break;
         }
       }
 
-
-      simon_game_state = SIMON_START_GAME; // handleUserInput returns true : game restarts
+      simon_game_state =
+          SIMON_START_GAME; // handleUserInput returns true : game restarts
     } else {
       if (endScreen.exit) { // exit to menu
         return;
@@ -419,7 +419,7 @@ void handleSimonFrame() {
     }
     break;
 
-  case SIMON_BLUETOOTH_NUMPAD:{
+  case SIMON_BLUETOOTH_NUMPAD: {
     pad.handleButtonInput(&lastButtonPressTime, buttonDebounceDelay / 2);
     std::string enteredCode = pad.getCode();
 
@@ -434,49 +434,47 @@ void handleSimonFrame() {
       code_entered = true;
       delay(1000);
     }
-    
+
     // Make sure there are actually devices connected, and then send the "ready"
     // string and start the game
-    if(code_entered){
-      if(BluetoothManager::getPeripheral().server && 
-          BluetoothManager::getPeripheral().server->getConnectedCount() != 0){
-          if(!simonPlayers.empty()){
-            multiplayer = true;
-            multiplayerMode = "PERIPHERAL";
-    
-            currentPlayer.status = "ready";
-            String ready = generateSimonString(String("status"));
-    
-            BluetoothManager::getPeripheral().sendAction(ready.c_str());
-            code_entered = false;
-            simon_game_state = SIMON_START_GAME;
-          }
-          
+    if (code_entered) {
+      if (BluetoothManager::getPeripheral().server &&
+          BluetoothManager::getPeripheral().server->getConnectedCount() != 0) {
+        if (!simonPlayers.empty()) {
+          multiplayer = true;
+          multiplayerMode = "PERIPHERAL";
+
+          currentPlayer.status = "ready";
+          String ready = generateSimonString(String("status"));
+
+          BluetoothManager::getPeripheral().sendAction(ready.c_str());
+          code_entered = false;
+          simon_game_state = SIMON_START_GAME;
         }
+      }
     }
     break;
   }
 
-    case SIMON_START_GAME:
-      if(strcmp(multiplayerMode.c_str(), "HOST") == 0){
-        for(auto &p : simonPlayers){
-            if(strcmp(p.status.c_str(), "ready") != 0){
-              return;
-            }
-        }
-        // Send the player data to the peripheral
-        BluetoothManager::getCentral().sendMessage(
-                  generateSimonString("full").c_str());
-      }
-      else if(strcmp(multiplayerMode.c_str(), "PERIPHERAL") == 0){
-        for(auto &p : simonPlayers){
-          if(strcmp(p.status.c_str(), "ready") != 0){
-            return;
-          }
+  case SIMON_START_GAME:
+    if (strcmp(multiplayerMode.c_str(), "HOST") == 0) {
+      for (auto &p : simonPlayers) {
+        if (strcmp(p.status.c_str(), "ready") != 0) {
+          return;
         }
       }
-      simonStartNewGame();
-      break;
+      // Send the player data to the peripheral
+      BluetoothManager::getCentral().sendMessage(
+          generateSimonString("full").c_str());
+    } else if (strcmp(multiplayerMode.c_str(), "PERIPHERAL") == 0) {
+      for (auto &p : simonPlayers) {
+        if (strcmp(p.status.c_str(), "ready") != 0) {
+          return;
+        }
+      }
+    }
+    simonStartNewGame();
+    break;
   }
 }
 
@@ -564,8 +562,8 @@ void simonCheckInput(int buttonPressed) {
       currentPlayer.status = "eliminated";
       // Also modify the vector
       // Game ends when either player messes up
-      for(auto &p : simonPlayers){
-          p.status = "eliminated";
+      for (auto &p : simonPlayers) {
+        p.status = "eliminated";
       }
       BluetoothManager::getPeripheral().sendAction(
           generateSimonString(String("status")).c_str());
@@ -575,7 +573,7 @@ void simonCheckInput(int buttonPressed) {
       currentPlayer.status = "eliminated";
       // Also modify the vector
       // Game ends when either player messes up
-      for(auto &p : simonPlayers){
+      for (auto &p : simonPlayers) {
         p.status = "eliminated";
       }
       BluetoothManager::getCentral().sendMessage(
@@ -768,6 +766,30 @@ void drawSimonHomeSelection() {
       tft.drawString(sub2, x_sub2, y_sub);
     }
   }
+
+  // ========== Author Credits ========== //
+  // Author Line: Mixed font sizes on one line
+  const char *label = "";
+  const char *names = "Designed by: Shadoyan & Campoverde";
+
+  // Measure widths
+  tft.setTextSize(1);
+  int labelWidth = tft.textWidth(label);
+  tft.setTextSize(2);
+  int namesWidth = tft.textWidth(names);
+
+  int totalWidth = labelWidth + namesWidth;
+  int startX = (tft.width() - totalWidth) / 2;
+  int y = tft.height() - 13;
+
+  // Print side-by-side
+  tft.setTextDatum(TL_DATUM);
+  tft.setTextColor(tft.color565(210, 210, 210)); // Bright neutral gray
+  tft.setTextSize(1);
+  tft.drawString(label, startX, y);
+
+  tft.setTextSize(2);
+  tft.drawString(names, startX + labelWidth, y - 5);
 }
 
 void drawSimonTriangleOverlay(int buttonId) {
@@ -1113,7 +1135,7 @@ void readSimonString(String oldState, const char *data) {
 
 // ========== Elimination Status ========== //
 void onSimonEliminationReceived() {
-  for(auto &p : simonPlayers){
+  for (auto &p : simonPlayers) {
     p.status = "eliminated";
   }
   Serial.println(

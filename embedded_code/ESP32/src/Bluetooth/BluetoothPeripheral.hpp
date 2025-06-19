@@ -36,7 +36,7 @@ public:
 
   // ###################### Send Messages #####################
   void sendMessage(const std::string &message); // Alias to sendAction
-  void sendExit(); // Sends exit message
+  void sendExit();                              // Sends exit message
 
   NimBLEServer *server = nullptr;
 
@@ -54,11 +54,13 @@ public:
     void onDisconnect(NimBLEServer *pServer, NimBLEConnInfo &connInfo,
                       int reason) override;
     bool intentionalExit = false;
+
   private:
     BluetoothPeripheral *parent;
   };
 
-  ServerCallbacks * callbackServer = nullptr;
+  ServerCallbacks *callbackServer = nullptr;
+
 private:
   TFT_eSPI &tft;
   NimBLECharacteristic *characteristic = nullptr;
@@ -72,10 +74,11 @@ private:
 
   class CharacteristicCallbacks : public NimBLECharacteristicCallbacks {
   public:
-    CharacteristicCallbacks(ServerCallbacks * server) : server(server){}
+    CharacteristicCallbacks(ServerCallbacks *server) : server(server) {}
     void onWrite(NimBLECharacteristic *pCharacteristic,
-      NimBLEConnInfo &connInfo) override;
+                 NimBLEConnInfo &connInfo) override;
+
   private:
-    ServerCallbacks * server;
+    ServerCallbacks *server;
   };
 };

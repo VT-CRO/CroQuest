@@ -21,10 +21,10 @@ GameMenu::GameMenu(TFT_eSPI *tft) : tft(tft), selectedIndex(0), drawer(*tft) {
   gameBoxes[6] = {"Memory", 1, 2};
   gameBoxes[7] = {"Tetris", 1, 3};
 
-  // ---------- Page 2 ----------
-  gameBoxes[8] = {"Chess", 0, 0}; // Top row
-  gameBoxes[9] = {"Checkers", 0, 1};
-  gameBoxes[10] = {"UNO", 0, 2};
+  // // ---------- Page 2 ----------
+  // gameBoxes[8] = {"Chess", 0, 0}; // Top row
+  // gameBoxes[9] = {"Checkers", 0, 1};
+  // gameBoxes[10] = {"UNO", 0, 2};
 
   // ====== Show a notification if any new badge was unlocked ======
   if (hasPendingNotification) {
@@ -47,9 +47,12 @@ void GameMenu::drawPage() {
 
   tft->fillScreen(BACKGROUND_COLOR);
 
+  // ================== Removed Second Page Background =================== //
   // Select the appropriate background image for the current page
-  const char *bgPath = (currentPage == 0) ? "/menu/assets/Background.jpg"
-                                          : "/menu/assets/Background1.jpg";
+  // const char *bgPath = (currentPage == 0) ? "/menu/assets/Background.jpg"
+  //                                         : "/menu/assets/Background1.jpg";
+
+  const char *bgPath = "/menu/assets/Background.jpg";
 
   File jpegFile = SD.open(bgPath);
   if (!jpegFile) {
@@ -70,8 +73,13 @@ void GameMenu::drawPage() {
   jpegFile.close();
 
   // ================= Draw Game Names for This Page ================= //
-  const int offset = (currentPage == 0) ? 0 : page1Count;
-  const int count = (currentPage == 0) ? page1Count : page2Count;
+
+  // ================== Removed Second Page Variables =================== //
+  // const int offset = (currentPage == 0) ? 0 : page1Count;
+  // const int count = (currentPage == 0) ? page1Count : page2Count;
+
+  const int offset = 0;
+  const int count = page1Count;
 
   tft->setTextColor(TFT_WHITE, BACKGROUND_COLOR);
   tft->setTextSize(1);
@@ -104,6 +112,8 @@ void GameMenu::drawPage() {
 
 // ###################### Handle Input User ######################
 void GameMenu::handleInput() {
+
+  currentPage = 0;
 
   // Fancy golden selector
   uint16_t selectorColor = allBadgesEarned ? 0xFFD700 : TFT_WHITE;
@@ -194,81 +204,94 @@ void GameMenu::handleInput() {
 
     // ================== Handle LEFT =================== //
     else if (left.isPressed()) {
-      if (currentPage == 0 && selectedIndex == 0) {
-        int prevRow = selectedIndex / ITEMS_PER_ROW;
-        int prevCol = selectedIndex % ITEMS_PER_ROW;
-        int px = LEFT_MARGIN + prevCol * (ICON_SIZE + H_SPACING);
-        int py = TOP_MARGIN + prevRow * (ICON_SIZE + MARGIN_Y);
-        for (int i = 0; i < SELECTOR_THICKNESS; i++) {
-          tft->drawRoundRect(px - i, py - i, ICON_SIZE + 2 * i,
-                             ICON_SIZE + 2 * i, SELECTOR_RADIUS,
-                             BACKGROUND_COLOR);
-        }
 
-        currentPage = 1;
-        selectedIndex = 2;
-        drawPage();
-        previousIndex = selectedIndex;
-        return;
-      } else if (currentPage == 0) {
-        selectedIndex--;
-      } else if (currentPage == 1 && selectedIndex == 0) {
-        // From "Chess" → back to "Tetris"
-        int prevRow = selectedIndex / ITEMS_PER_ROW;
-        int prevCol = selectedIndex % ITEMS_PER_ROW;
-        int px = LEFT_MARGIN + prevCol * (ICON_SIZE + H_SPACING);
-        int py = TOP_MARGIN + prevRow * (ICON_SIZE + MARGIN_Y);
-
-        for (int i = 0; i < SELECTOR_THICKNESS; i++) {
-          tft->drawRoundRect(px - i, py - i, ICON_SIZE + 2 * i,
-                             ICON_SIZE + 2 * i, SELECTOR_RADIUS,
-                             BACKGROUND_COLOR);
-        }
-
-        currentPage = 0;
-        selectedIndex = 7; // Tetris
-        drawPage();
-        previousIndex = selectedIndex;
-        return;
-      } else if (currentPage == 1 && selectedIndex > 0) {
+      if (selectedIndex == 0) {
+        selectedIndex = page1Count - 1; // Wrap to last item (Tetris)
+      } else {
         selectedIndex--;
       }
-
       moved = true;
+
+      // ================== Removed Access to Second Page =================== //
+      // if (currentPage == 0 && selectedIndex == 0) {
+      //   int prevRow = selectedIndex / ITEMS_PER_ROW;
+      //   int prevCol = selectedIndex % ITEMS_PER_ROW;
+      //   int px = LEFT_MARGIN + prevCol * (ICON_SIZE + H_SPACING);
+      //   int py = TOP_MARGIN + prevRow * (ICON_SIZE + MARGIN_Y);
+      //   for (int i = 0; i < SELECTOR_THICKNESS; i++) {
+      //     tft->drawRoundRect(px - i, py - i, ICON_SIZE + 2 * i,
+      //                        ICON_SIZE + 2 * i, SELECTOR_RADIUS,
+      //                        BACKGROUND_COLOR);
+      //   }
+      //   currentPage = 1;
+      //   selectedIndex = 2;
+      //   drawPage();
+      //   previousIndex = selectedIndex;
+      //   return;
+      // if (currentPage == 0) {
+      //   selectedIndex--;
+      // } else if (currentPage == 1 && selectedIndex == 0) {
+      // From "Chess" → back to "Tetris"
+      //   int prevRow = selectedIndex / ITEMS_PER_ROW;
+      //   int prevCol = selectedIndex % ITEMS_PER_ROW;
+      //   int px = LEFT_MARGIN + prevCol * (ICON_SIZE + H_SPACING);
+      //   int py = TOP_MARGIN + prevRow * (ICON_SIZE + MARGIN_Y);
+      //   for (int i = 0; i < SELECTOR_THICKNESS; i++) {
+      //     tft->drawRoundRect(px - i, py - i, ICON_SIZE + 2 * i,
+      //                        ICON_SIZE + 2 * i, SELECTOR_RADIUS,
+      //                        BACKGROUND_COLOR);
+      //   }
+      //   currentPage = 0;
+      //   selectedIndex = 7; // Tetris
+      //   drawPage();
+      //   previousIndex = selectedIndex;
+      //   return;
+      // } else if (currentPage == 1 && selectedIndex > 0) {
+      //   selectedIndex--;
+      // }
+      // moved = true;
     }
 
     // ================== Handle RIGHT =================== //
     else if (right.isPressed()) {
-      if (currentPage == 0 && selectedIndex == page1Count - 1) {
-        // Clear old selector before changing
-        int prevRow = selectedIndex / ITEMS_PER_ROW;
-        int prevCol = selectedIndex % ITEMS_PER_ROW;
-        int px = LEFT_MARGIN + prevCol * (ICON_SIZE + H_SPACING);
-        int py = TOP_MARGIN + prevRow * (ICON_SIZE + MARGIN_Y);
-        for (int i = 0; i < SELECTOR_THICKNESS; i++) {
-          tft->drawRoundRect(px - i, py - i, ICON_SIZE + 2 * i,
-                             ICON_SIZE + 2 * i, SELECTOR_RADIUS,
-                             BACKGROUND_COLOR);
-        }
 
-        // Then switch page and draw
-        currentPage = 1;
-        selectedIndex = 0;
-        drawPage();
-        previousIndex = selectedIndex;
-        return;
-      } else if (currentPage == 0 && selectedIndex < page1Count - 1) {
-        selectedIndex++;
-      } else if (currentPage == 1 && selectedIndex == page2Count - 1) {
-        // From "UNO" → back to "Snake"
-        currentPage = 0;
-        selectedIndex = 0;
-        drawPage(); // Redraw new background
-        previousIndex = selectedIndex;
-        return;
-      } else if (currentPage == 1) {
+      if (selectedIndex == page1Count - 1) {
+        selectedIndex = 0; // Wrap to first item (Snake)
+      } else {
         selectedIndex++;
       }
+
+      // ================== Removed Access to Second Page =================== //
+      // if (currentPage == 0 && selectedIndex == page1Count - 1) {
+      //   // Clear old selector before changing
+      //   int prevRow = selectedIndex / ITEMS_PER_ROW;
+      //   int prevCol = selectedIndex % ITEMS_PER_ROW;
+      //   int px = LEFT_MARGIN + prevCol * (ICON_SIZE + H_SPACING);
+      //   int py = TOP_MARGIN + prevRow * (ICON_SIZE + MARGIN_Y);
+      //   for (int i = 0; i < SELECTOR_THICKNESS; i++) {
+      //     tft->drawRoundRect(px - i, py - i, ICON_SIZE + 2 * i,
+      //                        ICON_SIZE + 2 * i, SELECTOR_RADIUS,
+      //                        BACKGROUND_COLOR);
+      //   }
+      // Then switch page and draw
+      //   currentPage = 1;
+      //   selectedIndex = 0;
+      //   drawPage();
+      //   previousIndex = selectedIndex;
+      //   return;
+      // if (currentPage == 0 && selectedIndex < page1Count - 1) {
+      //   selectedIndex++;
+      // ============== Removed Access to Second Page =============== //
+      // } else if (currentPage == 1 && selectedIndex == page2Count - 1) {
+      // From "UNO" → back to "Snake"
+      //   currentPage = 0;
+      //   selectedIndex = 0;
+      //   drawPage(); // Redraw new background
+      //   previousIndex = selectedIndex;
+      //   return;
+      // } else if (currentPage == 1) {
+      //   selectedIndex++;
+      // }
       moved = true;
     }
 

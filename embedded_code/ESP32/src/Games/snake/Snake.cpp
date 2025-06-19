@@ -1,11 +1,13 @@
 #include "Snake.hpp"
-#include "SettingsMenu/AudioMenu/Audio.hpp"
+
+// ####################################################################################################
+//  Global Definitions
+// ####################################################################################################
 
 // Centering for the test
 #define CENTER MC_DATUM
 
 // Max size of the snake
-// Easily adjustable
 #define SNAKE_MAX_LENGTH 200
 
 // Game Constants
@@ -41,8 +43,10 @@ Direction direction = RIGHT;
 Direction lastDirectionOnTick = RIGHT;
 Point food;
 
-// Drawing and graphics
-// void drawJpegAtTile(const char* filename, int tileX, int tileY);
+// ####################################################################################################
+//  Functions Declarations
+// ####################################################################################################
+
 void drawTile(int x, int y, uint16_t color);
 void jpegRender(int xpos, int ypos);
 void drawBackground();
@@ -73,7 +77,11 @@ void snakeHeadAssetsToCache();
 enum GameState { HOMESCREEN, PLAYING, GAMEOVERSCREEN };
 static enum GameState gameState = HOMESCREEN;
 
-// Initializing game
+// ####################################################################################################
+//  Setup & Loop
+// ####################################################################################################
+
+// ========== Run Game ========== //
 void runSnake() {
 
   resetExitFlag();        // Resets flag for Main Menu
@@ -96,7 +104,8 @@ void runSnake() {
     file.close();
   }
 
-  showCreditsScreen();
+  // Print Home Screen
+  showHomeScreen();
 
   // Loop through and play game
   for (;;) {
@@ -118,7 +127,7 @@ void runSnake() {
         // Change the color of the Press A to start text to white
         tft.setTextColor(TFT_WHITE);
         tft.setTextSize(2);
-        tft.drawString("Press A to start", tft.width() / 2, tft.height() - 50);
+        tft.drawString("Press A to start", tft.width() / 2, tft.height() - 70);
         // Delay added to show A was pressed
         delay(200);
 
@@ -158,7 +167,7 @@ void runSnake() {
         tft.setTextColor(TFT_WHITE);
         tft.setTextSize(2);
         tft.drawString("Press A to restart", tft.width() / 2,
-                       tft.height() - 60);
+                       tft.height() - 70);
         delay(200);
         gameState = PLAYING;
         playPressSound();
@@ -168,157 +177,6 @@ void runSnake() {
   }
   if (getExitFlag())
     return;
-}
-
-// Reading the input
-void handleButtonInputs() {
-
-  // ----------- (UP / RIGHT) ----------
-  if (right.isPressed()) { // Tune this range for RIGHT
-    if (lastDirectionOnTick != LEFT)
-      direction = RIGHT;
-  } else if (up.isPressed()) { // Tune this range for UP
-    if (lastDirectionOnTick != DOWN)
-      direction = UP;
-  }
-
-  // ----------- (DOWN / LEFT) ----------
-  if (down.isPressed()) { // Tune this range for DOWN
-    if (lastDirectionOnTick != UP)
-      direction = DOWN;
-  } else if (left.isPressed()) { // Tune this range for LEFT
-    if (lastDirectionOnTick != RIGHT)
-      direction = LEFT;
-  }
-
-  delay(10);
-}
-
-// Method for drawing a single tile
-void drawTile(int x, int y, uint16_t color) {
-  tft.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE, color);
-}
-
-// Physically drawing the background to reduce latency
-void drawBackground() {
-  // Draw scoreboard background
-  tft.fillRect(0, 0, tft.width(), TILE_SIZE * 2,
-               tft.color565(50, 50, 50)); // Dark grey banner
-
-  // Draw the rest of the border
-
-  // Left border
-  tft.fillRect(0, 0, TILE_SIZE, tft.height(), tft.color565(50, 50, 50));
-  // Right border
-  tft.fillRect((GRID_WIDTH - 1) * TILE_SIZE, 0, TILE_SIZE, tft.height(),
-               tft.color565(50, 50, 50));
-  // Bottom border
-  tft.fillRect(0, (GRID_HEIGHT)*TILE_SIZE, tft.width(), TILE_SIZE,
-               tft.color565(50, 50, 50));
-
-  // Draw SCORE and HIGHSCORE
-  drawScores();
-
-  // Draw the play field (starting from y = 2)
-  for (int x = 1; x < GRID_WIDTH - 1; x++) {
-    for (int y = 2; y < GRID_HEIGHT; y++) {
-      uint16_t color = (x + y) % 2 == 0 ? tft.color565(66, 176, 50)
-                                        : tft.color565(111, 189, 99);
-      drawTile(x, y, color);
-    }
-  }
-
-  // 38 width 17 Height
-  //  Draw border
-  uint16_t borderColor = tft.color565(30, 30, 30);
-  int borderThickness = 4;
-
-  // Top border
-  tft.fillRect(TILE_SIZE - borderThickness, TILE_SIZE * 2 - borderThickness,
-               (GRID_WIDTH - 2) * TILE_SIZE + 2 * borderThickness,
-               borderThickness, borderColor);
-
-  // Bottom border
-  tft.fillRect(TILE_SIZE - borderThickness, TILE_SIZE * (GRID_HEIGHT),
-               (GRID_WIDTH - 2) * TILE_SIZE + 2 * borderThickness,
-               borderThickness, borderColor);
-
-  // Left border
-  tft.fillRect(TILE_SIZE - borderThickness, TILE_SIZE * 2, borderThickness,
-               (GRID_HEIGHT - 2) * TILE_SIZE, borderColor);
-
-  // Right border
-  tft.fillRect(TILE_SIZE * (GRID_WIDTH - 1), TILE_SIZE * 2, borderThickness,
-               (GRID_HEIGHT - 2) * TILE_SIZE, borderColor);
-}
-
-// Drawing the snake segments
-void drawSnake() {
-  drawing.drawSdJpeg("/snake/assets/closed_right.jpg", snake[0].x * TILE_SIZE,
-                     snake[0].y * TILE_SIZE);
-  drawing.addToCache("/snake/assets/closed_right.jpg");
-  drawing.pushSprite(false, true, 0x1F);
-
-  for (int i = 1; i < snakeLength - 1; i++) {
-    drawTile(snake[i].x, snake[i].y, tft.color565(94, 163, 244));
-  }
-  drawing.drawSdJpeg("/snake/assets/tail_right_light.jpg",
-                     snake[snakeLength - 1].x * TILE_SIZE,
-                     snake[snakeLength - 1].y * TILE_SIZE);
-  drawing.addToCache("/snake/assets/tail_right_light.jpg");
-  drawing.pushSprite();
-}
-
-// Drawing the food segments
-void drawFood() {
-  int xpos = food.x * TILE_SIZE;
-  int ypos = food.y * TILE_SIZE;
-
-  // Draw the JPEG sprite at the food location
-  drawing.drawSdJpeg("/snake/assets/apple.jpg", xpos, ypos);
-  drawing.addToCache("/snake/assets/apple.jpg");
-  drawing.pushSprite(false, true,
-                     0xFFFF); // Push without using built-in transparency
-
-  // Manually clear near-black pixels to simulate transparency
-  for (int y = 0; y < TILE_SIZE; y++) {
-    for (int x = 0; x < TILE_SIZE; x++) {
-      uint16_t color = tft.readPixel(xpos + x, ypos + y);
-
-      uint8_t r = (color >> 11) & 0x1F;
-      uint8_t g = (color >> 5) & 0x3F;
-      uint8_t b = color & 0x1F;
-
-      if (r < 2 && g < 2 && b < 2) {
-        // Use checkerboard background color
-        uint16_t bgColor = ((food.x + food.y) % 2 == 0)
-                               ? tft.color565(66, 176, 50)
-                               : tft.color565(111, 189, 99);
-
-        tft.drawPixel(xpos + x, ypos + y, bgColor);
-      }
-    }
-  }
-}
-
-// Randomly spawning a food location
-void spawnFood() {
-  while (true) {
-    food.x = random(1, GRID_WIDTH - 1);
-    food.y = random(2, GRID_HEIGHT - 1);
-
-    bool overlaps = false;
-
-    for (int i = 0; i < snakeLength; i++) {
-      if (snake[i].x == food.x && snake[i].y == food.y) {
-        overlaps = true;
-        break;
-      }
-    }
-    if (!overlaps)
-      break;
-  }
-  drawFood();
 }
 
 // Moving the snake
@@ -528,6 +386,34 @@ void moveSnake() {
   }
 }
 
+// ####################################################################################################
+//  Logic
+// ####################################################################################################
+
+// ========== Manual Loop ========== //
+void handleButtonInputs() {
+
+  // ----------- (UP / RIGHT) ----------
+  if (right.isPressed()) { // Tune this range for RIGHT
+    if (lastDirectionOnTick != LEFT)
+      direction = RIGHT;
+  } else if (up.isPressed()) { // Tune this range for UP
+    if (lastDirectionOnTick != DOWN)
+      direction = UP;
+  }
+
+  // ----------- (DOWN / LEFT) ----------
+  if (down.isPressed()) { // Tune this range for DOWN
+    if (lastDirectionOnTick != UP)
+      direction = DOWN;
+  } else if (left.isPressed()) { // Tune this range for LEFT
+    if (lastDirectionOnTick != RIGHT)
+      direction = LEFT;
+  }
+
+  delay(10);
+}
+
 // Resetting the game after death
 // Logic will be updated with buttons
 void resetGame() {
@@ -609,10 +495,139 @@ void showCreditsScreen() {
   // --- Press A to start ---
   tft.setTextColor(tft.color565(150, 150, 150)); // light grey
   tft.setTextSize(2);
-  tft.drawString("Press A to start", tft.width() / 2, tft.height() - 50);
+  tft.drawString("Press A to start", tft.width() / 2, tft.height() - 70);
 }
 
-// ==================== DRAWING ==================== //
+// Randomly spawning a food location
+void spawnFood() {
+  while (true) {
+    food.x = random(1, GRID_WIDTH - 1);
+    food.y = random(2, GRID_HEIGHT - 1);
+
+    bool overlaps = false;
+
+    for (int i = 0; i < snakeLength; i++) {
+      if (snake[i].x == food.x && snake[i].y == food.y) {
+        overlaps = true;
+        break;
+      }
+    }
+    if (!overlaps)
+      break;
+  }
+  drawFood();
+}
+
+// ####################################################################################################
+//  Drawing
+// ####################################################################################################
+
+// Drawing the snake segments
+void drawSnake() {
+  drawing.drawSdJpeg("/snake/assets/closed_right.jpg", snake[0].x * TILE_SIZE,
+                     snake[0].y * TILE_SIZE);
+  drawing.addToCache("/snake/assets/closed_right.jpg");
+  drawing.pushSprite(false, true, 0x1F);
+
+  for (int i = 1; i < snakeLength - 1; i++) {
+    drawTile(snake[i].x, snake[i].y, tft.color565(94, 163, 244));
+  }
+  drawing.drawSdJpeg("/snake/assets/tail_right_light.jpg",
+                     snake[snakeLength - 1].x * TILE_SIZE,
+                     snake[snakeLength - 1].y * TILE_SIZE);
+  drawing.addToCache("/snake/assets/tail_right_light.jpg");
+  drawing.pushSprite();
+}
+
+// Drawing the food segments
+void drawFood() {
+  int xpos = food.x * TILE_SIZE;
+  int ypos = food.y * TILE_SIZE;
+
+  // Draw the JPEG sprite at the food location
+  drawing.drawSdJpeg("/snake/assets/apple.jpg", xpos, ypos);
+  drawing.addToCache("/snake/assets/apple.jpg");
+  drawing.pushSprite(false, true,
+                     0xFFFF); // Push without using built-in transparency
+
+  // Manually clear near-black pixels to simulate transparency
+  for (int y = 0; y < TILE_SIZE; y++) {
+    for (int x = 0; x < TILE_SIZE; x++) {
+      uint16_t color = tft.readPixel(xpos + x, ypos + y);
+
+      uint8_t r = (color >> 11) & 0x1F;
+      uint8_t g = (color >> 5) & 0x3F;
+      uint8_t b = color & 0x1F;
+
+      if (r < 2 && g < 2 && b < 2) {
+        // Use checkerboard background color
+        uint16_t bgColor = ((food.x + food.y) % 2 == 0)
+                               ? tft.color565(66, 176, 50)
+                               : tft.color565(111, 189, 99);
+
+        tft.drawPixel(xpos + x, ypos + y, bgColor);
+      }
+    }
+  }
+}
+
+// Method for drawing a single tile
+void drawTile(int x, int y, uint16_t color) {
+  tft.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE, color);
+}
+
+// Physically drawing the background to reduce latency
+void drawBackground() {
+  // Draw scoreboard background
+  tft.fillRect(0, 0, tft.width(), TILE_SIZE * 2,
+               tft.color565(50, 50, 50)); // Dark grey banner
+
+  // Draw the rest of the border
+
+  // Left border
+  tft.fillRect(0, 0, TILE_SIZE, tft.height(), tft.color565(50, 50, 50));
+  // Right border
+  tft.fillRect((GRID_WIDTH - 1) * TILE_SIZE, 0, TILE_SIZE, tft.height(),
+               tft.color565(50, 50, 50));
+  // Bottom border
+  tft.fillRect(0, (GRID_HEIGHT)*TILE_SIZE, tft.width(), TILE_SIZE,
+               tft.color565(50, 50, 50));
+
+  // Draw SCORE and HIGHSCORE
+  drawScores();
+
+  // Draw the play field (starting from y = 2)
+  for (int x = 1; x < GRID_WIDTH - 1; x++) {
+    for (int y = 2; y < GRID_HEIGHT; y++) {
+      uint16_t color = (x + y) % 2 == 0 ? tft.color565(66, 176, 50)
+                                        : tft.color565(111, 189, 99);
+      drawTile(x, y, color);
+    }
+  }
+
+  // 38 width 17 Height
+  //  Draw border
+  uint16_t borderColor = tft.color565(30, 30, 30);
+  int borderThickness = 4;
+
+  // Top border
+  tft.fillRect(TILE_SIZE - borderThickness, TILE_SIZE * 2 - borderThickness,
+               (GRID_WIDTH - 2) * TILE_SIZE + 2 * borderThickness,
+               borderThickness, borderColor);
+
+  // Bottom border
+  tft.fillRect(TILE_SIZE - borderThickness, TILE_SIZE * (GRID_HEIGHT),
+               (GRID_WIDTH - 2) * TILE_SIZE + 2 * borderThickness,
+               borderThickness, borderColor);
+
+  // Left border
+  tft.fillRect(TILE_SIZE - borderThickness, TILE_SIZE * 2, borderThickness,
+               (GRID_HEIGHT - 2) * TILE_SIZE, borderColor);
+
+  // Right border
+  tft.fillRect(TILE_SIZE * (GRID_WIDTH - 1), TILE_SIZE * 2, borderThickness,
+               (GRID_HEIGHT - 2) * TILE_SIZE, borderColor);
+}
 
 // Draws highscore and current score
 void drawScores() {
@@ -632,21 +647,27 @@ void drawScores() {
 void showHomeScreen() {
   tft.setTextDatum(MC_DATUM);
 
-  // Draw the game title in large font
+  // ========== Title ========== //
   tft.setTextColor(TFT_GREEN);
   tft.setTextSize(4);
-  tft.drawString("Snake", tft.width() / 2, tft.height() / 2 - 50);
+  tft.drawString("Snake", tft.width() / 2, tft.height() / 2 - 60);
 
-  // Draw the author name
+  // ========== Subtitle / Edition ========== //
   tft.setTextColor(TFT_YELLOW);
   tft.setTextSize(2);
-  tft.drawString("Designed by CroQuest", tft.width() / 2,
-                 tft.height() / 2 + 10);
+  tft.drawString("Classic Arcade Edition", tft.width() / 2,
+                 tft.height() / 2 - 20);
 
-  // Draw the "Press A to start" prompt
+  // ========== Start Prompt ========== //
   tft.setTextColor(tft.color565(150, 150, 150)); // light grey
   tft.setTextSize(2);
-  tft.drawString("Press A to start", tft.width() / 2, tft.height() - 50);
+  tft.drawString("Press A to start", tft.width() / 2, tft.height() - 70);
+
+  // ========== Author Credits ========== //
+  tft.setTextColor(tft.color565(100, 200, 100)); // soft green
+  tft.setTextSize(2);
+  tft.drawString("Designed by: McCue & Shadoyan", tft.width() / 2,
+                 tft.height() - 10);
 }
 
 void gameOverScreen() {
@@ -674,7 +695,9 @@ void gameOverScreen() {
                  tft.height() - 30);
 }
 
-// ================ AUDIO ================= //
+// ####################################################################################################
+//  Audio Logic
+// ####################################################################################################
 
 void playGameOverSound() {
   int notes[] = {1000, 900, 800, 700, 600, 500};
