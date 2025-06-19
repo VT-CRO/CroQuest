@@ -158,13 +158,13 @@ void handleBreakoutFrame() {
       }
       lastFrameTime = millis();
     }
-
-    if (breakout_selection != lastSelection ||
-        breakout_subselection != lastSubselection) {
-      drawBreakoutHomeScreen();
-      lastSelection = breakout_selection;
-      lastSubselection = breakout_subselection;
-    }
+    // Commented this out because it caused screen flashing
+    // if (breakout_selection != lastSelection ||
+    //     breakout_subselection != lastSubselection) {
+    //   drawBreakoutHomeScreen();
+    //   lastSelection = breakout_selection;
+    //   lastSubselection = breakout_subselection;
+    // }
     break;
 
   case BREAKOUT_MULTIPLAYER_SELECTION:

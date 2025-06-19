@@ -1193,14 +1193,14 @@ void drawTitleAndGrid() {
   tft.setTextDatum(MC_DATUM);
   tft.setTextColor(TFT_WHITE);
   tft.setTextSize(4);
-  tft.drawString("CONNECT 4", screen_width / 2, 40);
+  tft.drawString("CONNECT 4", screen_width / 2, 30);
 
   // Grid preview
   int previewCols = 7, previewRows = 6, cellSize = 20;
   int previewWidth = previewCols * cellSize;
   int previewHeight = previewRows * cellSize;
   int gridX = (screen_width - previewWidth) / 2;
-  int gridY = 80;
+  int gridY = 50;
 
   for (int r = 0; r < previewRows; r++) {
     for (int c = 0; c < previewCols; c++) {

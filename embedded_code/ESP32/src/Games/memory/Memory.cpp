@@ -552,48 +552,39 @@ static void triggerGameOver() {
 
 // ========== Home Screen ========== //
 void showHomeScreen() {
+  tft.fillScreen(TFT_BLACK);  // Background
 
-  // Draw Background
-  drawTiles();
-
-  // ---------- Gradient Background (Vertical) ----------
-  for (int y = 0; y < tft.height(); y++) {
-    uint8_t gradient =
-        map(y, 0, tft.height(), 200, 255); // From light to bright blue
-    uint16_t color = tft.color565(gradient, gradient, 255);
-    tft.drawFastHLine(0, y, tft.width(), color);
-  }
-
-  // ---------- Stylized Title with Shadow ----------
-  tft.setTextDatum(MC_DATUM);
-  tft.setTextSize(4);
-
+  // ---------- Layout Constants ----------
   int centerX = tft.width() / 2;
-  int titleY = tft.height() / 2 - 50;
+  int titleY = 80; 
+  int subtitleY = titleY + 60; 
+  int promptY = tft.height() - 80;
+  int authorsY = tft.height() - 25; 
 
-  // Draw shadow
+  // ---------- TITLE ----------
+  tft.setTextDatum(MC_DATUM);
+  tft.setTextSize(6);  // Bigger!
   tft.setTextColor(TFT_DARKGREY);
-  tft.drawString("MEMORY", centerX + 3, titleY + 3);
-
-  // Draw main title
+  tft.drawString("MEMORY", centerX + 2, titleY + 2);  // shadow
   tft.setTextColor(TFT_WHITE);
   tft.drawString("MEMORY", centerX, titleY);
 
-  // ---------- Author Name ----------
+  // ---------- Subtitle ----------
   tft.setTextSize(2);
-  tft.setTextColor(TFT_BLACK);
-  tft.drawString("Designed by Connor McCue", centerX, titleY + 60);
-  tft.drawString("&", centerX, titleY + 80);
-  tft.drawString("Lucas Shadoyan", centerX, titleY + 100);
+  tft.setTextColor(TFT_LIGHTGREY);
+  tft.drawString("Focus. Match. Win.", centerX, subtitleY);
 
-  // ---------- Start Prompt with Shadow ----------
-  int promptY = tft.height() - 50;
-  tft.setTextSize(2);
-  tft.setTextColor(TFT_DARKGREY);
-  tft.drawString("Press A to start", centerX + 2, promptY + 2);
 
+  tft.setTextSize(2); 
+  tft.setTextColor(TFT_LIGHTGREY);
+  tft.drawString("Press A to start", centerX + 1, promptY + 1);  // shadow
   tft.setTextColor(TFT_YELLOW);
   tft.drawString("Press A to start", centerX, promptY);
+
+  // ---------- Author Credits ----------
+  tft.setTextSize(2);
+  tft.setTextColor(TFT_DARKGREY);
+  tft.drawString("Designed by McCue & Shadoyan", centerX, authorsY);
 }
 
 // ####################################################################################################

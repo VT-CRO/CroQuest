@@ -167,7 +167,7 @@ void runSnake() {
         tft.setTextColor(TFT_WHITE);
         tft.setTextSize(2);
         tft.drawString("Press A to restart", tft.width() / 2,
-                       tft.height() - 70);
+                       tft.height() - 60);
         delay(200);
         gameState = PLAYING;
         playPressSound();
