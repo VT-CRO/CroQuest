@@ -34,7 +34,7 @@ static int gridHeight = 0;
 const char *badgePaths[badgeCount] = {
     "/badges/assets/0.jpg", "/badges/assets/1.jpg", "/badges/assets/2.jpg",
     "/badges/assets/3.jpg", "/badges/assets/4.jpg", "/badges/assets/5.jpg",
-    "/badges/assets/6.jpg", "/badges/assets/7.jpg", "/badges/assets/8.jpg"};
+    "/badges/assets/6.jpg", "/badges/assets/7.jpg", "/badges/assets/9.jpg"};
 // "/badges/assets/9.jpg"};
 
 const char *badgeDescriptions[badgeCount] = {
