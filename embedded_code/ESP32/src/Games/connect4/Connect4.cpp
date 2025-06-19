@@ -203,7 +203,7 @@ void handleConnect4Frame() {
     if (!roundEnded && millis() - lastMoveTime > moveDelay) {
       if (A.wasJustPressed()) {
         if (subselection == 0) {
-          //clear ready status
+          // clear ready status
           ready["periph"] = false;
           ready["host"] = false;
           // HOST = CENTRAL
@@ -248,7 +248,7 @@ void handleConnect4Frame() {
               delay(10);
             }
 
-            //send ready string
+            // send ready string
             ready["host"] = true;
             BluetoothManager::getCentral().sendMessage("ready@host,true");
 
@@ -287,10 +287,10 @@ void handleConnect4Frame() {
   // ========== Multiplayer Logic for Host/Peripheral ========== //
   if (game_state == HOST_SCREEN || game_state == MULTIPLAYER_PLAYING) {
     // Don't continue if the host or peripheral aren't ready yet
-    if(!ready["host"] || !ready["periph"])
+    if (!ready["host"] || !ready["periph"])
       return;
-    
-    if(firstFrame){
+
+    if (firstFrame) {
       drawAllPlaying();
       firstFrame = false;
     }
@@ -298,10 +298,9 @@ void handleConnect4Frame() {
     // Redraw If Stated Changed
     if (connect4StateChanged) {
       // Check dropped piece
-      if(pieceDropCol >= 0 && playerDrop >= 0){
+      if (pieceDropCol >= 0 && playerDrop >= 0) {
         if (playerDrop == localPlayerId)
           dropPiece(pieceDropCol, (3 - playerDrop));
-
       }
       // Check win
       if (checkWin((3 - playerDrop))) {
@@ -333,7 +332,6 @@ void handleConnect4Frame() {
       String turnText = (currentPlayer == 1) ? "Red's Turn " : "Blue's Turn";
       tft.drawString(turnText, tft.width() / 2, tft.height() - 10);
 
-
       // Handle Cursor Movement
       if (!roundEnded && millis() - lastMoveTime > moveDelay / 2) {
         if (left.isPressed() && cursorCol > 0) {
@@ -345,29 +343,29 @@ void handleConnect4Frame() {
         }
         lastMoveTime = millis();
       }
-  
+
       bool selectPressed = A.wasJustPressed();
-  
+
       // Handle Drop
       if (!roundEnded && selectPressed && !buttonPreviouslyPressed &&
           localPlayerId == currentPlayer) {
-  
+
         bool placed = dropPiece(cursorCol, currentPlayer);
-  
+
         if (placed) {
           playDropSound(); // Play sound
-  
+
           // Get position
           lastDropRow = getDropRow(cursorCol);
           lastDropCol = cursorCol;
           currentPlayer = (currentPlayer == 1) ? 2 : 1;
-  
+
           // Draw updated score/cursor
           drawScorePanel(player1Wins, player2Wins, currentPlayer);
           drawCursor();
-  
+
           String newState = generateConnect4StateString();
-  
+
           if (game_state == HOST_SCREEN) {
             BluetoothCentral &central = BluetoothManager::getCentral();
             for (auto *client : central.getConnectedClients()) {
@@ -389,7 +387,7 @@ void handleConnect4Frame() {
 
           // Check Winner
           if (checkWin(3 - currentPlayer)) {
-            ( (3 - currentPlayer) == 1 ? player1Wins++ : player2Wins++);
+            ((3 - currentPlayer) == 1 ? player1Wins++ : player2Wins++);
             playWinSound();
             drawWinLine(3 - currentPlayer);
             roundEnded = true;
@@ -404,15 +402,14 @@ void handleConnect4Frame() {
           flashCursorRed();
         }
       }
-  
+
       buttonPreviouslyPressed = selectPressed;
-  
+
       // Redraw when moving or selecting
       if (cursorCol != lastCursorCol || selectPressed) {
         lastCursorCol = cursorCol;
       }
     }
-
 
     // Auto Restart
     if (roundEnded && millis() - winTime >= 5000) {
@@ -559,7 +556,7 @@ void handleConnect4Frame() {
     }
 
     EndScreen endScreen(playerNames, playerScores, multiplayer, settings.name,
-                        localPlayerId == 1 ? player1Wins : player2Wins); 
+                        localPlayerId == 1 ? player1Wins : player2Wins);
 
     if (endScreen.handleUserInput()) {
 
@@ -590,22 +587,23 @@ void handleConnect4Frame() {
       }
 
       // set ready status
-      if(game_state == MULTIPLAYER_PLAYING){
+      if (game_state == MULTIPLAYER_PLAYING) {
         ready["periph"] = true;
         BluetoothManager::getPeripheral().sendMessage("ready@periph,true");
-      }else if(game_state == HOST_SCREEN){
+      } else if (game_state == HOST_SCREEN) {
         ready["host"] = true;
         BluetoothManager::getCentral().sendMessage("ready@host,true");
       }
 
       // Show intermediary waiting screen
-      if(game_state == HOST_SCREEN || game_state == MULTIPLAYER_PLAYING){
-        if(!ready["periph"] || !ready["host"]){
-            tft.fillScreen(TFT_BLACK);
-            tft.setTextDatum(MC_DATUM);
-            tft.setTextColor(TFT_WHITE);
-            tft.drawString("WAITING FOR OTHER PLAYER...", tft.width()/2, tft.height()/2);
-            tft.setTextDatum(TL_DATUM);
+      if (game_state == HOST_SCREEN || game_state == MULTIPLAYER_PLAYING) {
+        if (!ready["periph"] || !ready["host"]) {
+          tft.fillScreen(TFT_BLACK);
+          tft.setTextDatum(MC_DATUM);
+          tft.setTextColor(TFT_WHITE);
+          tft.drawString("WAITING FOR OTHER PLAYER...", tft.width() / 2,
+                         tft.height() / 2);
+          tft.setTextDatum(TL_DATUM);
         }
       }
 
@@ -641,9 +639,9 @@ void handleConnect4Frame() {
       BluetoothPeripheral &peripheral = BluetoothManager::getPeripheral();
       peripheral.beginAdvertising(enteredCode);
       pad.clearCode();
-      
+
       ready["periph"] = true;
-      
+
       // Initial setup
       firstFrame = true;
       cursorCol = 3;
@@ -652,8 +650,9 @@ void handleConnect4Frame() {
       multiplayerMode = true;
     }
     // Only start the game when both the host and peripheral are ready
-    if(ready["periph"] && ready["host"]){
-      BluetoothManager::getPeripheral().sendMessage("ready@periph,true"); // send ready message
+    if (ready["periph"] && ready["host"]) {
+      BluetoothManager::getPeripheral().sendMessage(
+          "ready@periph,true"); // send ready message
       game_state = MULTIPLAYER_PLAYING;
     }
   }
@@ -1289,7 +1288,7 @@ void readConnect4String(String oldState, const char *data) {
 
   for (int line = 0; line < lines.size(); line++) {
     String part = lines[line];
-    part.trim();  // Clean up whitespace
+    part.trim(); // Clean up whitespace
 
     switch (line) {
     case 0: { // Red Player
@@ -1341,11 +1340,11 @@ void readConnect4String(String oldState, const char *data) {
   Serial.print("Parsed currentPlayer: ");
   Serial.println(currentPlayer == 1);
   Serial.println(currentPlayer == 2);
-  
-  Serial.println(currentPlayer); 
-  
+
+  Serial.println(currentPlayer);
+
   Serial.println(localPlayerId);
-  
+
   Serial.print("Parsed tempDropRow: ");
   Serial.println(tempDropRow);
   Serial.print("Parsed tempDropCol: ");
@@ -1360,8 +1359,6 @@ void readConnect4String(String oldState, const char *data) {
   multiplayerMode = true;
   connect4StateChanged = true;
 }
-
-
 
 // ========== Format Name ========== //
 String formatName(String name) {
