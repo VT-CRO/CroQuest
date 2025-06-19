@@ -38,7 +38,7 @@ void runAboutUs() {
                            "",
                            "",
                            "INDUSTRIAL DESIGNER",
-                           "Steve KitamorY",
+                           "Steve Kitamory",
                            "",
                            "",
                            "LOGISTICS COORDINATOR",

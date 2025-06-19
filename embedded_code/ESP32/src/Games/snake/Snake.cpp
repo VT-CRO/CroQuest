@@ -109,13 +109,13 @@ void runSnake() {
 
   // Loop through and play game
   for (;;) {
-    
-    if(gameState == HOMESCREEN && B.wasJustPressed()){
-      backAudio();      
+
+    if (gameState == HOMESCREEN && B.wasJustPressed()) {
+      backAudio();
       break;
     }
 
-    if (checkStartButtonAndExit(tft)){
+    if (checkStartButtonAndExit(tft)) {
       break;
     }
 
@@ -193,7 +193,7 @@ void moveSnake() {
     score++;
 
     // ================= Badge Unlock Logic =================
-    if (score >= 150 && !badgeProgress[0]) {
+    if (score >= 25 && !badgeProgress[0]) {
       badgeProgress[0] = true;
       isUnlocked[0] = true;
       saveBadgeProgress();

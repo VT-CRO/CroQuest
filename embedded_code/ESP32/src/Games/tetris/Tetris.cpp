@@ -238,32 +238,48 @@ static void handleTetrisFrame() {
     if (millis() - lastButtonPressTime > buttonDebounceDelay) {
       if (A.wasJustPressed()) {
         playSelectConfirmSound();
-        if (selection == 1) {
-          currentState = MULTIPLAYER_SELECTION;
-          drawHomeSelection();
-        } else {
-          tft.fillScreen(TFT_BLACK);
-          startNewGame();
-          currentState = PLAYING;
-        }
-        lastButtonPressTime = millis();
-      } else if (up.isPressed()) {
-        if (selection == 1) {
-          selection = 0;
-          drawHomeSelection();
-          playFocusMoveSound();
-        }
-        lastButtonPressTime = millis();
-      } else if (down.isPressed()) {
-        if (selection == 0) {
-          selection = 1;
-          drawHomeSelection();
-          playFocusMoveSound();
-        }
+
+        // Only single-player allowed
+        tft.fillScreen(TFT_BLACK);
+        startNewGame();
+        currentState = PLAYING;
+
         lastButtonPressTime = millis();
       }
     }
     break;
+
+    // Multiplayer is not finished yet
+    // if (millis() - lastButtonPressTime > buttonDebounceDelay) {
+    //   if (A.wasJustPressed()) {
+    //     playSelectConfirmSound();
+    //     if (selection == 1) {
+    //       currentState = MULTIPLAYER_SELECTION;
+    //       drawHomeSelection();
+    //     } else {
+    //       tft.fillScreen(TFT_BLACK);
+    //       startNewGame();
+    //       currentState = PLAYING;
+    //     }
+    //     lastButtonPressTime = millis();
+    //   } else if (up.isPressed()) {
+    //     if (selection == 1) {
+    //       selection = 0;
+    //       drawHomeSelection();
+    //       playFocusMoveSound();
+    //     }
+    //     lastButtonPressTime = millis();
+    //   } else if (down.isPressed()) {
+    //     if (selection == 0) {
+    //       selection = 1;
+    //       drawHomeSelection();
+    //       playFocusMoveSound();
+    //     }
+    //     lastButtonPressTime = millis();
+    //   }
+    // }
+    // break;
+
   case MULTIPLAYER_SELECTION:
     if (millis() - lastButtonPressTime > buttonDebounceDelay) {
       if (left.wasJustPressed()) {
@@ -302,7 +318,7 @@ static void handleTetrisFrame() {
     singlePieceLogic();
 
     // ========= Badge Unlock Condition ========= //
-    if (score >= 5000 && !badgeProgress[7] && !session.badgeUnlocked) {
+    if (score >= 2500 && !badgeProgress[7] && !session.badgeUnlocked) {
       badgeProgress[7] = true;
       isUnlocked[7] = true;
       saveBadgeProgress();
@@ -694,7 +710,7 @@ static void drawHomeScreen() {
   // Options
   tft.setTextSize(2);
   tft.drawString("Start Single Player", tft.width() / 2, 180);
-  tft.drawString("Start Multiplayer", tft.width() / 2, 230);
+  // tft.drawString("Start Multiplayer", tft.width() / 2, 230);
 
   drawHomeSelection();
 }
@@ -714,17 +730,17 @@ static void drawHomeSelection() {
   if (selection == 0) {
     // Single-player selected
     tft.setTextSize(3);
-    tft.drawString("Start Single Player", tft.width() / 2, y_single);
+    tft.drawString("Press to Start", tft.width() / 2, y_single);
 
-    tft.setTextSize(2);
-    tft.drawString("Start Multiplayer", tft.width() / 2, y_multi);
+    // tft.setTextSize(2);
+    // tft.drawString("Start Multiplayer", tft.width() / 2, y_multi);
   } else {
     // Multiplayer selected
     tft.setTextSize(2);
     tft.drawString("Start Single Player", tft.width() / 2, y_single);
 
-    tft.setTextSize(3);
-    tft.drawString("Start Multiplayer", tft.width() / 2, y_multi);
+    // tft.setTextSize(3);
+    // tft.drawString("Start Multiplayer", tft.width() / 2, y_multi);
 
     if (currentState == MULTIPLAYER_SELECTION) {
       const char *sub1 = "Host Game";

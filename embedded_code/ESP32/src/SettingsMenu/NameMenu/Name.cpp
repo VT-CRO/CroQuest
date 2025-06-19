@@ -53,6 +53,8 @@ void runNameMenu() {
 
   // Main loop for Editing Name
   while (1) {
+
+    // ========== Left ========== //
     if (left.isPressed()) {
       if (selectedLetterIndex > 0) {
         selectedLetterIndex--;
@@ -60,6 +62,8 @@ void runNameMenu() {
         nextCharAudio();
         delay(150);
       }
+
+      // ========== Right ========== //
     } else if (right.isPressed()) {
       if (selectedLetterIndex < 4) {
         selectedLetterIndex++;
@@ -67,18 +71,40 @@ void runNameMenu() {
         nextCharAudio();
         delay(150);
       }
+
+      // ========== Up  ========== //
     } else if (up.isPressed()) {
       char &c = settings.name[selectedLetterIndex];
-      c = (c >= 'A' && c < 'Z') ? c + 1 : 'A';
+      if (c >= 'A' && c < 'Z') {
+        c++;
+      } else if (c == 'Z') {
+        c = ' ';
+      } else if (c == ' ') {
+        c = '_';
+      } else {
+        c = 'A';
+      }
       handleDrawing(settings.name, UP_SELECTED);
       scrollingAudio();
       delay(150);
+
+      // ========== Down ========== //
     } else if (down.isPressed()) {
       char &c = settings.name[selectedLetterIndex];
-      c = (c > 'A' && c <= 'Z') ? c - 1 : 'Z';
+      if (c > 'A' && c <= 'Z') {
+        c--;
+      } else if (c == 'A') {
+        c = '_';
+      } else if (c == '_') {
+        c = ' ';
+      } else {
+        c = 'Z';
+      }
       handleDrawing(settings.name, DOWN_SELECTED);
       scrollingAudio();
       delay(150);
+
+      // ========== B ========== //
     } else if (B.wasJustPressed()) {
       std::string currentName(settings.name, 5);
 
@@ -86,11 +112,13 @@ void runNameMenu() {
         tft.setTextDatum(MC_DATUM);
         tft.setTextSize(2);
         tft.setTextColor(TFT_RED, SETTINGS_BG_COLOR);
-        tft.drawString("❌ Invalid name!", SCREEN_WIDTH / 2,
-                       SCREEN_HEIGHT - 50);
+        tft.drawString("Invalid name!", SCREEN_WIDTH / 2, SCREEN_HEIGHT - 50);
         delay(1500);
         handleDrawing(settings.name, NO_ARROW_SELECTED); // Redraw name boxes
       } else {
+        String nameStr =
+            String(settings.name).substring(0, 5); // Ensure exactly 5 chars
+        triggerNotification("Name set to: " + nameStr, 3000);
         backAudio();
         break;
       }
@@ -98,8 +126,7 @@ void runNameMenu() {
 
     delay(10);
 
-    // Resets the color of the up and down arrows above and below the box
-    if (!up.isPressed() || !down.isPressed()) {
+    if (!up.isPressed() && !down.isPressed()) {
       handleDrawing(settings.name, NO_ARROW_SELECTED);
     }
   }
@@ -159,7 +186,14 @@ static void handleDrawing(char name[], NameSelection selection) {
       prevChars[i] = name[i];
     }
     // Letter
-    char str[2] = {name[i], '\0'};
+    char displayChar = name[i];
+    if (displayChar == ' ')
+      displayChar = ' '; // blank
+    else if (displayChar == '_')
+      displayChar = '_';
+
+    char str[2] = {displayChar, '\0'};
+
     tft.setTextDatum(MC_DATUM);
     tft.setTextSize(6);
     tft.drawString(str, x + boxSize / 2, y + boxSize / 2, 1);
@@ -204,14 +238,27 @@ std::vector<String> loadProhibitedNames() {
 
 bool isProhibitedName(const std::string &input) {
   if (input.length() != 5)
-    return true; // All names must be 5 chars
+    return true; // Must be 5 visible chars (keep this rule)
 
+  // Build a cleaned-up name (ignore spaces and underscores for filtering)
+  std::string cleaned;
+  for (char c : input) {
+    if (c != ' ' && c != '_') {
+      cleaned += toupper(c);
+    }
+  }
+
+  // Early exit if nothing to check
+  if (cleaned.length() < 3)
+    return false;
+
+  // Compare against all patterns
   for (const auto &pattern : prohibitedNames) {
     bool match = true;
     for (int i = 0; i < 5; ++i) {
       if (pattern[i] == 'X')
-        continue; // Wildcard
-      if (toupper(input[i]) != toupper(pattern[i])) {
+        continue;
+      if (i >= cleaned.length() || toupper(cleaned[i]) != toupper(pattern[i])) {
         match = false;
         break;
       }

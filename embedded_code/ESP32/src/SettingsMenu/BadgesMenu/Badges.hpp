@@ -8,7 +8,7 @@
 #include "SettingsMenu/AudioMenu/Audio.hpp"
 #include "SettingsMenu/Settings/Settings.hpp"
 
-const int badgeCount = 10;
+const int badgeCount = 9;
 
 extern bool badgeProgress[badgeCount];
 extern bool isUnlocked[badgeCount];

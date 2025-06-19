@@ -24,6 +24,25 @@
 #define BRICK_SPACING_X 4
 #define BRICK_SPACING_Y 4
 
+struct BreakoutPlayer {
+  int id;
+  String name = "";
+  int score = 0;
+  String status = "idle"; // "idle", "ready", "eliminated"
+
+  BreakoutPlayer(int id_, const String &name_, int score_,
+                 const String &status_)
+      : id(id_), name(name_), score(score_), status(status_) {}
+};
+
+static BreakoutPlayer currentPlayer(atoi(generate6DigitCode().c_str()),
+                                    String(settings.name), 0, "idle");
+std::vector<BreakoutPlayer> breakoutPlayers;
+String breakoutMode = "SINGLE"; // "HOST", "PERIPHERAL", "SINGLE"
+bool breakoutMultiplayer = false;
+bool breakoutUpdate = false;
+bool codeEntered = false;
+
 static Ball ball;
 static Ball prev_ball;
 static Paddle paddle;
@@ -132,43 +151,64 @@ void handleBreakoutFrame() {
 
   case BREAKOUT_HOMESCREEN:
     if (millis() - lastFrameTime > 150) {
-      if (up.wasJustPressed() && breakout_selection == 1) {
-        breakout_selection = 0;
-        drawBreakoutHomeSelection();
-        playFocusMoveSound();
-      } else if (down.wasJustPressed() && breakout_selection == 0) {
-        breakout_selection = 1;
-        drawBreakoutHomeSelection();
-        playFocusMoveSound();
-      } else if (A.wasJustPressed()) {
+      // No up/down navigation — only one option
+      if (A.wasJustPressed()) {
         playSelectConfirmSound();
-        if (breakout_selection == 1) {
-          currentBreakoutState = BREAKOUT_MULTIPLAYER_SELECTION;
-          drawBreakoutHomeSelection();
-        } else {
-          currentBreakoutState = BREAKOUT_PLAYING;
-          paddle.x = SCREEN_W / 2 - PADDLE_WIDTH / 2;
-          lives = 3;
-          score = 0;
-          lastLives = -1;
-          lastScore = -1;
-          initBricks();
-          resetBall();
-        }
+        // Directly start singleplayer
+        currentBreakoutState = BREAKOUT_PLAYING;
+        paddle.x = SCREEN_W / 2 - PADDLE_WIDTH / 2;
+        lives = 3;
+        score = 0;
+        lastLives = -1;
+        lastScore = -1;
+        initBricks();
+        resetBall();
       }
       lastFrameTime = millis();
     }
-    // Commented this out because it caused screen flashing
-    // if (breakout_selection != lastSelection ||
-    //     breakout_subselection != lastSubselection) {
-    //   drawBreakoutHomeScreen();
-    //   lastSelection = breakout_selection;
-    //   lastSubselection = breakout_subselection;
-    // }
     break;
 
+    // Multiplayer is not finished yet
+    // if (millis() - lastFrameTime > 150) {
+    //   if (up.wasJustPressed() && breakout_selection == 1) {
+    //     breakout_selection = 0;
+    //     drawBreakoutHomeSelection();
+    //     playFocusMoveSound();
+
+    //   } else if (down.wasJustPressed() && breakout_selection == 0) {
+    //     breakout_selection = 1;
+    //     drawBreakoutHomeSelection();
+    //     playFocusMoveSound();
+
+    //   } else if (A.wasJustPressed()) {
+    //     playSelectConfirmSound();
+    //     if (breakout_selection == 1) {
+    //       // Multiplayer disabled — show message and block
+    //       ConnectionScreen::showMessage(
+    //           "Multiplayer mode is\ndisabled for now.");
+    //       delay(1000);
+    //       // currentBreakoutState = BREAKOUT_MULTIPLAYER_SELECTION;
+    //       drawBreakoutHomeSelection();
+
+    //     } else {
+    //       currentBreakoutState = BREAKOUT_PLAYING;
+    //       paddle.x = SCREEN_W / 2 - PADDLE_WIDTH / 2;
+    //       lives = 3;
+    //       score = 0;
+    //       lastLives = -1;
+    //       lastScore = -1;
+    //       initBricks();
+    //       resetBall();
+    //     }
+    //   }
+    //   lastFrameTime = millis();
+    // }
+    // break;
+
   case BREAKOUT_MULTIPLAYER_SELECTION:
-    if (millis() - lastFrameTime > 150) {
+    if (millis() - breakout_lastButtonPressTime >
+        breakout_buttonDebounceDelay) {
+
       if (left.wasJustPressed() && breakout_subselection == 1) {
         breakout_subselection = 0;
         drawBreakoutHomeSelection();
@@ -179,10 +219,51 @@ void handleBreakoutFrame() {
         playFocusMoveSound();
       } else if (A.wasJustPressed()) {
         playSelectConfirmSound();
-        if (breakout_subselection == 0) {
 
-          currentBreakoutState = BREAKOUT_JOIN_SCREEN;
+        if (breakout_subselection == 0) {
+          // === HOST LOGIC ===
+          BluetoothManager::initCentral(tft);
+          BluetoothCentral &central = BluetoothManager::getCentral();
+
+          std::string code = generate6DigitCode();
+
+          HostGame::init(tft);
+          HostGame::showCode(String(code.c_str()));
+
+          if (getExitFlag()) {
+            resetExitFlag();
+            currentBreakoutState = BREAKOUT_HOMESCREEN;
+            return;
+          }
+
+          central.scanAndConnectLoop(code);
+
+          breakoutMode = "HOST";
+          breakoutPlayers.clear();
+
+          if (!central.getConnectedClients().empty()) {
+            delay(300);
+            while (A.isPressed() || up.isPressed() || down.isPressed() ||
+                   left.isPressed() || right.isPressed()) {
+              delay(10);
+            }
+
+            currentPlayer.status = "ready";
+            breakoutPlayers.push_back(currentPlayer);
+
+            BluetoothManager::getCentral().sendMessage(
+                generateBreakoutString("full").c_str());
+
+            breakoutMultiplayer = true;
+            currentBreakoutState = BREAKOUT_START_GAME;
+          } else {
+            currentBreakoutState = BREAKOUT_MULTIPLAYER_SELECTION;
+            ConnectionScreen::showMessage("Connection failed.\nTry again.");
+            delay(1000);
+            drawBreakoutHomeScreen();
+          }
         } else {
+          // === PERIPHERAL LOGIC ===
           pad.numPadSetup();
           currentBreakoutState = BREAKOUT_BLUETOOTH_NUMPAD;
         }
@@ -193,9 +274,58 @@ void handleBreakoutFrame() {
         drawBreakoutHomeSelection();
         playFocusMoveSound();
       }
-      lastFrameTime = millis();
+
+      breakout_lastButtonPressTime = millis();
     }
     break;
+
+  case BREAKOUT_START_GAME: {
+    static bool waitingShown = false;
+
+    bool allReady = true;
+    for (auto &p : breakoutPlayers) {
+      if (p.status != "ready") {
+        allReady = false;
+        break;
+      }
+    }
+
+    if (!allReady) {
+      if (!waitingShown) {
+        tft.fillScreen(TFT_BLACK);
+        tft.setTextDatum(MC_DATUM);
+        tft.setTextSize(2);
+        tft.setTextColor(TFT_WHITE);
+        tft.drawString("Waiting for other player...", SCREEN_W / 2,
+                       SCREEN_H / 2);
+        waitingShown = true;
+      }
+      return;
+    }
+
+    // Once all players are ready
+    waitingShown = false;
+
+    if (breakoutMode == "HOST") {
+      BluetoothManager::getCentral().sendMessage(
+          generateBreakoutString("full").c_str());
+    }
+
+    Serial.println("All players ready. Starting Breakout match.");
+
+    currentBreakoutState = BREAKOUT_PLAYING;
+
+    paddle.x = SCREEN_W / 2 - PADDLE_WIDTH / 2;
+    lives = 3;
+    score = 0;
+    lastLives = -1;
+    lastScore = -1;
+    ballMoving = false;
+
+    initBricks();
+    resetBall();
+    break;
+  }
 
   case BREAKOUT_PLAYING:
     if (millis() - lastFrameTime > 16) {
@@ -206,53 +336,96 @@ void handleBreakoutFrame() {
     break;
 
   case BREAKOUT_WIN: {
-    // ENDSCREEN HANDLING
-    std::vector<String> playerNames = {settings.name, "Win"};
-    std::vector<int> playerScores = {score, -1};
+    // Build End Screen info
+    std::vector<String> playerNames;
+    std::vector<int> playerScores;
 
-    EndScreen endScreen(playerNames, playerScores, false, settings.name, score);
-    if (endScreen.handleUserInput()) {
-      currentBreakoutState = BREAKOUT_PLAYING;
-      paddle.x = SCREEN_W / 2 - PADDLE_WIDTH / 2;
-      lives = 3;
-      score = 0;
-      lastLives = -1;
-      lastScore = -1;
-      initBricks();
-      resetBall(); // handleUserInput returns true : game restarts
-    } else {
-      if (endScreen.exit) { // exit to menu
-        return;
+    for (const auto &p : breakoutPlayers) {
+      playerNames.push_back(p.name);
+      playerScores.push_back(p.score);
+    }
+
+    int index = -1;
+    for (size_t i = 0; i < breakoutPlayers.size(); ++i) {
+      if (breakoutPlayers[i].id == currentPlayer.id) {
+        index = i;
       }
+    }
+
+    EndScreen endScreen(playerNames, playerScores, breakoutMultiplayer,
+                        settings.name, score, index);
+
+    if (endScreen.handleUserInput()) {
+      currentPlayer.status = "ready";
+      for (auto &p : breakoutPlayers) {
+        if (p.id == currentPlayer.id) {
+          p.status = "ready";
+        }
+      }
+
+      if (breakoutMode == "HOST") {
+        BluetoothManager::getCentral().sendMessage(
+            generateBreakoutString("full").c_str());
+      } else if (breakoutMode == "PERIPHERAL") {
+        BluetoothManager::getPeripheral().sendAction(
+            generateBreakoutString("status").c_str());
+      }
+
+      // Transition to START_GAME so both players sync before restart
+      currentBreakoutState = BREAKOUT_START_GAME;
+
+    } else {
+      if (endScreen.exit)
+        return;
       currentBreakoutState = BREAKOUT_HOMESCREEN;
-      drawBreakoutHomeScreen(); // handleUserInput returns false : returns to
-                                // game menu
+      drawBreakoutHomeScreen();
     }
     break;
   }
 
   case BREAKOUT_GAMEOVER: {
-    // ENDSCREEN HANDLING
-    std::vector<String> playerNames = {settings.name};
-    std::vector<int> playerScores = {score};
+    std::vector<String> playerNames;
+    std::vector<int> playerScores;
 
-    EndScreen endScreen(playerNames, playerScores, false, settings.name, score);
-    if (endScreen.handleUserInput()) {
-      currentBreakoutState = BREAKOUT_PLAYING;
-      paddle.x = SCREEN_W / 2 - PADDLE_WIDTH / 2;
-      lives = 3;
-      score = 0;
-      lastLives = -1;
-      lastScore = -1;
-      initBricks();
-      resetBall(); // handleUserInput returns true : game restarts
-    } else {
-      if (endScreen.exit) { // exit to menu
-        return;
+    for (const auto &p : breakoutPlayers) {
+      playerNames.push_back(p.name);
+      playerScores.push_back(p.score);
+    }
+
+    int index = -1;
+    for (size_t i = 0; i < breakoutPlayers.size(); ++i) {
+      if (breakoutPlayers[i].id == currentPlayer.id) {
+        index = i;
       }
+    }
+
+    EndScreen endScreen(playerNames, playerScores, breakoutMultiplayer,
+                        settings.name, score, index);
+
+    if (endScreen.handleUserInput()) {
+      currentPlayer.status = "ready";
+      for (auto &p : breakoutPlayers) {
+        if (p.id == currentPlayer.id) {
+          p.status = "ready";
+        }
+      }
+
+      if (breakoutMode == "HOST") {
+        BluetoothManager::getCentral().sendMessage(
+            generateBreakoutString("full").c_str());
+      } else if (breakoutMode == "PERIPHERAL") {
+        BluetoothManager::getPeripheral().sendAction(
+            generateBreakoutString("status").c_str());
+      }
+
+      // Wait for all players to be ready before restarting
+      currentBreakoutState = BREAKOUT_START_GAME;
+
+    } else {
+      if (endScreen.exit)
+        return;
       currentBreakoutState = BREAKOUT_HOMESCREEN;
-      drawBreakoutHomeScreen(); // handleUserInput returns false : returns to
-                                // game menu
+      drawBreakoutHomeScreen();
     }
     break;
   }
@@ -289,10 +462,44 @@ void handleBreakoutFrame() {
     }
     break;
 
-  case BREAKOUT_BLUETOOTH_NUMPAD:
+  case BREAKOUT_BLUETOOTH_NUMPAD: {
     pad.handleButtonInput(&breakout_lastButtonPressTime,
                           breakout_buttonDebounceDelay / 2);
+
+    std::string enteredCode = pad.getCode();
+
+    if (enteredCode.length() == 6 && pad.wasEnterPressed()) {
+      breakoutPlayers.clear();
+      // JOIN = PERIPHERAL
+      BluetoothManager::initPeripheral(tft);
+      BluetoothPeripheral &peripheral = BluetoothManager::getPeripheral();
+      peripheral.beginAdvertising(enteredCode);
+
+      pad.clearCode();
+      codeEntered = true;
+      delay(1000);
+    }
+
+    // Make sure there are actually devices connected, and then send the "ready"
+    // string and start the game
+    if (codeEntered) {
+      if (BluetoothManager::getPeripheral().server &&
+          BluetoothManager::getPeripheral().server->getConnectedCount() != 0) {
+        if (!breakoutPlayers.empty()) {
+          breakoutMultiplayer = true;
+          breakoutMode = "PERIPHERAL";
+
+          currentPlayer.status = "ready";
+          String ready = generateBreakoutString("status");
+
+          BluetoothManager::getPeripheral().sendAction(ready.c_str());
+          codeEntered = false;
+          currentBreakoutState = BREAKOUT_START_GAME;
+        }
+      }
+    }
     break;
+  }
   }
 }
 
@@ -399,6 +606,24 @@ void updateBreakoutGame() {
                      BRICK_WIDTH - BRICK_SPACING_X,
                      BRICK_HEIGHT - BRICK_SPACING_Y, TFT_BLACK);
         score += 10;
+
+        if (breakoutMode == "HOST") {
+          for (auto &p : breakoutPlayers) {
+            if (p.id == currentPlayer.id) {
+              p.score = score;
+              break;
+            }
+          }
+          BluetoothCentral &central = BluetoothManager::getCentral();
+          String updateMsg = generateBreakoutString("full");
+          for (auto *client : central.getConnectedClients()) {
+            central.sendToDevice(client, updateMsg.c_str());
+          }
+
+        } else if (breakoutMode == "PERIPHERAL") {
+          BluetoothManager::getPeripheral().sendAction(
+              generateBreakoutString("input").c_str());
+        }
 
         playBreakSound();
 
@@ -612,16 +837,16 @@ void drawBreakoutHomeSelection() {
 
   if (breakout_selection == 0) {
     tft.setTextSize(3);
-    tft.drawString("Press for Single-Player", SCREEN_W / 2, y_single);
+    tft.drawString("Press To Start", SCREEN_W / 2, y_single);
 
-    tft.setTextSize(2);
-    tft.drawString("Press for Multiplayer", SCREEN_W / 2, y_multi);
+    // tft.setTextSize(2);
+    // tft.drawString("Press for Multiplayer", SCREEN_W / 2, y_multi);
   } else {
     tft.setTextSize(2);
     tft.drawString("Press for Single-Player", SCREEN_W / 2, y_single);
 
-    tft.setTextSize(3);
-    tft.drawString("Press for Multiplayer", SCREEN_W / 2, y_multi);
+    // tft.setTextSize(3);
+    // tft.drawString("Press for Multiplayer", SCREEN_W / 2, y_multi);
 
     if (currentBreakoutState == BREAKOUT_MULTIPLAYER_SELECTION) {
       const char *sub1 = "Host a Game";
@@ -780,4 +1005,96 @@ void playBreakSound() {
   playTone(1200, volume); // Higher pitch for break
   delay(30);
   playTone(0, 0);
+}
+
+// ####################################################################################################
+//  Bluetooth Logic
+// ####################################################################################################
+
+String generateBreakoutString(String mode) {
+  if (mode == "full") {
+    String state = "b@state:";
+    for (size_t i = 0; i < breakoutPlayers.size(); ++i) {
+      const BreakoutPlayer &p = breakoutPlayers[i];
+      state +=
+          String(p.id) + ":" + p.name + ":" + String(p.score) + ":" + p.status;
+      if (i < breakoutPlayers.size() - 1)
+        state += ",";
+    }
+    return state;
+  } else if (mode == "input") {
+    return "b@input:" + String(currentPlayer.id);
+  } else if (mode == "status") {
+    return "b@status:" + String(currentPlayer.id) + ":" + currentPlayer.name +
+           ":" + currentPlayer.status;
+  } else {
+    return "";
+  }
+}
+
+void readBreakoutString(String oldState, const char *data) {
+  if (!data || strlen(data) == 0)
+    return;
+
+  String input(data);
+  input.trim();
+
+  if (input.startsWith("b@state:")) {
+    input.remove(0, 8);
+    breakoutPlayers.clear();
+
+    int start = 0;
+    while (start < input.length()) {
+      int end = input.indexOf(',', start);
+      if (end == -1)
+        end = input.length();
+
+      String part = input.substring(start, end);
+      int first = part.indexOf(':');
+      int second = part.indexOf(':', first + 1);
+      int third = part.indexOf(':', second + 1);
+
+      if (first > 0 && second > first && third > second) {
+        int id = part.substring(0, first).toInt();
+        String name = part.substring(first + 1, second);
+        int score = part.substring(second + 1, third).toInt();
+        String status = part.substring(third + 1);
+
+        breakoutPlayers.push_back(BreakoutPlayer(id, name, score, status));
+      }
+
+      start = end + 1;
+    }
+    breakoutUpdate = true;
+
+  } else if (input.startsWith("b@input:")) {
+    int id = input.substring(8).toInt();
+    for (auto &p : breakoutPlayers) {
+      if (p.id == id) {
+        p.score += 10; // Assuming input = 10 points per brick
+        break;
+      }
+    }
+    breakoutUpdate = true;
+
+  } else if (input.startsWith("b@status:")) {
+    input.remove(0, 9);
+    int first = input.indexOf(':');
+    int second = input.indexOf(':', first + 1);
+
+    int id = input.substring(0, first).toInt();
+    String name = input.substring(first + 1, second);
+    String status = input.substring(second + 1);
+
+    for (auto &p : breakoutPlayers) {
+      if (p.id == id) {
+        p.name = name;
+        p.status = status;
+        return;
+      }
+    }
+
+    breakoutPlayers.push_back(BreakoutPlayer(id, name, 0, status));
+    breakoutUpdate = true;
+  }
 }

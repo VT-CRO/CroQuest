@@ -33,7 +33,8 @@ void initBoot() {
   digitalWrite(15, HIGH);
   digitalWrite(5, HIGH);
 
-  if(!SD.begin(5)){}
+  if (!SD.begin(5)) {
+  }
 
   if (!SD.begin(5)) {
     Serial.println("Card Mount Failed");
@@ -132,7 +133,8 @@ void nameIntroduction() {
 
   // Fade In (Black → Light Gray)
   for (int i = 0; i <= maxIntensity; i += step) {
-    if (A.wasJustPressed()) return;
+    if (A.wasJustPressed())
+      return;
     uint16_t color = tft.color565(i, i, i);
     tft.setTextColor(color, bgColor);
     tft.drawString(username, centerX, centerY);
@@ -141,16 +143,19 @@ void nameIntroduction() {
 
   // Hold
   unsigned long holdStart = millis();
-  tft.setTextColor(tft.color565(maxIntensity, maxIntensity, maxIntensity), bgColor);
+  tft.setTextColor(tft.color565(maxIntensity, maxIntensity, maxIntensity),
+                   bgColor);
   tft.drawString(username, centerX, centerY);
   while (millis() - holdStart < 3000) {
-    if (A.wasJustPressed()) return;
+    if (A.wasJustPressed())
+      return;
     delay(10);
   }
 
   // Fade Out (Light Gray → Black)
   for (int i = maxIntensity; i >= 0; i -= step) {
-    if (A.wasJustPressed()) return;
+    if (A.wasJustPressed())
+      return;
     uint16_t color = tft.color565(i, i, i);
     tft.setTextColor(color, bgColor);
     tft.drawString(username, centerX, centerY);

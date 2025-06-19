@@ -20,7 +20,7 @@ const int leftPadding = 30;
 const int rightPadding = 10;
 
 const int page1Count = 8;
-const int page2Count = 2;
+const int page2Count = 1;
 int currentPage = 0;
 
 bool badgeProgress[badgeCount];
@@ -34,21 +34,17 @@ static int gridHeight = 0;
 const char *badgePaths[badgeCount] = {
     "/badges/assets/0.jpg", "/badges/assets/1.jpg", "/badges/assets/2.jpg",
     "/badges/assets/3.jpg", "/badges/assets/4.jpg", "/badges/assets/5.jpg",
-    "/badges/assets/6.jpg", "/badges/assets/7.jpg", "/badges/assets/8.jpg",
-    "/badges/assets/9.jpg"};
+    "/badges/assets/6.jpg", "/badges/assets/7.jpg", "/badges/assets/8.jpg"};
+// "/badges/assets/9.jpg"};
 
 const char *badgeDescriptions[badgeCount] = {
 
-    "Eat 150 apples in Snake",
-    "Perfect Pong",
-    "Perfect Tic Tac Toe 3 times",
-    "Reach Level 25 in Simon",
-    "Win a matches of Connect 4",
-    "Perfect Breakout 2 times",
-    "Win Matching in less than 150 seconds",
-    "Reach 5000 points in Tetris",
-    "Captured the Queen",
-    "Get all 9 badges!"};
+    "Eat 25 apples in Snake", "Perfect Pong", "Perfect Tic Tac Toe 3 times",
+    "Reach Level 5 in Simon", "Win a matches of Connect 4",
+    "Perfect Breakout 2 times", "Win Matching in less than 250 seconds",
+    "Reach 2500 points in Tetris",
+    // "Captured the Queen",
+    "Get all 8 badges!"};
 
 // ####################################################################################################
 //  Setup
@@ -56,7 +52,6 @@ const char *badgeDescriptions[badgeCount] = {
 
 // ========== Run Badges <enu ========== //
 void runBadgesMenu() {
-
   loadBadgeProgress();
 
   gridHeight = rowCount * badgeSize + (rowCount - 1) * spacing + bottomPadding;
@@ -68,8 +63,8 @@ void runBadgesMenu() {
            leftPadding - 30;
 
   int selectedIndex = 0;
-  int xOffset = 15; // selector
-  int yOffset = 20; // selector
+  int xOffset = 15;
+  int yOffset = 20;
 
   const int descX = 20;
   const int descY = tft.height() - descBoxHeight - 17;
@@ -90,78 +85,72 @@ void runBadgesMenu() {
     if (left.wasJustPressed()) {
       if (selectedIndex % colCount > 0) {
         selectedIndex--;
-      } else {
-        if (currentPage == 0) {
-          if (selectedIndex == 0) {
-            currentPage = 1;
-            selectedIndex = 9;
-            drawBadges(selectedIndex, xOffset, yOffset, extraWidth, extraHeight,
-                       descX, descY, descW, descH);
-            drawSelectorAndDescription(selectedIndex, -1, xOffset, yOffset,
-                                       extraWidth, extraHeight, descX, descY,
-                                       descW, descH);
-          } else {
-            selectedIndex--;
-          }
-        } else {
-          currentPage = 0;
-          selectedIndex = 7;
-          drawBadges(selectedIndex, xOffset, yOffset, extraWidth, extraHeight,
-                     descX, descY, descW, descH);
-          drawSelectorAndDescription(selectedIndex, -1, xOffset, yOffset,
-                                     extraWidth, extraHeight, descX, descY,
-                                     descW, descH);
-        }
+      } else if (currentPage == 0 && selectedIndex == 0) {
+        currentPage = 1;
+        selectedIndex = 8; // Final badge
+        drawBadges(selectedIndex, xOffset, yOffset, extraWidth, extraHeight,
+                   descX, descY, descW, descH);
+        drawSelectorAndDescription(selectedIndex, -1, xOffset, yOffset,
+                                   extraWidth, extraHeight, descX, descY, descW,
+                                   descH);
+      } else if (currentPage == 1) {
+        currentPage = 0;
+        selectedIndex = 7;
+        drawBadges(selectedIndex, xOffset, yOffset, extraWidth, extraHeight,
+                   descX, descY, descW, descH);
+        drawSelectorAndDescription(selectedIndex, -1, xOffset, yOffset,
+                                   extraWidth, extraHeight, descX, descY, descW,
+                                   descH);
       }
       playSelectBeep();
+    }
 
-      // ========== RIGHT ========== //
-    } else if (right.wasJustPressed()) {
+    // ========== RIGHT ========== //
+    else if (right.wasJustPressed()) {
       int pageEnd = (currentPage == 0) ? page1Count : badgeCount;
       if ((selectedIndex + 1) % colCount != 0 && selectedIndex + 1 < pageEnd) {
         selectedIndex++;
+      } else if (currentPage == 0) {
+        currentPage = 1;
+        selectedIndex = 8; // Final badge
+        drawBadges(selectedIndex, xOffset, yOffset, extraWidth, extraHeight,
+                   descX, descY, descW, descH);
+        drawSelectorAndDescription(selectedIndex, -1, xOffset, yOffset,
+                                   extraWidth, extraHeight, descX, descY, descW,
+                                   descH);
       } else {
-        if (currentPage == 0) {
-          if (selectedIndex == 3) {
-            selectedIndex = 4;
-          } else {
-            currentPage = 1;
-            selectedIndex = 8;
-            drawBadges(selectedIndex, xOffset, yOffset, extraWidth, extraHeight,
-                       descX, descY, descW, descH);
-            drawSelectorAndDescription(selectedIndex, -1, xOffset, yOffset,
-                                       extraWidth, extraHeight, descX, descY,
-                                       descW, descH);
-          }
-        } else {
-          currentPage = 0;
-          selectedIndex = 0;
-          drawBadges(selectedIndex, xOffset, yOffset, extraWidth, extraHeight,
-                     descX, descY, descW, descH);
-          drawSelectorAndDescription(selectedIndex, -1, xOffset, yOffset,
-                                     extraWidth, extraHeight, descX, descY,
-                                     descW, descH);
-        }
+        currentPage = 0;
+        selectedIndex = 0;
+        drawBadges(selectedIndex, xOffset, yOffset, extraWidth, extraHeight,
+                   descX, descY, descW, descH);
+        drawSelectorAndDescription(selectedIndex, -1, xOffset, yOffset,
+                                   extraWidth, extraHeight, descX, descY, descW,
+                                   descH);
       }
       playSelectBeep();
+    }
 
-      // ========== UP ========== //
-    } else if (up.wasJustPressed()) {
+    // ========== UP ========== //
+    else if (up.wasJustPressed()) {
       if (selectedIndex - colCount >= ((currentPage == 0) ? 0 : page1Count))
         selectedIndex -= colCount;
       playSelectBeep();
+    }
 
-      // ========== DOWN ========== //
-    } else if (down.wasJustPressed()) {
+    // ========== DOWN ========== //
+    else if (down.wasJustPressed()) {
       if (selectedIndex + colCount <
           ((currentPage == 0) ? page1Count : badgeCount))
         selectedIndex += colCount;
       playSelectBeep();
+    }
 
-    } else if (B.wasJustPressed()) {
+    // ========== EXIT ========== //
+    else if (B.wasJustPressed()) {
       break;
     }
 
+    // ========== Redraw if changed ========== //
     if (selectedIndex != previousIndex) {
       drawSelectorAndDescription(selectedIndex, previousIndex, xOffset, yOffset,
                                  extraWidth, extraHeight, descX, descY, descW,
@@ -204,35 +193,36 @@ void loadBadgeProgress() {
   file.close();
   Serial.println("Badge progress loaded.");
 
-  // Auto-check final badge (index 9)
+  // ========== Unlock final badge if all previous are earned ==========
   bool allUnlocked = true;
-  for (int i = 0; i < 9; i++) {
+  for (int i = 0; i < 8; i++) { // Only check badges 0 through 7
     if (!badgeProgress[i]) {
       allUnlocked = false;
       break;
     }
   }
 
-  if (allUnlocked && !badgeProgress[9]) {
-    badgeProgress[9] = true;
-    isUnlocked[9] = true;
+  if (allUnlocked && !badgeProgress[8]) { // Unlock final badge (index 8)
+    badgeProgress[8] = true;
+    isUnlocked[8] = true;
 
     hasPendingNotification = true;
-    pendingNotificationMessage = "🏆 All Badges Unlocked!";
+    pendingNotificationMessage = "All Badges Unlocked!";
     pendingNotificationDuration = 3000;
 
-    // Delay saving until *after* full load completes to prevent recursion
-    delay(100);
-    File file = SD.open("/badges/save.dat", FILE_WRITE);
-    for (int i = 0; i < badgeCount; i++) {
-      file.write(isUnlocked[i] ? 1 : 0);
+    // Save updated progress to SD
+    file = SD.open("/badges/save.dat", FILE_WRITE);
+    if (file) {
+      for (int i = 0; i < badgeCount; i++) {
+        file.write(isUnlocked[i] ? 1 : 0);
+      }
+      file.close();
     }
-    file.close();
   }
 
-  // Update global flag
+  // ========== Update global flag ==========
   allBadgesEarned = true;
-  for (int i = 0; i < 9; i++) {
+  for (int i = 0; i < 8; i++) {
     if (!badgeProgress[i]) {
       allBadgesEarned = false;
       break;
@@ -243,12 +233,12 @@ void loadBadgeProgress() {
 // ========== Saves New Badge ========== //
 void saveBadgeProgress() {
   if (!SD.exists("/badges")) {
-    SD.mkdir("/badges");
+    SD.mkdir("/badges"); // Ensure directory exists
   }
 
   File file = SD.open("/badges/save.dat", FILE_WRITE);
   if (!file) {
-    Serial.println("Failed to open save file for writing.");
+    Serial.println("❌ Failed to open badge save file for writing.");
     return;
   }
 
@@ -257,13 +247,13 @@ void saveBadgeProgress() {
   }
 
   file.close();
-  Serial.println("Badge progress saved.");
+  Serial.println("✅ Badge progress saved.");
 }
 
 void resetBadgeProgress() {
   File file = SD.open("/badges/save.dat", FILE_WRITE);
   if (!file) {
-    Serial.println("❌ Failed to open save file to reset.");
+    Serial.println("❌ Failed to open badge save file to reset.");
     return;
   }
 
@@ -278,18 +268,21 @@ void resetBadgeProgress() {
 }
 
 void checkFinalBadgeUnlock() {
+  // Check if all core badges [0–7] are unlocked
   bool allUnlocked = true;
-  for (int i = 0; i < 9; i++) {
+  for (int i = 0; i < 8; i++) {
     if (!badgeProgress[i]) {
       allUnlocked = false;
       break;
     }
   }
 
-  if (allUnlocked && !badgeProgress[9]) {
-    badgeProgress[9] = true;
-    isUnlocked[9] = true;
-    saveBadgeProgress();
+  // If final badge [8] is not yet unlocked
+  if (allUnlocked && !badgeProgress[8]) {
+    badgeProgress[8] = true;
+    isUnlocked[8] = true;
+
+    saveBadgeProgress(); // Persist new unlock state
 
     hasPendingNotification = true;
     pendingNotificationMessage = "All Badges Unlocked!";

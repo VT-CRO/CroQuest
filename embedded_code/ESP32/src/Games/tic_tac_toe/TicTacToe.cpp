@@ -210,14 +210,14 @@ void handleTicTacToeFrame() {
       }
       // Selection logic
       if (up.isPressed()) {
-        if(selection == 1){
+        if (selection == 1) {
           selection = 0;
           drawHomescreenSelect();
           playFocusMoveSound();
         }
 
       } else if (down.isPressed()) {
-        if(selection == 0){
+        if (selection == 0) {
           selection = 1;
           drawHomescreenSelect();
           playFocusMoveSound();
@@ -232,7 +232,7 @@ void handleTicTacToeFrame() {
     if (!roundEnded && millis() - lastMoveTime > moveDelay) {
       if (A.wasJustPressed()) {
         playSelectConfirmSound();
-        //clear ready status
+        // clear ready status
         ready["periph"] = false;
         ready["host"] = false;
         if (subselection == 0) {

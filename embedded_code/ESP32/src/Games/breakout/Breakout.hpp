@@ -20,9 +20,11 @@ enum BreakoutState {
   BREAKOUT_GAMEOVER,
   BREAKOUT_WIN,
   BREAKOUT_MULTIPLAYER_SELECTION,
+  BREAKOUT_START_GAME,
   BREAKOUT_JOIN_SCREEN,
   BREAKOUT_BLUETOOTH_NUMPAD,
   BREAKOUT_GAMEOVER_SCREEN,
+  BREAKOUT_WAITING_FOR_OTHERS,
 };
 
 // ========== Structures ==========
@@ -138,3 +140,13 @@ void playLoseLifeSound();
 
 // ========== Breaking Brick Sound ========== //
 void playBreakSound();
+
+// ####################################################################################################
+//  Bluetooth Logic
+// ####################################################################################################
+
+// ========== Generate Array ========== //
+String generateBreakoutString(String mode);
+
+// ========== Read Array String ========== //
+void readBreakoutString(String oldState, const char *data);

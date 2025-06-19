@@ -224,13 +224,12 @@ static void runMemoryFrame() {
     timeLabelStr.toCharArray(timeLabel, sizeof(timeLabel));
 
     int finalScore = playerWon ? -1 : totalTime; // -1 means "don't show score"
-    
 
     std::vector<String> playerNames = {settings.name};
     std::vector<int> playerScores = {finalScore};
 
     // Create a fake player in order to display win screen
-    if(playerWon){
+    if (playerWon) {
       playerNames.push_back("Game won!");
       playerScores.push_back(-2);
     }
@@ -437,13 +436,13 @@ static void checkWinCondition() {
   waitingForWinChoice = true;
   totalMoves += movesThisLevel;
 
-    // ================= Badge Unlock Logic =================
+  // ================= Badge Unlock Logic =================
   if (currentLevel == NUM_LEVELS - 1) {
 
     playWinSound();
 
     // Badge Logic | 150s
-    if (totalTime < 150 && !badgeProgress[6] && !session.badgeUnlocked) {
+    if (totalTime < 250 && !badgeProgress[6] && !session.badgeUnlocked) {
       // if (currentLevel == 0 && !badgeProgress[3] && !session.badgeUnlocked) {
       badgeProgress[6] = true;
       isUnlocked[6] = true;
@@ -552,20 +551,20 @@ static void triggerGameOver() {
 
 // ========== Home Screen ========== //
 void showHomeScreen() {
-  tft.fillScreen(TFT_BLACK);  // Background
+  tft.fillScreen(TFT_BLACK); // Background
 
   // ---------- Layout Constants ----------
   int centerX = tft.width() / 2;
-  int titleY = 80; 
-  int subtitleY = titleY + 60; 
+  int titleY = 80;
+  int subtitleY = titleY + 60;
   int promptY = tft.height() - 80;
-  int authorsY = tft.height() - 25; 
+  int authorsY = tft.height() - 25;
 
   // ---------- TITLE ----------
   tft.setTextDatum(MC_DATUM);
-  tft.setTextSize(6);  // Bigger!
+  tft.setTextSize(6); // Bigger!
   tft.setTextColor(TFT_DARKGREY);
-  tft.drawString("MEMORY", centerX + 2, titleY + 2);  // shadow
+  tft.drawString("MEMORY", centerX + 2, titleY + 2); // shadow
   tft.setTextColor(TFT_WHITE);
   tft.drawString("MEMORY", centerX, titleY);
 
@@ -574,10 +573,9 @@ void showHomeScreen() {
   tft.setTextColor(TFT_LIGHTGREY);
   tft.drawString("Focus. Match. Win.", centerX, subtitleY);
 
-
-  tft.setTextSize(2); 
+  tft.setTextSize(2);
   tft.setTextColor(TFT_LIGHTGREY);
-  tft.drawString("Press A to start", centerX + 1, promptY + 1);  // shadow
+  tft.drawString("Press A to start", centerX + 1, promptY + 1); // shadow
   tft.setTextColor(TFT_YELLOW);
   tft.drawString("Press A to start", centerX, promptY);
 
