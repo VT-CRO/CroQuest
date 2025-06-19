@@ -165,6 +165,7 @@ void runSimon() {
     // Return to main menu if B is pressed
     if (simon_game_state == SIMON_HOMESCREEN && B.wasJustPressed()) {
       Serial.println("Returning to menu.");
+      backAudio();
       delay(500);
       BluetoothManager::reset();
       return;
@@ -188,6 +189,7 @@ void handleSimonFrame() {
 
     if (millis() - lastButtonPressTime > buttonDebounceDelay) {
       if (A.wasJustPressed()) {
+        playSelectConfirmSound();
         if (simonSelection == 1) {
           simon_game_state = SIMON_MULTIPLAYER_SELECTION;
           drawSimonHomeSelection();
@@ -201,12 +203,14 @@ void handleSimonFrame() {
         if (simonSelection == 1) {
           simonSelection = 0;
           drawSimonHomeSelection();
+          playFocusMoveSound();
         }
         lastButtonPressTime = millis();
       } else if (down.wasJustPressed()) {
         if (simonSelection == 0) {
           simonSelection = 1;
           drawSimonHomeSelection();
+          playFocusMoveSound();
         }
         lastButtonPressTime = millis();
       }
@@ -219,13 +223,16 @@ void handleSimonFrame() {
         if (simonsubselection == 1) {
           simonsubselection = 0;
           drawSimonHomeSelection();
+          playFocusMoveSound();
         }
       } else if (right.wasJustPressed()) {
         if (simonsubselection == 0) {
           simonsubselection = 1;
           drawSimonHomeSelection();
+          playFocusMoveSound();
         }
       } else if (A.wasJustPressed()) {
+        playSelectConfirmSound();
         if (simonsubselection == 0) {
 
           // HOST = CENTRAL
@@ -287,6 +294,7 @@ void handleSimonFrame() {
         simonsubselection = 0;
         simonSelection = 1;
         drawSimonHomeSelection();
+        playFocusMoveSound();
       }
       lastButtonPressTime = millis();
     }

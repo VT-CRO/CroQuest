@@ -149,6 +149,7 @@ void runConnect4() {
     // keep support for exiting with B from homescreen
     if (game_state == HOMESCREEN && B.wasJustPressed()) {
       Serial.println("Returning to menu");
+      backAudio();
       delay(500);
       BluetoothManager::reset();
       break;
@@ -168,8 +169,9 @@ void handleConnect4Frame() {
 
   // ================== HOMESCREEN ================== //
   if (game_state == HOMESCREEN) {
-    if (millis() - lastMoveTime > moveDelay / 2) {
-      if (A.wasJustPressed()) {
+    if (A.wasJustPressed()) {
+      if (millis() - lastMoveTime > moveDelay / 2) {
+        playSelectConfirmSound();
         if (selection == 0) {
           resetMultiplayerState(true);
           multiplayerMode = false;
@@ -183,105 +185,117 @@ void handleConnect4Frame() {
           drawHomescreenSelect();
         }
       }
+      lastMoveTime = millis();
+    }
 
-      // Menu navigation
-      if (up.isPressed()) {
+    // Menu navigation
+    if (up.isPressed()) {
+      if(selection == 1){
         selection = 0;
         drawHomescreenSelect();
-
-      } else if (down.isPressed()) {
+        playFocusMoveSound();
+      }
+      lastMoveTime = millis();
+    } else if (down.isPressed()) {
+      if(selection == 0){
         selection = 1;
         drawHomescreenSelect();
+        playFocusMoveSound();
       }
-
       lastMoveTime = millis();
     }
   }
 
   // ================== MULTIPLAYER_SELECTION State =================== //
   else if (game_state == MULTIPLAYER_SELECTION) {
-    if (!roundEnded && millis() - lastMoveTime > moveDelay) {
-      if (A.wasJustPressed()) {
-        if (subselection == 0) {
-          // clear ready status
-          ready["periph"] = false;
-          ready["host"] = false;
-          // HOST = CENTRAL
-          BluetoothManager::initCentral(tft);
-          BluetoothCentral &central = BluetoothManager::getCentral();
-
-          std::string code = generate6DigitCode();
-
-          // Set the screen for HostGame
-          HostGame::init(tft);
-
-          // Now safely show code
-          HostGame::showCode(String(code.c_str()));
-
-          // Check if user exited
-          if (getExitFlag()) {
-            resetExitFlag();
-            game_state = HOMESCREEN; // TODO: This does not work completely well
-            return;
-          }
-
-          central.scanAndConnectLoop(code);
-          multiplayerMode = true;
-
-          if (!BluetoothManager::getCentral().getConnectedClients().empty()) {
-            localPlayerId = 1;
-
-            game_state = HOST_SCREEN;
-            firstFrame = true;
-
-            // SEND INITIAL GAME STATE TO PERIPHERAL
-            String initialState = generateConnect4StateString();
+    if (A.wasJustPressed()) {
+      playSelectConfirmSound();
+      if (!roundEnded && millis() - lastMoveTime > moveDelay) {
+          if (subselection == 0) {
+            //clear ready status
+            ready["periph"] = false;
+            ready["host"] = false;
+            // HOST = CENTRAL
+            BluetoothManager::initCentral(tft);
             BluetoothCentral &central = BluetoothManager::getCentral();
-            for (auto *client : central.getConnectedClients()) {
-              central.sendToDevice(client, initialState.c_str());
+
+            std::string code = generate6DigitCode();
+
+            // Set the screen for HostGame
+            HostGame::init(tft);
+
+            // Now safely show code
+            HostGame::showCode(String(code.c_str()));
+
+            // Check if user exited
+            if (getExitFlag()) {
+              resetExitFlag();
+              game_state = HOMESCREEN; // TODO: This does not work completely well
+              return;
             }
 
-            // Flush any held buttons to prevent input carryover
-            delay(300); // debounce delay
-            while (A.isPressed() || up.isPressed() || down.isPressed() ||
-                   left.isPressed() || right.isPressed()) {
-              delay(10);
-            }
+            central.scanAndConnectLoop(code);
+            multiplayerMode = true;
+
+            if (!BluetoothManager::getCentral().getConnectedClients().empty()) {
+              localPlayerId = 1;
+
+              game_state = HOST_SCREEN;
+              firstFrame = true;
+
+              // SEND INITIAL GAME STATE TO PERIPHERAL
+              String initialState = generateConnect4StateString();
+              BluetoothCentral &central = BluetoothManager::getCentral();
+              for (auto *client : central.getConnectedClients()) {
+                central.sendToDevice(client, initialState.c_str());
+              }
+
+              // Flush any held buttons to prevent input carryover
+              delay(300); // debounce delay
+              while (A.isPressed() || up.isPressed() || down.isPressed() ||
+                    left.isPressed() || right.isPressed()) {
+                delay(10);
+              }
 
             // send ready string
             ready["host"] = true;
             BluetoothManager::getCentral().sendMessage("ready@host,true");
 
-          } else {
-            game_state = MULTIPLAYER_SELECTION;
-            tft.fillScreen(bgColor);
-            drawHomeScreen();
-            ConnectionScreen::showMessage("Connection failed.\nTry again.");
-          }
+            } else {
+              game_state = MULTIPLAYER_SELECTION;
+              tft.fillScreen(bgColor);
+              drawHomeScreen();
+              ConnectionScreen::showMessage("Connection failed.\nTry again.");
+            }
 
-        } else {
-          game_state = BLUETOOTH_NUMPAD;
-          pad.numPadSetup();
+          } else {
+            game_state = BLUETOOTH_NUMPAD;
+            pad.numPadSetup();
+          } 
         }
+        lastMoveTime = millis();
       }
 
       if (up.isPressed()) {
         game_state = HOMESCREEN;
         drawHomescreenSelect();
+        playFocusMoveSound();
+        lastMoveTime = millis();
       } else if (left.isPressed()) {
         if (subselection == 1) {
           subselection = 0;
           drawHomescreenSelect();
+          playFocusMoveSound();
         }
+        lastMoveTime = millis();
       } else if (right.isPressed()) {
         if (subselection == 0) {
           subselection = 1;
           drawHomescreenSelect();
+          playFocusMoveSound();
         }
+        lastMoveTime = millis();
       }
-
-      lastMoveTime = millis();
-    }
   }
 
   // ========== Multiplayer Logic for Host/Peripheral ========== //
@@ -444,8 +458,8 @@ void handleConnect4Frame() {
       lastMoveTime = millis();
     }
 
-    // ===== Human Turn ===== //
     if (!roundEnded && A.wasJustPressed() && currentPlayer == 1) {
+    // ===== Human Turn ===== //
       bool placed = dropPiece(cursorCol, currentPlayer);
 
       if (placed) {
@@ -1179,14 +1193,14 @@ void drawTitleAndGrid() {
   tft.setTextDatum(MC_DATUM);
   tft.setTextColor(TFT_WHITE);
   tft.setTextSize(4);
-  tft.drawString("CONNECT 4", screen_width / 2, 40);
+  tft.drawString("CONNECT 4", screen_width / 2, 30);
 
   // Grid preview
   int previewCols = 7, previewRows = 6, cellSize = 20;
   int previewWidth = previewCols * cellSize;
   int previewHeight = previewRows * cellSize;
   int gridX = (screen_width - previewWidth) / 2;
-  int gridY = 80;
+  int gridY = 50;
 
   for (int r = 0; r < previewRows; r++) {
     for (int c = 0; c < previewCols; c++) {

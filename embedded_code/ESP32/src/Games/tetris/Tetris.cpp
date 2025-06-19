@@ -220,6 +220,7 @@ void runTetris() {
     if (currentState == HOMESCREEN && B.wasJustPressed() ||
         currentState == HOMESCREEN && left.wasJustPressed()) {
       Serial.println("Returning to menu from Tetris");
+      backAudio();
       delay(500);
       return;
     }
@@ -236,6 +237,7 @@ static void handleTetrisFrame() {
   case HOMESCREEN:
     if (millis() - lastButtonPressTime > buttonDebounceDelay) {
       if (A.wasJustPressed()) {
+        playSelectConfirmSound();
         if (selection == 1) {
           currentState = MULTIPLAYER_SELECTION;
           drawHomeSelection();
@@ -249,12 +251,14 @@ static void handleTetrisFrame() {
         if (selection == 1) {
           selection = 0;
           drawHomeSelection();
+          playFocusMoveSound();
         }
         lastButtonPressTime = millis();
       } else if (down.isPressed()) {
         if (selection == 0) {
           selection = 1;
           drawHomeSelection();
+          playFocusMoveSound();
         }
         lastButtonPressTime = millis();
       }
@@ -266,13 +270,16 @@ static void handleTetrisFrame() {
         if (subselection == 1) {
           subselection = 0;
           drawHomeSelection();
+          playFocusMoveSound();
         }
       } else if (right.wasJustPressed()) {
         if (subselection == 0) {
           subselection = 1;
           drawHomeSelection();
+          playFocusMoveSound();
         }
       } else if (A.wasJustPressed()) {
+        playSelectConfirmSound();
         if (subselection == 0) {
           tft.fillScreen(TFT_BLUE);
           currentState = JOIN_SCREEN;
@@ -286,6 +293,7 @@ static void handleTetrisFrame() {
         subselection = 0;
         selection = 1;
         drawHomeSelection();
+        playFocusMoveSound();
       }
       lastButtonPressTime = millis();
     }

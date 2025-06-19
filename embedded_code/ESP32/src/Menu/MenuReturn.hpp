@@ -3,6 +3,9 @@
 #pragma once
 #include "Core/Buttons.hpp"
 #include <TFT_eSPI.h>
+#include "SettingsMenu/AudioMenu/Audio.hpp"
+
+void backAudio();
 
 // Flag to track exit request
 extern bool shouldExitToMenu;
@@ -16,6 +19,7 @@ inline bool checkStartButtonAndExit(TFT_eSPI &tft) {
     return false;
 
   if (Start.wasJustPressed()) {
+    backAudio();
     lastPressTime = millis();
 
     tft.fillScreen(TFT_BLACK);

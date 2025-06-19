@@ -105,6 +105,7 @@ void runBreakout() {
 
     if (currentBreakoutState == BREAKOUT_HOMESCREEN && B.wasJustPressed()) {
       Serial.println("Returning to menu");
+      backAudio();
       delay(500);
       return;
     }
@@ -134,10 +135,13 @@ void handleBreakoutFrame() {
       if (up.wasJustPressed() && breakout_selection == 1) {
         breakout_selection = 0;
         drawBreakoutHomeSelection();
+        playFocusMoveSound();
       } else if (down.wasJustPressed() && breakout_selection == 0) {
         breakout_selection = 1;
         drawBreakoutHomeSelection();
+        playFocusMoveSound();
       } else if (A.wasJustPressed()) {
+        playSelectConfirmSound();
         if (breakout_selection == 1) {
           currentBreakoutState = BREAKOUT_MULTIPLAYER_SELECTION;
           drawBreakoutHomeSelection();
@@ -154,13 +158,13 @@ void handleBreakoutFrame() {
       }
       lastFrameTime = millis();
     }
-
-    if (breakout_selection != lastSelection ||
-        breakout_subselection != lastSubselection) {
-      drawBreakoutHomeScreen();
-      lastSelection = breakout_selection;
-      lastSubselection = breakout_subselection;
-    }
+    // Commented this out because it caused screen flashing
+    // if (breakout_selection != lastSelection ||
+    //     breakout_subselection != lastSubselection) {
+    //   drawBreakoutHomeScreen();
+    //   lastSelection = breakout_selection;
+    //   lastSubselection = breakout_subselection;
+    // }
     break;
 
   case BREAKOUT_MULTIPLAYER_SELECTION:
@@ -168,10 +172,13 @@ void handleBreakoutFrame() {
       if (left.wasJustPressed() && breakout_subselection == 1) {
         breakout_subselection = 0;
         drawBreakoutHomeSelection();
+        playFocusMoveSound();
       } else if (right.wasJustPressed() && breakout_subselection == 0) {
         breakout_subselection = 1;
         drawBreakoutHomeSelection();
+        playFocusMoveSound();
       } else if (A.wasJustPressed()) {
+        playSelectConfirmSound();
         if (breakout_subselection == 0) {
 
           currentBreakoutState = BREAKOUT_JOIN_SCREEN;
@@ -184,6 +191,7 @@ void handleBreakoutFrame() {
         breakout_subselection = 0;
         breakout_selection = 1;
         drawBreakoutHomeSelection();
+        playFocusMoveSound();
       }
       lastFrameTime = millis();
     }

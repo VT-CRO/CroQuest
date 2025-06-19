@@ -20,5 +20,11 @@ void playSelectBeep();
 void playPressSound();
 void backAudio();
 
+// Sounds for numpad + game menu
+void playNumpadPressSound();
+void playSelectMoveSound();
+void playSelectConfirmSound();
+void playFocusMoveSound();
+
 // ============= VOLUME ================ //
 extern int& volume;

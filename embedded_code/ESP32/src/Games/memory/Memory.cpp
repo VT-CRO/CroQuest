@@ -90,6 +90,7 @@ void runMemory() {
 
   // reset level
   currentLevel = 0;
+  waitingForWinChoice = false;
 
   // clear sprite and cache
   drawing.clearCache();
@@ -211,31 +212,41 @@ static void runMemoryFrame() {
   case ENDSCREEN:
 
     // ENDSCREEN HANDLING
-
+    Serial.println(timeRemaining);
+    Serial.println(currentLevel);
+    Serial.println(NUM_LEVELS);
     bool playerWon = (timeRemaining > 0 && currentLevel == NUM_LEVELS - 1);
+    Serial.println(playerWon);
 
     // Prepare name label with total time
     String timeLabelStr = "Time: " + String(totalTime) + "s";
     char timeLabel[32]; // must be long enough
     timeLabelStr.toCharArray(timeLabel, sizeof(timeLabel));
 
-    // If player won, show message
-    bool fakeMultiplayer = playerWon;
     int finalScore = playerWon ? -1 : totalTime; // -1 means "don't show score"
+    
 
-    std::vector<String> playerNames = {timeLabel};
-    std::vector<int> playerScores = {0};
+    std::vector<String> playerNames = {settings.name};
+    std::vector<int> playerScores = {finalScore};
 
-    EndScreen endScreen(playerNames, playerScores, fakeMultiplayer, timeLabel,
+    // Create a fake player in order to display win screen
+    if(playerWon){
+      playerNames.push_back("Game won!");
+      playerScores.push_back(-2);
+    }
+
+    EndScreen endScreen(playerNames, playerScores, false, timeLabel,
                         finalScore);
 
     if (endScreen.handleUserInput()) {
       totalTime = 0;
       totalMoves = 0;
       currentLevel = 0;
+      waitingForWinChoice = false;
 
       // Clear Screen
       tft.fillScreen(TFT_BLACK);
+      showLevelIntroScreen();
       loadLevel(currentLevel);
       currentState = PLAYING; // handleUserInput returns true : game restarts
     } else {
@@ -243,11 +254,13 @@ static void runMemoryFrame() {
         totalTime = 0;
         totalMoves = 0;
         currentLevel = 0;
+        waitingForWinChoice = false;
         return;
       }
       totalTime = 0;
       totalMoves = 0;
       currentLevel = 0;
+      waitingForWinChoice = false;
       currentState = HOMESCREEN;
       showHomeScreen(); // handleUserInput returns false : returns to game menu
       delay(300);
@@ -423,6 +436,31 @@ static void checkWinCondition() {
   totalTime += (cardRows * cardCols * 5) - timeRemaining;
   waitingForWinChoice = true;
   totalMoves += movesThisLevel;
+
+    // ================= Badge Unlock Logic =================
+  if (currentLevel == NUM_LEVELS - 1) {
+
+    playWinSound();
+
+    // Badge Logic | 150s
+    if (totalTime < 150 && !badgeProgress[6] && !session.badgeUnlocked) {
+      // if (currentLevel == 0 && !badgeProgress[3] && !session.badgeUnlocked) {
+      badgeProgress[6] = true;
+      isUnlocked[6] = true;
+      saveBadgeProgress();
+      checkFinalBadgeUnlock();
+      session.badgeUnlocked = true;
+
+      hasPendingNotification = true;
+      pendingNotificationMessage = "Memory Badge Unlocked!";
+      pendingNotificationDuration = 3000;
+    }
+
+    // Jump to final ENDSCREEN — skip drawing “Level Complete” UI
+    currentState = ENDSCREEN;
+    return;
+  }
+
   drawTiles();
 
   // Draw centered UI
@@ -451,30 +489,6 @@ static void checkWinCondition() {
 
   playLevelCompleteSound();
   movesThisLevel = 0;
-
-  // ================= Badge Unlock Logic =================
-  if (currentLevel == NUM_LEVELS - 1) {
-
-    playWinSound();
-
-    // Badge Logic | 150s
-    if (totalTime < 150 && !badgeProgress[6] && !session.badgeUnlocked) {
-      // if (currentLevel == 0 && !badgeProgress[3] && !session.badgeUnlocked) {
-      badgeProgress[6] = true;
-      isUnlocked[6] = true;
-      saveBadgeProgress();
-      checkFinalBadgeUnlock();
-      session.badgeUnlocked = true;
-
-      hasPendingNotification = true;
-      pendingNotificationMessage = "Memory Badge Unlocked!";
-      pendingNotificationDuration = 3000;
-    }
-
-    // Jump to final ENDSCREEN — skip drawing “Level Complete” UI
-    currentState = ENDSCREEN;
-    return;
-  }
 }
 
 // ========== Game Menu Screen ========== //
@@ -538,48 +552,39 @@ static void triggerGameOver() {
 
 // ========== Home Screen ========== //
 void showHomeScreen() {
+  tft.fillScreen(TFT_BLACK);  // Background
 
-  // Draw Background
-  drawTiles();
-
-  // ---------- Gradient Background (Vertical) ----------
-  for (int y = 0; y < tft.height(); y++) {
-    uint8_t gradient =
-        map(y, 0, tft.height(), 200, 255); // From light to bright blue
-    uint16_t color = tft.color565(gradient, gradient, 255);
-    tft.drawFastHLine(0, y, tft.width(), color);
-  }
-
-  // ---------- Stylized Title with Shadow ----------
-  tft.setTextDatum(MC_DATUM);
-  tft.setTextSize(4);
-
+  // ---------- Layout Constants ----------
   int centerX = tft.width() / 2;
-  int titleY = tft.height() / 2 - 50;
+  int titleY = 80; 
+  int subtitleY = titleY + 60; 
+  int promptY = tft.height() - 80;
+  int authorsY = tft.height() - 25; 
 
-  // Draw shadow
+  // ---------- TITLE ----------
+  tft.setTextDatum(MC_DATUM);
+  tft.setTextSize(6);  // Bigger!
   tft.setTextColor(TFT_DARKGREY);
-  tft.drawString("MEMORY", centerX + 3, titleY + 3);
-
-  // Draw main title
+  tft.drawString("MEMORY", centerX + 2, titleY + 2);  // shadow
   tft.setTextColor(TFT_WHITE);
   tft.drawString("MEMORY", centerX, titleY);
 
-  // ---------- Author Name ----------
+  // ---------- Subtitle ----------
   tft.setTextSize(2);
-  tft.setTextColor(TFT_BLACK);
-  tft.drawString("Designed by Connor McCue", centerX, titleY + 60);
-  tft.drawString("&", centerX, titleY + 80);
-  tft.drawString("Lucas Shadoyan", centerX, titleY + 100);
+  tft.setTextColor(TFT_LIGHTGREY);
+  tft.drawString("Focus. Match. Win.", centerX, subtitleY);
 
-  // ---------- Start Prompt with Shadow ----------
-  int promptY = tft.height() - 50;
-  tft.setTextSize(2);
-  tft.setTextColor(TFT_DARKGREY);
-  tft.drawString("Press A to start", centerX + 2, promptY + 2);
 
+  tft.setTextSize(2); 
+  tft.setTextColor(TFT_LIGHTGREY);
+  tft.drawString("Press A to start", centerX + 1, promptY + 1);  // shadow
   tft.setTextColor(TFT_YELLOW);
   tft.drawString("Press A to start", centerX, promptY);
+
+  // ---------- Author Credits ----------
+  tft.setTextSize(2);
+  tft.setTextColor(TFT_DARKGREY);
+  tft.drawString("Designed by McCue & Shadoyan", centerX, authorsY);
 }
 
 // ####################################################################################################

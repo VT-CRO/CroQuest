@@ -109,9 +109,15 @@ void runSnake() {
 
   // Loop through and play game
   for (;;) {
-
-    if (checkStartButtonAndExit(tft))
+    
+    if(gameState == HOMESCREEN && B.wasJustPressed()){
+      backAudio();      
       break;
+    }
+
+    if (checkStartButtonAndExit(tft)){
+      break;
+    }
 
     unsigned long now = millis();
 
@@ -161,7 +167,7 @@ void runSnake() {
         tft.setTextColor(TFT_WHITE);
         tft.setTextSize(2);
         tft.drawString("Press A to restart", tft.width() / 2,
-                       tft.height() - 70);
+                       tft.height() - 60);
         delay(200);
         gameState = PLAYING;
         playPressSound();
