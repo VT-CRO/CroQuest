@@ -505,7 +505,8 @@ static void clearRow() {
   int cleared[4] = {0, 0, 0, 0}; // 0 == false (no rows cleared)
 
   for (int y = 0; y < 4; y++) {
-    if (currentPiece.y + y < 0 || currentPiece.y + y >= GRID_HEIGHT) continue;
+    if (currentPiece.y + y < 0 || currentPiece.y + y >= GRID_HEIGHT)
+      continue;
     bool clear = true;
     for (int x = 0; x < GRID_WIDTH; x++) {
       if (grid[currentPiece.y + y][x] == 0) {
@@ -748,6 +749,12 @@ static void drawHomeSelection() {
       tft.drawString(sub2, x_sub2, y_sub);
     }
   }
+
+  // ========== Author Credits ========== //
+  tft.setTextColor(tft.color565(150, 150, 150)); // light grey
+  tft.setTextSize(2);
+  tft.drawString("Designed by: Lucas Shadoyan", tft.width() / 2,
+                 tft.height() - 10);
 }
 
 // Draws the piece onto the board

@@ -4,6 +4,7 @@
 #include "Menu/MenuReturn.hpp"
 #include "Notifications/NotificationManager.hpp"
 #include "NumPad/NumPad.hpp"
+#include "SettingsMenu/AudioMenu/Audio.hpp"
 #include "SettingsMenu/BadgesMenu/Badges.hpp"
 #include <TFT_eSPI.h>
 

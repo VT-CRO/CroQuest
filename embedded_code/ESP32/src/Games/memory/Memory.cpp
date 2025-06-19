@@ -568,9 +568,9 @@ void showHomeScreen() {
   // ---------- Author Name ----------
   tft.setTextSize(2);
   tft.setTextColor(TFT_BLACK);
-  tft.drawString("Designed by Lucas Shadoyan", centerX, titleY + 60);
+  tft.drawString("Designed by Connor McCue", centerX, titleY + 60);
   tft.drawString("&", centerX, titleY + 80);
-  tft.drawString("Connor McCue", centerX, titleY + 100);
+  tft.drawString("Lucas Shadoyan", centerX, titleY + 100);
 
   // ---------- Start Prompt with Shadow ----------
   int promptY = tft.height() - 50;

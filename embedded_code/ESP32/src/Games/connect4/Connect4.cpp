@@ -1070,8 +1070,8 @@ void drawHomescreenSelect() {
   static int prevSubselection = -1;
   static State prevGameState = HOMESCREEN;
 
-  int y_single = 200;
-  int y_multi = 250;
+  int y_single = 190;
+  int y_multi = 235;
   int y_sub = y_multi + 40;
 
   // Always update buttons if we entered screen again
@@ -1139,6 +1139,30 @@ void drawHomescreenSelect() {
       tft.drawString(sub2, x_sub2, y_sub);
     }
   }
+
+  // ========== Author Credits ========== //
+  // Author Line: Mixed font sizes on one line
+  const char *label = "";
+  const char *names = "Designed by: Campoverde & McCue";
+
+  // Measure widths
+  tft.setTextSize(1);
+  int labelWidth = tft.textWidth(label);
+  tft.setTextSize(2);
+  int namesWidth = tft.textWidth(names);
+
+  int totalWidth = labelWidth + namesWidth;
+  int startX = (tft.width() - totalWidth) / 2;
+  int y = tft.height() - 13;
+
+  // Print side-by-side
+  tft.setTextDatum(TL_DATUM);
+  tft.setTextColor(tft.color565(210, 210, 210)); // Bright neutral gray
+  tft.setTextSize(1);
+  tft.drawString(label, startX, y);
+
+  tft.setTextSize(2);
+  tft.drawString(names, startX + labelWidth, y - 5);
 
   // ---------- Save state ----------
   prevSelection = selection;

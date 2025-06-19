@@ -31,8 +31,7 @@ void resetToSinglePlayerDefaults();
 void resetMultiplayerState(bool clearScreen);
 
 // Handle ready message
-void handleReadyMessage(const std::string& message); 
-
+void handleReadyMessage(const std::string &message);
 
 // ========== Game States ========== //
 enum State {
@@ -110,7 +109,8 @@ uint16_t orange_color = tft.color565(0xFF, 0x70, 0x00);
 int xWins = 0;
 int oWins = 0;
 
-std::unordered_map<std::string, bool> ready = {{"host", false}, {"periph", false}};
+std::unordered_map<std::string, bool> ready = {{"host", false},
+                                               {"periph", false}};
 
 // Numpad Setup
 static NumPad<State> pad(drawHomeScreen, drawAllPlaying, &game_state,
@@ -164,7 +164,6 @@ void runTicTacToe() {
   drawHomeScreen();
   ready["periph"] = false;
   ready["host"] = false;
-
 
   while (true) {
     handleTicTacToeFrame();
@@ -229,7 +228,7 @@ void handleTicTacToeFrame() {
   else if (game_state == MULTIPLAYER_SELECTION) {
     if (!roundEnded && millis() - lastMoveTime > moveDelay) {
       if (A.wasJustPressed()) {
-        //clear ready status
+        // clear ready status
         ready["periph"] = false;
         ready["host"] = false;
         if (subselection == 0) {
@@ -269,7 +268,7 @@ void handleTicTacToeFrame() {
               delay(10);
             }
 
-            //send ready string
+            // send ready string
             ready["host"] = true;
             BluetoothManager::getCentral().sendMessage("ready@host,true");
 
@@ -308,7 +307,7 @@ void handleTicTacToeFrame() {
   // ================== HOST_SCREEN State =================== //
   else if (game_state == HOST_SCREEN) {
     // Don't continue if the host or peripheral aren't ready yet
-    if(!ready["host"] || !ready["periph"])
+    if (!ready["host"] || !ready["periph"])
       return;
 
     BluetoothCentral &central = BluetoothManager::getCentral();
@@ -317,7 +316,7 @@ void handleTicTacToeFrame() {
   // ================== MULTIPLAYER_PLAYING State =================== //
   else if (game_state == MULTIPLAYER_PLAYING) {
     // Don't continue if the host or peripheral aren't ready yet
-    if(!ready["host"] || !ready["periph"])
+    if (!ready["host"] || !ready["periph"])
       return;
 
     BluetoothManager::getPeripheral().update();
@@ -612,8 +611,9 @@ void handleTicTacToeFrame() {
     }
 
     // Only start the game when both the host and peripheral are ready
-    if(ready["periph"] && ready["host"]){
-      BluetoothManager::getPeripheral().sendMessage("ready@periph,true"); // send ready message
+    if (ready["periph"] && ready["host"]) {
+      BluetoothManager::getPeripheral().sendMessage(
+          "ready@periph,true"); // send ready message
       game_state = MULTIPLAYER_PLAYING;
     }
   }
@@ -675,22 +675,23 @@ void handleTicTacToeFrame() {
       }
 
       // set ready status
-      if(game_state == MULTIPLAYER_PLAYING){
+      if (game_state == MULTIPLAYER_PLAYING) {
         ready["periph"] = true;
         BluetoothManager::getPeripheral().sendMessage("ready@periph,true");
-      }else if(game_state == HOST_SCREEN){
+      } else if (game_state == HOST_SCREEN) {
         ready["host"] = true;
         BluetoothManager::getCentral().sendMessage("ready@host,true");
       }
 
       // Show intermediary waiting screen
-      if(game_state == MULTIPLAYER_PLAYING || game_state == HOST_SCREEN){
-        if(!ready["periph"] || !ready["host"]){
-            tft.fillScreen(TFT_BLACK);
-            tft.setTextDatum(MC_DATUM);
-            tft.setTextColor(TFT_WHITE);
-            tft.drawString("WAITING FOR OTHER PLAYER...", tft.width()/2, tft.height()/2);
-            tft.setTextDatum(TL_DATUM);
+      if (game_state == MULTIPLAYER_PLAYING || game_state == HOST_SCREEN) {
+        if (!ready["periph"] || !ready["host"]) {
+          tft.fillScreen(TFT_BLACK);
+          tft.setTextDatum(MC_DATUM);
+          tft.setTextColor(TFT_WHITE);
+          tft.drawString("WAITING FOR OTHER PLAYER...", tft.width() / 2,
+                         tft.height() / 2);
+          tft.setTextDatum(TL_DATUM);
         }
       }
 
@@ -1062,8 +1063,8 @@ void drawHomeScreen() {
 
 // ========== Draw HomeScreen Buttons ========== //
 void drawHomescreenSelect() {
-  int y_single = 200;
-  int y_multi = 250;
+  int y_single = 190;
+  int y_multi = 235;
   int y_sub = y_multi + 40;
 
   // Always draw title + grid once when entering this screen
@@ -1095,7 +1096,7 @@ void drawHomescreenSelect() {
     tft.setTextDatum(MC_DATUM);
 
     int padding_x = 10;
-    int padding_y = 2;
+    int padding_y = 3;
 
     int sub1Width = tft.textWidth(sub1);
     int sub2Width = tft.textWidth(sub2);
@@ -1124,6 +1125,30 @@ void drawHomescreenSelect() {
     tft.drawString(sub1, x_sub1, y_sub);
     tft.drawString(sub2, x_sub2, y_sub);
   }
+
+  // ========== Author Credits ========== //
+  // Author Line: Mixed font sizes on one line
+  const char *label = "Designed by: ";
+  const char *names = "Campoverde, Shadoyan & McCue";
+
+  // Measure widths
+  tft.setTextSize(1);
+  int labelWidth = tft.textWidth(label);
+  tft.setTextSize(2);
+  int namesWidth = tft.textWidth(names);
+
+  int totalWidth = labelWidth + namesWidth;
+  int startX = (tft.width() - totalWidth) / 2;
+  int y = tft.height() - 13;
+
+  // Print side-by-side
+  tft.setTextDatum(TL_DATUM);
+  tft.setTextColor(tft.color565(210, 210, 210)); // Bright neutral gray
+  tft.setTextSize(1);
+  tft.drawString(label, startX, y);
+
+  tft.setTextSize(2);
+  tft.drawString(names, startX + labelWidth, y - 5);
 
   // ---------- Save state ----------
   prevSelection = selection;
@@ -1475,22 +1500,25 @@ String formatName(String name) {
 }
 
 // Handle the ready message
-void handleReadyMessage(const std::string& message) {
-    // Ensure the message starts with "ready@"
-    if (message.rfind("ready@", 0) != 0) return;
+void handleReadyMessage(const std::string &message) {
+  // Ensure the message starts with "ready@"
+  if (message.rfind("ready@", 0) != 0)
+    return;
 
-    size_t at = message.find('@');
-    size_t comma = message.find(',');
+  size_t at = message.find('@');
+  size_t comma = message.find(',');
 
-    if (comma == std::string::npos || at == std::string::npos || comma <= at + 1) return;
+  if (comma == std::string::npos || at == std::string::npos || comma <= at + 1)
+    return;
 
-    std::string key = message.substr(at + 1, comma - (at + 1));
-    std::string valueStr = message.substr(comma + 1);
+  std::string key = message.substr(at + 1, comma - (at + 1));
+  std::string valueStr = message.substr(comma + 1);
 
-    if (ready.find(key) != ready.end()) {
-        ready[key] = (valueStr == "true");
-        Serial.printf("✅ Ready state updated: %s => %s\n", key.c_str(), valueStr.c_str());
-    } else {
-        Serial.printf("⚠️ Unknown key in ready message: %s\n", key.c_str());
-    }
+  if (ready.find(key) != ready.end()) {
+    ready[key] = (valueStr == "true");
+    Serial.printf("✅ Ready state updated: %s => %s\n", key.c_str(),
+                  valueStr.c_str());
+  } else {
+    Serial.printf("⚠️ Unknown key in ready message: %s\n", key.c_str());
+  }
 }

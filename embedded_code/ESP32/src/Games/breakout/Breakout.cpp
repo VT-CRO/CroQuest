@@ -452,6 +452,7 @@ void updateBreakoutGame() {
     currentBreakoutState = BREAKOUT_WIN;
   }
 }
+
 // ========== Update Ball Status ========== //
 void updateBall(Ball *b, Paddle *paddle) {
   prev_ball = *b;
@@ -593,9 +594,11 @@ void drawBreakoutHomeSelection() {
   int y_multi = 230;
   int y_sub = y_multi + 40;
 
+  // === Draw Buttons (always) === //
   tft.setTextDatum(MC_DATUM);
   tft.setTextColor(TFT_WHITE);
   tft.setTextSize(1);
+
   tft.fillRect(0, y_single - 15, SCREEN_W, 35, TFT_BLACK);
   tft.fillRect(0, y_multi - 15, SCREEN_W, 80, TFT_BLACK);
 
@@ -641,6 +644,12 @@ void drawBreakoutHomeSelection() {
       tft.drawString(sub2, x_sub2, y_sub);
     }
   }
+
+  // ========== Author Credits ========== //
+  tft.setTextColor(tft.color565(150, 150, 150)); // light grey
+  tft.setTextSize(2);
+  tft.drawString("Designed by: Felipe Campoverde", tft.width() / 2,
+                 tft.height() - 10);
 }
 
 // ========== Draw HomeScreen Screen ========== //
