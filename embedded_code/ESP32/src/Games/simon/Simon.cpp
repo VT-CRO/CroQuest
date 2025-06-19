@@ -637,7 +637,7 @@ void simonGameOver() {
 
   // ================= Badge Unlock Logic =================
   if (multiplayerMode.equals("SINGLE")) {
-    if (playerScore >= 25 && !badgeProgress[3]) {
+    if (playerScore >= 5 && !badgeProgress[3]) {
       badgeProgress[3] = true;
       isUnlocked[3] = true;
       saveBadgeProgress();
