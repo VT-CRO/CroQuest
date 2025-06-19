@@ -16,10 +16,7 @@ static bool saveToSettingsFile(const char *path);
 void runSettings() {
 
   const char *options[] = {
-      "Name",
-      "Volume",
-      "Badges",
-      "Back",
+      "Name", "Volume", "Badges", "About Us", "Back",
   };
   const int optionCount = sizeof(options) / sizeof(options[0]);
   int selectedOption = 0;
@@ -104,6 +101,7 @@ void runSettings() {
       lastDrawnOption = selectedOption;
       playSelectBeep();
       delay(150);
+
     } else if (up.wasJustPressed()) {
       drawOption(selectedOption, false);
       selectedOption = (selectedOption - 1 + optionCount) % optionCount;
@@ -111,6 +109,7 @@ void runSettings() {
       lastDrawnOption = selectedOption;
       playSelectBeep();
       delay(150);
+
     } else if (A.wasJustPressed()) {
       if (strcmp(options[selectedOption], "Back") == 0) {
         saveToSettingsFile("/settings.bin");
@@ -125,12 +124,18 @@ void runSettings() {
       else if (strcmp(options[selectedOption], "Volume") == 0) {
         playPressSound();
         runAudioMenu();
+
       } else if (strcmp(options[selectedOption], "Name") == 0) {
         playPressSound();
         runNameMenu();
+
       } else if (strcmp(options[selectedOption], "Badges") == 0) {
         playPressSound();
         runBadgesMenu();
+
+      } else if (strcmp(options[selectedOption], "About Us") == 0) {
+        playPressSound();
+        runAboutUs();
       }
 
       // === Full screen reset after returning from Brightness ===

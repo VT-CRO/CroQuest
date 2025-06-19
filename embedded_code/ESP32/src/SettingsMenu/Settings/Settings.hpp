@@ -4,6 +4,7 @@
 
 #include "Core/Buttons.hpp"
 #include "Menu/GameMenu.hpp"
+#include "SettingsMenu/AboutUs/AboutUs.hpp"
 #include "SettingsMenu/AudioMenu/Audio.hpp"
 #include "SettingsMenu/BadgesMenu/Badges.hpp"
 #include "SettingsMenu/NameMenu/Name.hpp"
