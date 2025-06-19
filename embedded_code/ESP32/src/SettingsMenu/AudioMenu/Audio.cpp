@@ -128,3 +128,36 @@ static void sliderSound() {
   delay(15);
   playTone(0, volume);
 }
+
+
+// ========== Sound for Numpad Button Press ========== //
+void playNumpadPressSound() {
+  playTone(800, volume);      // Play a short high tone
+  delay(50);          // Short duration
+  playTone(0, 0);        // Stop tone
+}
+
+// ========== Sound for Cursor Move (Button Select) ========== //
+void playSelectMoveSound() {
+  playTone(400, volume);      // Lower tone for selection
+  delay(40);          // Very quick beep
+  playTone(0, 0);        // Stop tone
+}
+
+// Confirm sound for button presses in the game menu
+void playSelectConfirmSound() {
+  playTone(600, volume); 
+  delay(40);
+  playTone(0, 0);   
+  delay(30);
+  playTone(700, volume); 
+  delay(40);
+  playTone(0, 0);
+}
+
+// Also for the game menu
+void playFocusMoveSound() {
+  playTone(500, volume);
+  delay(35);
+  playTone(0, 0);
+}

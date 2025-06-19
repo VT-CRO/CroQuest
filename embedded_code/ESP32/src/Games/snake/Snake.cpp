@@ -100,9 +100,15 @@ void runSnake() {
 
   // Loop through and play game
   for (;;) {
-
-    if (checkStartButtonAndExit(tft))
+    
+    if(gameState == HOMESCREEN && B.wasJustPressed()){
+      backAudio();      
       break;
+    }
+
+    if (checkStartButtonAndExit(tft)){
+      break;
+    }
 
     unsigned long now = millis();
 

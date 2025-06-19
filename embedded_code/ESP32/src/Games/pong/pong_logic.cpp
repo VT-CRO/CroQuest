@@ -30,7 +30,6 @@ enum paddle_walls {
 };
 
 // ============ SOUNDS ============= //
-extern int &volume;
 
 void playPaddleHitSound() {
   const int freq = 900;    // Sharp "blip"

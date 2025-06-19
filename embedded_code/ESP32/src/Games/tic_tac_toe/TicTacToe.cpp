@@ -51,9 +51,6 @@ enum State {
 //  Global Definitions
 // ####################################################################################################
 
-// Speaker Pin
-#define SPEAKER_PIN 21
-
 // Badge
 TicTacToeSession session;
 
@@ -129,8 +126,6 @@ void runTicTacToe() {
 
   tft.fillScreen(orange_color);
 
-  pinMode(SPEAKER_PIN, OUTPUT);
-
   screen_width = tft.width();
   screen_height = tft.height();
 
@@ -177,6 +172,7 @@ void runTicTacToe() {
     // keep support for exiting with B from homescreen
     if (game_state == HOMESCREEN && B.wasJustPressed()) {
       Serial.println("Returning to menu");
+      backAudio();
       delay(500);
       BluetoothManager::reset();
       return;
@@ -198,6 +194,7 @@ void handleTicTacToeFrame() {
   if (game_state == HOMESCREEN) {
     if (millis() - lastMoveTime > moveDelay / 2) {
       if (A.wasJustPressed()) {
+        playSelectConfirmSound();
         if (selection == 0) {
           resetMultiplayerState(true);
 
@@ -214,12 +211,18 @@ void handleTicTacToeFrame() {
       }
       // Selection logic
       if (up.isPressed()) {
-        selection = 0;
-        drawHomescreenSelect();
+        if(selection == 1){
+          selection = 0;
+          drawHomescreenSelect();
+          playFocusMoveSound();
+        }
 
       } else if (down.isPressed()) {
-        selection = 1;
-        drawHomescreenSelect();
+        if(selection == 0){
+          selection = 1;
+          drawHomescreenSelect();
+          playFocusMoveSound();
+        }
       }
       lastMoveTime = millis();
     }
@@ -229,6 +232,7 @@ void handleTicTacToeFrame() {
   else if (game_state == MULTIPLAYER_SELECTION) {
     if (!roundEnded && millis() - lastMoveTime > moveDelay) {
       if (A.wasJustPressed()) {
+        playSelectConfirmSound();
         //clear ready status
         ready["periph"] = false;
         ready["host"] = false;
@@ -293,11 +297,13 @@ void handleTicTacToeFrame() {
         if (subselection == 1) {
           subselection = 0;
           drawHomescreenSelect();
+          playFocusMoveSound();
         }
       } else if (right.isPressed()) {
         if (subselection == 0) {
           subselection = 1;
           drawHomescreenSelect();
+          playFocusMoveSound();
         }
       }
 

@@ -3,11 +3,15 @@
 #pragma once
 
 #include "BackButton/BackButton.hpp"
+#include "SettingsMenu/AudioMenu/Audio.hpp"
 #include "Core/Buttons.hpp"
 #include "Core/JpegDrawing.hpp"
 #include "Menu/MenuReturn.hpp"
 #include <TFT_eSPI.h>
 #include <string>
+
+void playNumpadPressSound();
+void playSelectMoveSound();
 
 extern TFT_eSPI tft;
 extern JpegDrawing drawing;
@@ -275,6 +279,7 @@ void NumPad<EnumType>::handleButtonInput(unsigned long *lastMoveTime,
     // Press Logic
     if (A.wasJustPressed()) {
       modButtonState(NumPad::NONE, NumPad::PRESSED);
+      playNumpadPressSound();
       *lastMoveTime = millis();
     } else if (!A.wasJustPressed()) {
       modButtonState(NumPad::NONE, NumPad::SELECTED);
@@ -289,6 +294,7 @@ void NumPad<EnumType>::handleButtonInput(unsigned long *lastMoveTime,
       } else {
         modButtonState(NumPad::UP, NumPad::SELECTED);
       }
+      playSelectMoveSound();
       *lastMoveTime = millis();
     } else if (down.isPressed()) {
       // Back button selection logic to
@@ -300,12 +306,15 @@ void NumPad<EnumType>::handleButtonInput(unsigned long *lastMoveTime,
       } else {
         modButtonState(NumPad::DOWN, NumPad::SELECTED);
       }
+      playSelectMoveSound();
       *lastMoveTime = millis();
     } else if (right.isPressed()) {
       modButtonState(NumPad::RIGHT, NumPad::SELECTED);
+      playSelectMoveSound();
       *lastMoveTime = millis();
     } else if (left.isPressed()) {
       modButtonState(NumPad::LEFT, NumPad::SELECTED);
+      playSelectMoveSound();
       *lastMoveTime = millis();
     }
   }

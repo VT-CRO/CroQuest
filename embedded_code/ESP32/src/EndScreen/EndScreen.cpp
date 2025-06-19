@@ -28,7 +28,7 @@ void EndScreen::gameOverScreen() {
   tft.setTextSize(4);
 
   // Determine highest score and how many players have it
-  int highScore = 0;
+  int highScore = INT_MIN;
   int highScoreCount = 0;
   for (int s : playerScores) {
     if (s > highScore) {

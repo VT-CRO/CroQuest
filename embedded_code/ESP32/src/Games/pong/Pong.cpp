@@ -189,6 +189,7 @@ void runPong() {
     // Keep support for exiting with B from homescreen as well
     if (current_state == STATE_HOMESCREEN && B.wasJustPressed()) {
       Serial.println("Returning to menu");
+      backAudio();
       delay(500);
       BluetoothManager::reset();
       return;
@@ -229,6 +230,7 @@ void handlePongFrame() {
     if (current_state == STATE_HOMESCREEN) {
       if (millis() - lastMoveTime > moveDelay / 2) {
         if (A.wasJustPressed()) {
+          playSelectConfirmSound();
           //clear ready status
           ready["periph"] = false;
           ready["host"] = false;
@@ -270,12 +272,18 @@ void handlePongFrame() {
 
         // Selection logic
         if (up.wasJustPressed()) {
-          selection = 0;
-          drawHomeSelection();
+          if(selection == 1){
+            selection = 0;
+            drawHomeSelection();
+            playFocusMoveSound();
+          }
           lastMoveTime = millis();
         } else if (down.wasJustPressed()) {
-          selection = 1;
-          drawHomeSelection();
+          if(selection == 0){
+            selection = 1;
+            drawHomeSelection();
+            playFocusMoveSound();
+          }
           lastMoveTime = millis();
         }
       }
@@ -426,6 +434,7 @@ void handlePongFrame() {
       if (millis() - lastMoveTime > moveDelay) {
 
         if (A.wasJustPressed()) {
+          playSelectConfirmSound();
           if (subselection == 0) {
             // === HOST FLOW === //
             BluetoothManager::initCentral(tft);
@@ -484,14 +493,17 @@ void handlePongFrame() {
         if (up.wasJustPressed()) {
           current_state = STATE_HOMESCREEN;
           drawHomeSelection();
+          playFocusMoveSound();
           lastMoveTime = millis();
         } else if (left.wasJustPressed() && subselection == 1) {
           subselection = 0;
           drawHomeSelection();
+          playFocusMoveSound();
           lastMoveTime = millis();
         } else if (right.wasJustPressed() && subselection == 0) {
           subselection = 1;
           drawHomeSelection();
+          playFocusMoveSound();
           lastMoveTime = millis();
         }
       }

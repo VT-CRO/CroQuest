@@ -105,6 +105,7 @@ void runBreakout() {
 
     if (currentBreakoutState == BREAKOUT_HOMESCREEN && B.wasJustPressed()) {
       Serial.println("Returning to menu");
+      backAudio();
       delay(500);
       return;
     }
@@ -134,10 +135,13 @@ void handleBreakoutFrame() {
       if (up.wasJustPressed() && breakout_selection == 1) {
         breakout_selection = 0;
         drawBreakoutHomeSelection();
+        playFocusMoveSound();
       } else if (down.wasJustPressed() && breakout_selection == 0) {
         breakout_selection = 1;
         drawBreakoutHomeSelection();
+        playFocusMoveSound();
       } else if (A.wasJustPressed()) {
+        playSelectConfirmSound();
         if (breakout_selection == 1) {
           currentBreakoutState = BREAKOUT_MULTIPLAYER_SELECTION;
           drawBreakoutHomeSelection();
@@ -168,10 +172,13 @@ void handleBreakoutFrame() {
       if (left.wasJustPressed() && breakout_subselection == 1) {
         breakout_subselection = 0;
         drawBreakoutHomeSelection();
+        playFocusMoveSound();
       } else if (right.wasJustPressed() && breakout_subselection == 0) {
         breakout_subselection = 1;
         drawBreakoutHomeSelection();
+        playFocusMoveSound();
       } else if (A.wasJustPressed()) {
+        playSelectConfirmSound();
         if (breakout_subselection == 0) {
 
           currentBreakoutState = BREAKOUT_JOIN_SCREEN;
@@ -184,6 +191,7 @@ void handleBreakoutFrame() {
         breakout_subselection = 0;
         breakout_selection = 1;
         drawBreakoutHomeSelection();
+        playFocusMoveSound();
       }
       lastFrameTime = millis();
     }
