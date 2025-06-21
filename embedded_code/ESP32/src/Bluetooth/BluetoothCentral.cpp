@@ -59,17 +59,18 @@ void BluetoothCentral::beginScan(const std::string &accessCode) {
 
 // ###################### Keep Scanning for more Players #####################
 void BluetoothCentral::scanAndConnectLoop(const std::string &accessCode) {
-  this->targetCode = accessCode;
-  this->foundDevices.clear();
-  Serial.println("🔄 Starting scan-and-connect loop...");
+//   this->targetCode = accessCode;
+//   this->foundDevices.clear();
+//   Serial.println("🔄 Starting scan-and-connect loop...");
 
-  ConnectionScreen::showMessage("Scanning for players...\nCode: " +
-                                String(this->targetCode.c_str()));
-  beginScan(this->targetCode);
+//   ConnectionScreen::showMessage("Scanning for players...\nCode: " +
+//                                 String(this->targetCode.c_str()));
+//   beginScan(this->targetCode);
 
   // ✅ Wait until scan stops due to onResult()
-  while (NimBLEDevice::getScan()->isScanning()) {
+  if (NimBLEDevice::getScan()->isScanning()) {
     delay(100);
+    return;
   }
 
   Serial.println("⏹ Scan stopped.");
@@ -408,4 +409,9 @@ bool BluetoothCentral::sendMessagePong(const std::string &msg) {
 
   // Make sure to return a value here:
   return true; // or false depending on your logic
+}
+
+// Setter
+void BluetoothCentral::setHostScreenExit(bool exit){
+    hostScreenExit = exit;
 }

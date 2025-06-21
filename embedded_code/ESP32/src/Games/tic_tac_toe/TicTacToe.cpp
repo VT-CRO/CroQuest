@@ -248,40 +248,41 @@ void handleTicTacToeFrame() {
 
           // Now safely show code
           HostGame::showCode(String(code.c_str()));
+          central.beginScan(code);
 
-          // Check if user exited
-          if (getExitFlag()) {
-            resetExitFlag();
-            game_state = HOMESCREEN; // TODO: This does not work completely well
-            return;
-          }
+          for(;;){
+            central.scanAndConnectLoop(code);
+  
+            multiplayerMode = true;
 
-          central.scanAndConnectLoop(code);
-
-          multiplayerMode = true;
-
-          if (!BluetoothManager::getCentral().getConnectedClients().empty()) {
-            localPlayerSymbol = 'X';
-
-            game_state = HOST_SCREEN;
-
-            // Flush any held buttons to prevent input carryover
-            delay(300); // debounce delay
-            while (A.isPressed() || up.isPressed() || down.isPressed() ||
-                   left.isPressed() || right.isPressed()) {
-              delay(10);
+            if(B.wasJustPressed()){
+              BluetoothManager::reset(false);
+              game_state = HOMESCREEN;
+              drawHomeScreen();
+              return;
             }
 
-            // send ready string
-            ready["host"] = true;
-            BluetoothManager::getCentral().sendMessage("ready@host,true");
 
-          } else {
-            game_state = MULTIPLAYER_SELECTION;
-            tft.fillScreen(orange_color);
-            drawHomeScreen();
-            ConnectionScreen::showMessage("Connection failed.\nTry again.");
+            if (!BluetoothManager::getCentral().getConnectedClients().empty()) {
+              localPlayerSymbol = 'X';
+  
+              game_state = HOST_SCREEN;
+  
+              // Flush any held buttons to prevent input carryover
+              delay(300); // debounce delay
+              while (A.isPressed() || up.isPressed() || down.isPressed() ||
+                     left.isPressed() || right.isPressed()) {
+                delay(10);
+              }
+  
+              // send ready string
+              ready["host"] = true;
+              BluetoothManager::getCentral().sendMessage("ready@host,true");
+              return;
+            }
           }
+
+
 
         } else {
           game_state = BLUETOOTH_NUMPAD;

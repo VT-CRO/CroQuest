@@ -246,44 +246,48 @@ void handleSimonFrame() {
 
           // Now safely show code
           HostGame::showCode(String(code.c_str()));
-
-          // Check if user exited
-          if (getExitFlag()) {
-            resetExitFlag();
-            simon_game_state = SIMON_HOMESCREEN;
-            return;
-          }
-
-          central.scanAndConnectLoop(code);
-
-          multiplayerMode = "HOST";
+          central.beginScan(code);
           simonPlayers.clear();
+          
+          //HostScreen loop
+          for(;;){
+            central.scanAndConnectLoop(code);
+            multiplayerMode = "HOST";
 
-          if (!BluetoothManager::getCentral().getConnectedClients().empty()) {
-
-            // Flush any held buttons to prevent input carryover
-            delay(300); // debounce delay
-            while (A.isPressed() || up.isPressed() || down.isPressed() ||
-                   left.isPressed() || right.isPressed()) {
-              delay(10);
+            if(B.wasJustPressed()){
+              BluetoothManager::reset(false);
+              simon_game_state = SIMON_HOMESCREEN;
+              drawSimonHomeScreen();
+              return;
             }
 
-            currentPlayer.status = "ready";
-            simonPlayers.push_back(currentPlayer);
+            // trying to exit w/ start using
+            // checkStartButtonAndExit(tft) was causing
+            // the esp to crash
 
-            BluetoothManager::getCentral().sendMessage(
-                generateSimonString("full").c_str());
-            multiplayer = true;
 
-            // simonStartNewGame(); // Start a new game
-            simon_game_state = SIMON_START_GAME;
+            if (!BluetoothManager::getCentral().getConnectedClients().empty()) {
 
-          } else {
-            simon_game_state = SIMON_MULTIPLAYER_SELECTION;
-            ConnectionScreen::showMessage("Connection failed.\nTry again.");
-            delay(1000);
-            drawSimonHomeScreen();
+              // Flush any held buttons to prevent input carryover
+              delay(300); // debounce delay
+              while (A.isPressed() || up.isPressed() || down.isPressed() ||
+                      left.isPressed() || right.isPressed()) {
+                delay(10);
+              }
+
+              currentPlayer.status = "ready";
+              simonPlayers.push_back(currentPlayer);
+
+              BluetoothManager::getCentral().sendMessage(
+                  generateSimonString("full").c_str());
+              multiplayer = true;
+
+              // simonStartNewGame(); // Start a new game
+              simon_game_state = SIMON_START_GAME;
+              return;
+            }
           }
+
         } else {
           pad.numPadSetup();
           simon_game_state = SIMON_BLUETOOTH_NUMPAD;

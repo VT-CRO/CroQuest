@@ -226,47 +226,55 @@ void handleConnect4Frame() {
 
             // Now safely show code
             HostGame::showCode(String(code.c_str()));
+            central.beginScan(code);
+            
+            // HostScreen loop
+            for(;;){
+              central.scanAndConnectLoop(code);
+              multiplayerMode = true;
+  
+              // Return to homescreen
+              if(B.wasJustPressed()){
+                BluetoothManager::reset(false);
+                prevGameState = game_state;
+                game_state = HOMESCREEN;
+                drawHomeScreen();
+                return;
+              }
+              // Causes esp to sometimes crash - I'm not sure why right now
+              // else if(checkStartButtonAndExit(tft)){
+              //   prevGameState = game_state;
+              //   game_state = HOMESCREEN;
+              //   return;
+              // }
 
-            // Check if user exited
-            if (getExitFlag()) {
-              resetExitFlag();
-              game_state = HOMESCREEN; // TODO: This does not work completely well
+              if (!BluetoothManager::getCentral().getConnectedClients().empty()) {
+                localPlayerId = 1;
+  
+                game_state = HOST_SCREEN;
+                firstFrame = true;
+  
+                // SEND INITIAL GAME STATE TO PERIPHERAL
+                String initialState = generateConnect4StateString();
+                BluetoothCentral &central = BluetoothManager::getCentral();
+                for (auto *client : central.getConnectedClients()) {
+                  central.sendToDevice(client, initialState.c_str());
+                }
+  
+                // Flush any held buttons to prevent input carryover
+                delay(300); // debounce delay
+                while (A.isPressed() || up.isPressed() || down.isPressed() ||
+                      left.isPressed() || right.isPressed()) {
+                  delay(10);
+                }
+  
+              // send ready string
+              ready["host"] = true;
+              BluetoothManager::getCentral().sendMessage("ready@host,true");
               return;
+              }
             }
 
-            central.scanAndConnectLoop(code);
-            multiplayerMode = true;
-
-            if (!BluetoothManager::getCentral().getConnectedClients().empty()) {
-              localPlayerId = 1;
-
-              game_state = HOST_SCREEN;
-              firstFrame = true;
-
-              // SEND INITIAL GAME STATE TO PERIPHERAL
-              String initialState = generateConnect4StateString();
-              BluetoothCentral &central = BluetoothManager::getCentral();
-              for (auto *client : central.getConnectedClients()) {
-                central.sendToDevice(client, initialState.c_str());
-              }
-
-              // Flush any held buttons to prevent input carryover
-              delay(300); // debounce delay
-              while (A.isPressed() || up.isPressed() || down.isPressed() ||
-                    left.isPressed() || right.isPressed()) {
-                delay(10);
-              }
-
-            // send ready string
-            ready["host"] = true;
-            BluetoothManager::getCentral().sendMessage("ready@host,true");
-
-            } else {
-              game_state = MULTIPLAYER_SELECTION;
-              tft.fillScreen(bgColor);
-              drawHomeScreen();
-              ConnectionScreen::showMessage("Connection failed.\nTry again.");
-            }
 
           } else {
             game_state = BLUETOOTH_NUMPAD;

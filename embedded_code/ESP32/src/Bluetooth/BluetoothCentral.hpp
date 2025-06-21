@@ -53,6 +53,9 @@ public:
   // ###################### Get Connected Clients #####################
   const std::vector<NimBLEClient *> &getConnectedClients() const;
 
+  // setter used to exit host screen
+  void setHostScreenExit(bool exit);
+
   class MyClientCallbacks : public NimBLEClientCallbacks {
   public: 
     void onDisconnect(NimBLEClient *client, int reason) override;
@@ -62,6 +65,7 @@ public:
   MyClientCallbacks * callbacks = nullptr;
 
 private:
+  bool hostScreenExit = false;
   std::string latestMessage = ""; // Latest message sent
   TFT_eSPI &tft;
   std::string targetCode;
