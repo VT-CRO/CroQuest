@@ -1,75 +1,35 @@
-# CroQuest
+# 🕹️ CroQuest
 
-Welcome to CroQuest!
+**CroQuest** is a retro-style handheld game console powered by the ESP32 microcontroller. If features a custom UI, SD-card-loaded assets, Bluetooth multiplayer, and a variety of original games - all packed into a portable device.
 
-===========================
+---
 
-PULL BEFORE DOING ANYTHING
+## 📸 Preview
 
-===========================
+![CroQuest Cover](./images/cover.jpg)
 
-I have added a directory called "references", in which you will be able to find a version of each game just for reference.
+---
 
-I am working on documentation in Notion:
-[click here](https://www.notion.so/CroQuest-1cdceb89e60e8008a8b2ff5f561b246e?pvs=4)
+- 🎮 8+ preloaded games: Pong, Snake, Chess, Tic Tac Toe, Simon, Connect 4, Memory, Tetris, Breakout
+- 🧠 Single & multiplayer modes via BLE
+- 🔊 Audio control and custom sound effects
+- 🏆 Unlockable badges and achievements
+- 💾 SD card support for game assets and save data
+- 📟 Animated menus, numeric input, and game state sync
+- 🎨 Fully customizable user name, screen brightness, and profile badges
 
----------------------------------------------------------------------------------------------
+---
 
-Each game will have it's own directory.  
+## 📁 Repository Structure
 
-Tree Structure of Repository.
-
-```
+```bash
 CroQuest
-├── assets
-├── embedded_code
-├── menu
-├── pong_game
-├── references
-│   ├── amp_it_up
-│   │   ├── archived_deprecated
-│   │   ├── pico_source_code
-│   │   │   └── lib
-│   │   │       ├── adafruit_display_text
-│   │   │       └── adafruit_imageload
-│   │   │           ├── bmp
-│   │   │           └── pnm
-│   │   │               └── pgm
-│   │   └── sd_card_source_code
-│   ├── pong
-│   ├── snake
-│   │   ├── bin
-│   │   ├── deps
-│   │   │   ├── Engine
-│   │   │   │   ├── Flow
-│   │   │   │   ├── Graphics
-│   │   │   │   │   └── Widgets
-│   │   │   │   │       └── Menu
-│   │   │   │   │           └── MenuItem
-│   │   │   │   └── Helpers
-│   │   │   └── commander
-│   │   ├── doc
-│   │   │   └── man
-│   │   ├── levels
-│   │   ├── misc
-│   │   └── src
-│   │       ├── Config
-│   │       ├── Display
-│   │       │   ├── Animations
-│   │       │   └── Layouts
-│   │       ├── Entities
-│   │       └── States
-│   └── supermariobros
-│       ├── codegen
-│       ├── docs
-│       └── source
-│           ├── Emulation
-│           ├── SMB
-│           └── Util
-├── snake_game
-│   └── assets
-└── supermariobros_game
-
-49 directories
-
+├── ESP32/                 # Main firmware and source code
+│   ├── src/              # All game and system modules
+│   ├── include/          # Header files
+│   ├── lib/              # External libraries
+│   └── Files/            # PCB designs, diagrams, scripts
+└── SD/                   # SD card content
+    ├── assets/           # JPEG assets for games and UI
+    └── saves/            # Saved data (e.g., badges, settings)
 ```
