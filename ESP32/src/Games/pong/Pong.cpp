@@ -447,39 +447,48 @@ void handlePongFrame() {
 
             // Code Screen
             HostGame::showCode(String(code.c_str()));
+            central.beginScan(code);
 
-            // Check if user exited
-            if (getExitFlag()) {
-              resetExitFlag();
-              current_state = STATE_HOMESCREEN;
-              return;
-            }
-
-            central.scanAndConnectLoop(code);
-
-            is_multiplayer_pong = true;
-
-            if (!central.getConnectedClients().empty()) {
-              initialize_game(&ball, paddles, &level);
-              localPlayerSide = 'X'; // or 0/1 if you want paddle 0
-              current_state = HOST_SCREEN;
-              firstFrame = true;
-              // Button debounce flush
-              delay(300);
-              while (A.isPressed() || up.isPressed() || down.isPressed() ||
-                     left.isPressed() || right.isPressed()) {
-                delay(10);
+            // HostScreen loop
+            for(;;){
+              central.scanAndConnectLoop(code);
+              is_multiplayer_pong = true;
+              
+              if(B.wasJustPressed()){
+                BluetoothManager::reset(false);
+                current_state = STATE_HOMESCREEN;
+                first_home_draw = true;
+                drawHomeScreen();
+                return;
               }
-              // send ready string
-              ready["host"] = true;
-              BluetoothManager::getCentral().sendMessage("ready@host,true");
 
-              tft.fillScreen(TFT_BLACK);
-            } else {
-              current_state = MULTIPLAYER_SELECTION;
-              tft.fillScreen(TFT_BLACK);
-              ConnectionScreen::showMessage("Connection failed.\nTry again.");
+              // trying to exit w/ start using
+              // checkStartButtonAndExit(tft) was causing
+              // the esp to crash
+
+
+              if (!central.getConnectedClients().empty()) {
+                initialize_game(&ball, paddles, &level);
+                localPlayerSide = 'X'; // or 0/1 if you want paddle 0
+                current_state = HOST_SCREEN;
+                firstFrame = true;
+                // Button debounce flush
+                delay(300);
+                while (A.isPressed() || up.isPressed() || down.isPressed() ||
+                       left.isPressed() || right.isPressed()) {
+                  delay(10);
+                }
+                // send ready string
+                ready["host"] = true;
+                BluetoothManager::getCentral().sendMessage("ready@host,true");
+  
+                tft.fillScreen(TFT_BLACK);
+                return;
+              }
             }
+
+
+
 
           } else {
             // === JOIN FLOW === //

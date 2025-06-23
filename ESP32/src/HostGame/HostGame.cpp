@@ -31,6 +31,9 @@ void HostGame::showCode(const String &code) {
   screen->setTextSize(2);
   screen->drawString("Waiting for players...", screen->width() / 2, 240);
 
+  screen->setTextSize(1);
+  screen->drawString("Press [B] return", screen->width()/2, screen->height() - 20);
+
   delay(100);
   updateAllButtons();
 }

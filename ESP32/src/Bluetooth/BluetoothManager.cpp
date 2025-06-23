@@ -80,6 +80,7 @@ void BluetoothManager::stopScan() {
 // =========== Reset Bluetooth ============ //
 void BluetoothManager::reset(bool exitToMenu) {
   if (central) {
+    central->setHostScreenExit(true);
     if(!exitToMenu){
       central->sendExit();
       delay(100);
@@ -95,6 +96,11 @@ void BluetoothManager::reset(bool exitToMenu) {
     delete peripheral;
     peripheral = nullptr;
   }
+
+  if (NimBLEDevice::getScan()->isScanning()) {
+    NimBLEDevice::getScan()->stop();
+    delay(50); 
+}
 
   NimBLEDevice::deinit(true); // Force full deinit
   delay(100);                 // Let it settle
