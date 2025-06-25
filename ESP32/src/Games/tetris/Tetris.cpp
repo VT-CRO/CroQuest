@@ -182,8 +182,8 @@ static unsigned long prevBlockFall;
 static bool bottomCollision;
 
 // Numpad
-static NumPad<State> pad(drawHomeScreen, startNewGame, &currentState,
-                         HOMESCREEN, PLAYING);
+static NumPad<State> pad(drawHomeScreen, &currentState,
+                         HOMESCREEN);
 
 // Setup and entry point from menu
 void runTetris() {

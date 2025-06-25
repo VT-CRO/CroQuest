@@ -92,8 +92,8 @@ static int screen_width, screen_height;
 uint16_t bgColor = tft.color565(32, 58, 66);
 
 // NumPad set up
-static NumPad<State> pad(drawHomeScreen, drawAllPlaying, &game_state,
-                         HOMESCREEN, SINGLE_PLAYER);
+static NumPad<State> pad(drawHomeScreen, &game_state,
+                         HOMESCREEN);
 
 extern std::unordered_map<std::string, bool> ready;
 

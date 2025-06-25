@@ -110,8 +110,8 @@ std::unordered_map<std::string, bool> ready = {{"host", false},
                                                {"periph", false}};
 
 // Numpad Setup
-static NumPad<State> pad(drawHomeScreen, drawAllPlaying, &game_state,
-                         HOMESCREEN, SINGLE_PLAYER);
+static NumPad<State> pad(drawHomeScreen, &game_state,
+                         HOMESCREEN);
 
 // ####################################################################################################
 //  Setup & Loop

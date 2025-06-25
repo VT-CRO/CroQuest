@@ -110,11 +110,8 @@ bool checkWinCondition();
 
 // Numpad
 static NumPad<GameState> pad(
-    drawHomeScreen,                          // What to show when exiting pad
-    []() { current_state = STATE_PLAYING; }, // What to do on confirm
-    &current_state, STATE_HOMESCREEN,
-    STATE_PLAYING // or another post-confirm state
-);
+    drawHomeScreen, // What to show when exiting pad
+    &current_state, STATE_HOMESCREEN);
 
 // Handle ready message
 extern void handleReadyMessage(const std::string &message);

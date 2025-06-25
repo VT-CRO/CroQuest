@@ -25,8 +25,8 @@ public:
   enum button_type { DEL = 10, ENTER = 11 };
 
   // Constructor
-  NumPad(void (*backScreen)(), void (*forwardScreen)(), EnumType *gameState,
-         EnumType prevState, EnumType nextState);
+  NumPad(void (*backScreen)(), EnumType *gameState,
+         EnumType prevState);
 
   void drawAllButtons();
   void handleButtonInput(unsigned long *lastMoveTime, const long moveDelay);
@@ -40,7 +40,6 @@ public:
 
 private:
   void (*backScreen)();
-  void (*forwardScreen)();
 
   bool enterWasPressed = false; // Check for enter button press
 
@@ -49,7 +48,6 @@ private:
 
   // The two states that the numpad can jump to
   EnumType prevState;
-  EnumType nextState;
 
   const int SCREEN_WIDTH = 480;
 
@@ -98,13 +96,11 @@ static JpegDrawing::ImageInfo numpad_dim =
     drawing.getJpegDimensions("/numpad/numpad.jpg");
 
 template <typename EnumType>
-NumPad<EnumType>::NumPad(void (*backScreen)(), void (*forwardScreen)(),
-                         EnumType *gameState, EnumType prevState,
-                         EnumType nextState)
-    : backScreen(backScreen), forwardScreen(forwardScreen) {
+NumPad<EnumType>::NumPad(void (*backScreen)(),
+                         EnumType *gameState, EnumType prevState)
+    : backScreen(backScreen) {
   this->gameState = gameState;
   this->prevState = prevState;
-  this->nextState = nextState;
   const int buttonWidth = 47;
   const int buttonHeight = 31;
   const int spacingX = 14;

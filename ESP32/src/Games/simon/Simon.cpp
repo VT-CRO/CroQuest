@@ -83,9 +83,8 @@ int simonsubselection = 0;
 bool start = true;
 
 // Numpad
-static NumPad<SimonState> pad(drawSimonHomeScreen, simonStartNewGame,
-                              &simon_game_state, SIMON_HOMESCREEN,
-                              SIMON_STATE_WATCH);
+static NumPad<SimonState> pad(drawSimonHomeScreen,
+                              &simon_game_state, SIMON_HOMESCREEN);
 
 // Multiplayer
 bool simonStateChanged = false;

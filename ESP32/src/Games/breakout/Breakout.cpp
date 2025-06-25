@@ -70,10 +70,7 @@ BreakoutSession breakout_session;
 // Numpad
 static NumPad<BreakoutState> pad(
     drawBreakoutHomeScreen, // What to show when exiting pad
-    []() { currentBreakoutState = BREAKOUT_PLAYING; }, // What to do on confirm
-    &currentBreakoutState, BREAKOUT_HOMESCREEN,
-    BREAKOUT_PLAYING // or another post-confirm state
-);
+    &currentBreakoutState, BREAKOUT_HOMESCREEN);
 
 const uint16_t rainbow[] = {TFT_RED,  0xFDA0, TFT_YELLOW, TFT_GREEN,
                             TFT_BLUE, 0x8010, 0xF81F};
