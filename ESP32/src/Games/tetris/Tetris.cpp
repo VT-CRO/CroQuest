@@ -74,6 +74,7 @@ std::unordered_map<uint16_t, String> assetMap = {
 };
 
 // DRAWING CONSTANTS
+static int y_single = 180;
 
 int const SCREEN_WIDTH = 480;
 int const SCREEN_HEIGHT = 320;
@@ -237,6 +238,10 @@ static void handleTetrisFrame() {
   case HOMESCREEN:
     if (millis() - lastButtonPressTime > buttonDebounceDelay) {
       if (A.wasJustPressed()) {
+        tft.setTextColor(TFT_WHITE);
+        tft.setTextSize(3);
+        tft.drawString("Press to Start", (tft.width() / 2), y_single + 20);
+        tft.setTextSize(2);
         playSelectConfirmSound();
 
         // Only single-player allowed
@@ -716,7 +721,6 @@ static void drawHomeScreen() {
 }
 
 static void drawHomeSelection() {
-  int y_single = 180;
   int y_multi = 230;
   int y_sub = y_multi + 40;
 
@@ -730,8 +734,9 @@ static void drawHomeSelection() {
   if (selection == 0) {
     // Single-player selected
     tft.setTextSize(3);
-    tft.drawString("Press to Start", tft.width() / 2, y_single);
-
+    tft.setTextColor(tft.color565(150, 150, 150));
+    tft.drawString("Press to Start", (tft.width() / 2), y_single + 20);
+    tft.setTextColor(TFT_WHITE);
     // tft.setTextSize(2);
     // tft.drawString("Start Multiplayer", tft.width() / 2, y_multi);
   } else {

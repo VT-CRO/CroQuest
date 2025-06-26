@@ -434,7 +434,7 @@ void handleConnect4Frame() {
     }
 
     // Auto Restart
-    if (roundEnded && millis() - winTime >= 5000) {
+    if (roundEnded && millis() - winTime >= 1500) {
       resetConnect4Board(true);
       if (player1Wins >= 2 || player2Wins >= 2) {
         prevGameState = game_state;
@@ -547,7 +547,7 @@ void handleConnect4Frame() {
     }
 
     // ===== Auto Restart ===== //
-    if (roundEnded && millis() - winTime >= 3000) {
+    if (roundEnded && millis() - winTime >= 1500) {
       if (player1Wins >= 2 || player2Wins >= 2) {
         game_state = GAMEOVER_SCREEN;
         resetConnect4Board(true);

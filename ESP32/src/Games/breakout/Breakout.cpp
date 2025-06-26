@@ -75,6 +75,8 @@ static NumPad<BreakoutState> pad(
 const uint16_t rainbow[] = {TFT_RED,  0xFDA0, TFT_YELLOW, TFT_GREEN,
                             TFT_BLUE, 0x8010, 0xF81F};
 
+static int y_single = 180;
+
 // ####################################################################################################
 //  Launch Game
 // ####################################################################################################
@@ -150,6 +152,10 @@ void handleBreakoutFrame() {
     if (millis() - lastFrameTime > 150) {
       // No up/down navigation — only one option
       if (A.wasJustPressed()) {
+        tft.setTextColor(TFT_WHITE);
+        tft.setTextSize(3);
+        tft.drawString("Press To Start", SCREEN_W / 2, y_single + 20);
+        tft.setTextSize(2);
         playSelectConfirmSound();
         // Directly start singleplayer
         currentBreakoutState = BREAKOUT_PLAYING;
@@ -820,7 +826,6 @@ void drawBreakoutGameOverScreen() {
 
 // ========== Draw HomeScreen Selection Buttons ========== //
 void drawBreakoutHomeSelection() {
-  int y_single = 180;
   int y_multi = 230;
   int y_sub = y_multi + 40;
 
@@ -834,8 +839,9 @@ void drawBreakoutHomeSelection() {
 
   if (breakout_selection == 0) {
     tft.setTextSize(3);
-    tft.drawString("Press To Start", SCREEN_W / 2, y_single);
-
+    tft.setTextColor(tft.color565(150, 150, 150));
+    tft.drawString("Press To Start", SCREEN_W / 2, y_single + 20);
+    tft.setTextColor(TFT_WHITE);
     // tft.setTextSize(2);
     // tft.drawString("Press for Multiplayer", SCREEN_W / 2, y_multi);
   } else {
