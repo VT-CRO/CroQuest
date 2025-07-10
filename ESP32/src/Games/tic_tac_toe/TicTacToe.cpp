@@ -1279,18 +1279,26 @@ void clearCursor(int index) {
 
 // ========== Placing Marker ========== //
 void playMoveSound() {
-  tone(SPEAKER_PIN, 660, 100); // Frequency, Duration
+  playTone(660, volume); // Frequency 660 Hz, use global volume
+  delay(100);
+  playTone(0, 0);
 }
 
 // ========== Winning sound ========== //
 void playWinSound() {
-  tone(SPEAKER_PIN, 880, 300);
-  delay(100);
-  tone(SPEAKER_PIN, 990, 300);
+  playTone(880, volume);
+  delay(400);
+  playTone(990, volume);
+  delay(300);
+  playTone(0, 0);
 }
 
 // ========== Error sound ========== //
-void playErrorSound() { tone(SPEAKER_PIN, 300, 300); }
+void playErrorSound() {
+  playTone(300, volume);
+  delay(300);
+  playTone(0, 0);
+}
 
 // ####################################################################################################
 //  Bluetooth Logic
