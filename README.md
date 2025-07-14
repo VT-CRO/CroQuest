@@ -34,6 +34,21 @@ CroQuest
     └── saves/            # Saved data (e.g., badges, settings)
 ```
 
+## 👥 Project Contributors
+
+CroQuest was originally developed as part of VT CRO (Competitive Robotics Organization at Virginia Tech) by the following team:
+
+- **Marco Gonzalez Hauger** — Chief Designer
+- **Felipe Campoverde** — Chief Engineer
+- **Heesang Han** — Logistics Coordinator
+- **Morgan Weidling** — Graphic Design Lead
+- **Lucas Shadoyan** — Software Engineer
+- **Connor McCue** — Software Engineer
+- **Jonas von Sten** — Electrical Lead
+- **Andrew Viola** — Electrical Engineer
+- **Stephen Kitomary** — Industrial Designer
+- **Ayra Nirar** — Graphic Designer
+
 ## ⚠️ License & Usage Terms
 
 This repository is made public for educational and non-commercial use under the MIT License.
