@@ -12,7 +12,7 @@ void runAboutUs() {
                            "",
                            "",
                            "FOUNDER AND CHIEF DESIGNER",
-                           "Marco Gonzales Hauger",
+                           "Marco Gonzalez Hauger",
                            "",
                            "",
                            "TEAM LEAD AND CHIEF ENGINEER",
