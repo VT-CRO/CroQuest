@@ -44,7 +44,7 @@ CroQuest was originally developed as part of VT CRO (Competitive Robotics Organi
 - **Morgan Weidling** — Graphic Design Lead
 - **Lucas Shadoyan** — Software Engineer
 - **Connor McCue** — Software Engineer
-- **Jonas von Sten** — Electrical Lead
+- **Jonas von Stein** — Electrical Lead
 - **Andrew Viola** — Electrical Engineer
 - **Stephen Kitomary** — Industrial Designer
 - **Ayra Nirar** — Graphic Designer
