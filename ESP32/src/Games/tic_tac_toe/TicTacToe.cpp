@@ -83,6 +83,8 @@ int winCombo[3] = {-1, -1, -1};
 bool roundEnded = false;
 unsigned long winTime = 0;
 
+// testing
+
 // Game State
 State game_state = HOMESCREEN;
 State prev_game_state = HOMESCREEN;
@@ -110,8 +112,7 @@ std::unordered_map<std::string, bool> ready = {{"host", false},
                                                {"periph", false}};
 
 // Numpad Setup
-static NumPad<State> pad(drawHomeScreen, &game_state,
-                         HOMESCREEN);
+static NumPad<State> pad(drawHomeScreen, &game_state, HOMESCREEN);
 
 // ####################################################################################################
 //  Setup & Loop
@@ -250,39 +251,36 @@ void handleTicTacToeFrame() {
           HostGame::showCode(String(code.c_str()));
           central.beginScan(code);
 
-          for(;;){
+          for (;;) {
             central.scanAndConnectLoop(code);
-  
+
             multiplayerMode = true;
 
-            if(B.wasJustPressed()){
+            if (B.wasJustPressed()) {
               BluetoothManager::reset(false);
               game_state = HOMESCREEN;
               drawHomeScreen();
               return;
             }
 
-
             if (!BluetoothManager::getCentral().getConnectedClients().empty()) {
               localPlayerSymbol = 'X';
-  
+
               game_state = HOST_SCREEN;
-  
+
               // Flush any held buttons to prevent input carryover
               delay(300); // debounce delay
               while (A.isPressed() || up.isPressed() || down.isPressed() ||
                      left.isPressed() || right.isPressed()) {
                 delay(10);
               }
-  
+
               // send ready string
               ready["host"] = true;
               BluetoothManager::getCentral().sendMessage("ready@host,true");
               return;
             }
           }
-
-
 
         } else {
           game_state = BLUETOOTH_NUMPAD;
